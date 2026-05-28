@@ -37,7 +37,7 @@ export function DashboardPage() {
             <Radio size={19} aria-hidden="true" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-white">WS Chat</p>
+            <p className="text-sm font-semibold   text-white">WS Chat</p>
             <p className="text-xs text-zinc-500">Realtime workspace</p>
           </div>
         </div>
