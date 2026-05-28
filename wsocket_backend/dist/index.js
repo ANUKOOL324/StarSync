@@ -1,36 +1,15 @@
-import { WebSocketServer, WebSocket } from "ws";
-import crypto from "crypto";
-const wss = new WebSocketServer({ port: 3001 });
-let userCount = 0;
-const allSocket = [];
-wss.on("connection", (socket) => {
-    const userId = crypto.randomUUID();
-    socket.on("message", (message) => {
-        console.log(message.toString());
-        const parsedMessage = JSON.parse(message.toString());
-        if (parsedMessage.type == "join") {
-            allSocket.push({
-                id: userId,
-                socket,
-                room: parsedMessage.payload.roomId
-            });
-        }
-        if (parsedMessage.type == "chat") {
-            const currentUser = allSocket.find((x) => x.socket == socket);
-            for (let i = 0; i < allSocket.length; i++) {
-                if (allSocket[i]?.room == currentUser?.room) {
-                    allSocket[i]?.socket.send(JSON.stringify({ mess: parsedMessage.payload.message,
-                        senderId: currentUser?.id
-                    }));
-                }
-            }
-        }
-    });
-    socket.on("close", () => {
-        const index = allSocket.findIndex(u => u.socket === socket);
-        if (index !== -1) {
-            allSocket.splice(index, 1);
-        }
-    });
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const node_http_1 = __importDefault(require("node:http"));
+const app_1 = require("./app");
+const env_1 = require("./config/env");
+const socketManager_1 = require("./websocket/socketManager");
+const server = node_http_1.default.createServer(app_1.app);
+(0, socketManager_1.attachWebSocketServer)(server);
+server.listen(env_1.env.port, () => {
+    console.log(`HTTP and WebSocket server running on port ${env_1.env.port}`);
 });
 //# sourceMappingURL=index.js.map
