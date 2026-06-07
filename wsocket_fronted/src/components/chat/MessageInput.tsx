@@ -33,6 +33,11 @@ export function MessageInput({
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const message = inputRef.current?.value ?? ''
+    const trimmedMessage = message.trim()
+
+    if (disabled || !trimmedMessage) {
+      return
+    }
 
     if (typingTimeoutRef.current) {
       window.clearTimeout(typingTimeoutRef.current)
@@ -40,7 +45,7 @@ export function MessageInput({
     }
     isTypingRef.current = false
 
-    onSend(message)
+    onSend(trimmedMessage)
     onStopTyping()
 
     if (inputRef.current) {
@@ -111,7 +116,6 @@ export function MessageInput({
       >
         <textarea
           ref={inputRef}
-          disabled={disabled}
           onBlur={() => setIsFocused(false)}
           onFocus={() => setIsFocused(true)}
           onInput={handleInput}
@@ -129,6 +133,11 @@ export function MessageInput({
           <Send size={17} aria-hidden="true" />
         </button>
       </div>
+      {disabled ? (
+        <p className="mx-auto mt-2 max-w-5xl px-1 text-xs text-slate-500">
+          Connecting... messages can be sent once the room is live.
+        </p>
+      ) : null}
     </form>
   )
 }
