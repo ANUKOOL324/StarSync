@@ -1,0 +1,190 @@
+import { prisma } from "../prisma/client";
+import { HttpError } from "../utils/HttpError";
+
+const userSelect = {
+  id: true,
+  username: true,
+  email: true,
+} as const;
+
+const dmRoomSelect = {
+  id: true,
+  name: true,
+  slug: true,
+  type: true,
+  createdAt: true,
+  adminId: true,
+  admin: {
+    select: userSelect,
+  },
+  members: {
+    select: {
+      user: {
+        select: userSelect,
+      },
+    },
+  },
+  messages: {
+    orderBy: { createdAt: "desc" },
+    take: 1,
+    select: {
+      id: true,
+      content: true,
+      createdAt: true,
+      senderId: true,
+      roomId: true,
+      sender: {
+        select: userSelect,
+      },
+    },
+  },
+  _count: {
+    select: {
+      members: true,
+      messages: true,
+    },
+  },
+} as const;
+
+const createDmSlug = (firstUserId: string, secondUserId: string): string => {
+  const sortedUserIds = [firstUserId, secondUserId].sort();
+  return `dm-${sortedUserIds[0]}-${sortedUserIds[1]}`;
+};
+
+const verifyUsersBelongToSourceRoom = async ({
+  currentUserId,
+  sourceRoomId,
+  targetUserId,
+}: {
+  currentUserId: string;
+  sourceRoomId: string;
+  targetUserId: string;
+}) => {
+  const sourceRoom = await prisma.room.findFirst({
+    where: {
+      OR: [{ id: sourceRoomId }, { slug: sourceRoomId }],
+    },
+    select: {
+      id: true,
+      type: true,
+      members: {
+        where: {
+          userId: {
+            in: [currentUserId, targetUserId],
+          },
+        },
+        select: {
+          userId: true,
+        },
+      },
+    },
+  });
+
+  if (!sourceRoom) {
+    throw new HttpError(404, "Source room not found");
+  }
+
+  if (sourceRoom.type !== "GROUP") {
+    throw new HttpError(400, "Direct messages can only be started from group rooms");
+  }
+
+  const sourceRoomUserIds = sourceRoom.members.map((member) => member.userId);
+  const currentUserIsInSourceRoom = sourceRoomUserIds.includes(currentUserId);
+  const targetUserIsInSourceRoom = sourceRoomUserIds.includes(targetUserId);
+
+  if (!currentUserIsInSourceRoom || !targetUserIsInSourceRoom) {
+    throw new HttpError(403, "Both users must be members of the source room");
+  }
+};
+
+const formatDmRoom = (room: any, currentUserId: string) => {
+  const otherMember = room.members.find((member: any) => member.user.id !== currentUserId);
+  const otherUser = otherMember?.user ?? null;
+  const lastMessage = room.messages[0] ?? null;
+
+  return {
+    id: room.id,
+    name: otherUser?.username ?? room.name,
+    slug: room.slug,
+    type: room.type,
+    createdAt: room.createdAt,
+    adminId: room.adminId,
+    admin: room.admin,
+    otherUser,
+    lastMessage,
+    _count: room._count,
+  };
+};
+
+export const createOrGetDmRoom = async (
+  currentUserId: string,
+  targetUserId: string,
+  sourceRoomId?: string,
+) => {
+  if (currentUserId === targetUserId) {
+    throw new HttpError(400, "You cannot start a DM with yourself");
+  }
+
+  const targetUser = await prisma.user.findUnique({
+    where: { id: targetUserId },
+    select: userSelect,
+  });
+
+  if (!targetUser) {
+    throw new HttpError(404, "User not found");
+  }
+
+  if (sourceRoomId) {
+    // The frontend uses sourceRoomId when a DM is started from the room member picker.
+    // This backend check prevents a user from editing the request and DMing somebody
+    // who is not actually part of the room context they opened.
+    await verifyUsersBelongToSourceRoom({
+      currentUserId,
+      sourceRoomId,
+      targetUserId,
+    });
+  }
+
+  const dmSlug = createDmSlug(currentUserId, targetUserId);
+
+  const existingDmRoom = await prisma.room.findUnique({
+    where: { slug: dmSlug },
+    select: dmRoomSelect,
+  });
+
+  if (existingDmRoom) {
+    return formatDmRoom(existingDmRoom, currentUserId);
+  }
+
+  const createdDmRoom = await prisma.room.create({
+    data: {
+      name: targetUser.username,
+      slug: dmSlug,
+      type: "DM",
+      members: {
+        create: [
+          { userId: currentUserId, role: "ADMIN" },
+          { userId: targetUserId, role: "MEMBER" },
+        ],
+      },
+    },
+    select: dmRoomSelect,
+  });
+
+  return formatDmRoom(createdDmRoom, currentUserId);
+};
+
+export const getDmRoomsForUser = async (currentUserId: string) => {
+  const dmRooms = await prisma.room.findMany({
+    where: {
+      type: "DM",
+      members: {
+        some: { userId: currentUserId },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+    select: dmRoomSelect,
+  });
+
+  return dmRooms.map((room) => formatDmRoom(room, currentUserId));
+};

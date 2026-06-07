@@ -11,23 +11,65 @@ datasource db {
   provider = "postgresql"
 }
 
+enum RoomType {
+  GROUP
+  DM
+}
+
+enum RoomRole {
+  ADMIN
+  MEMBER
+}
+
 model User {
-  id        String    @id @default(cuid())
-  username  String
-  email     String    @unique
-  password  String
-  createdAt DateTime  @default(now())
-  rooms     Room[]    @relation("RoomAdmin")
-  messages  Message[]
+  id          String       @id @default(cuid())
+  username    String
+  email       String       @unique
+  password    String
+  createdAt   DateTime     @default(now())
+  rooms       Room[]       @relation("RoomAdmin")
+  messages    Message[]
+  memberships RoomMember[]
 }
 
 model Room {
-  id        String    @id @default(cuid())
-  slug      String    @unique
-  createdAt DateTime  @default(now())
-  adminId   String
-  admin     User      @relation("RoomAdmin", fields: [adminId], references: [id], onDelete: Cascade)
-  messages  Message[]
+  id           String        @id @default(cuid())
+  name         String        @default("")
+  slug         String        @unique
+  type         RoomType      @default(GROUP)
+  createdAt    DateTime      @default(now())
+  adminId      String?
+  admin        User?         @relation("RoomAdmin", fields: [adminId], references: [id], onDelete: Cascade)
+  messages     Message[]
+  members      RoomMember[]
+  codeDocument CodeDocument?
+
+  @@index([type])
+}
+
+model CodeDocument {
+  id        String   @id @default(cuid())
+  roomId    String   @unique
+  title     String   @default("main")
+  language  String   @default("javascript")
+  content   String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+}
+
+model RoomMember {
+  id       String   @id @default(cuid())
+  userId   String
+  roomId   String
+  role     RoomRole @default(MEMBER)
+  joinedAt DateTime @default(now())
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room     Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roomId])
+  @@index([roomId])
 }
 
 model Message {

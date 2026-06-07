@@ -1,19 +1,31 @@
-import jwt, { type SignOptions } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
+import type { StringValue } from "ms";
 
 import { env } from "../config/env";
 
-export type JwtPayload = {
+export type AuthTokenPayload = {
   userId: string;
   email: string;
 };
 
-export const signAuthToken = (payload: JwtPayload) => {
-  const expiresIn = env.jwtExpiresIn as NonNullable<SignOptions["expiresIn"]>;
-  const options: SignOptions = {
-    expiresIn,
-  };
+export type JwtPayload = AuthTokenPayload;
 
-  return jwt.sign(payload, env.jwtSecret, options);
+export const signAuthToken = (payload: AuthTokenPayload): string => {
+  // jsonwebtoken accepts readable expiry strings like "7d" or "15m".
+  const tokenExpiryTime = env.jwtExpiresIn as StringValue;
+
+  const signedToken = jwt.sign(payload, env.jwtSecret, {
+    expiresIn: tokenExpiryTime,
+  });
+
+  return signedToken;
 };
 
-export const verifyAuthToken = (token: string) => jwt.verify(token, env.jwtSecret) as JwtPayload;
+export const verifyAuthToken = (token: string): AuthTokenPayload => {
+  const decodedToken = jwt.verify(token, env.jwtSecret);
+
+  const authTokenPayload = decodedToken as AuthTokenPayload;
+
+  return authTokenPayload;
+};
+

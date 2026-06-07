@@ -1,0 +1,20 @@
+services:
+  piston:
+    image: ghcr.io/engineer-man/piston
+    container_name: ws_chat_piston
+    privileged: true
+    environment:
+      # C++ compilation can be slow inside Docker Desktop on Windows.
+      # Raise the runner's configured compile limit instead of sending
+      # per-request limits from the backend.
+      PISTON_COMPILE_TIMEOUT: 30000
+      PISTON_COMPILE_CPU_TIME: 30000
+    ports:
+      - "2000:2000"
+    volumes:
+      - piston_packages:/piston/packages
+    tmpfs:
+      - /tmp:exec
+
+volumes:
+  piston_packages:

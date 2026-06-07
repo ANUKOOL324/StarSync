@@ -7,12 +7,21 @@ import { signAuthToken } from "../utils/jwt";
 
 const SALT_ROUNDS = 12;
 
-const toSafeUser = (user: { id: string; username: string; email: string; createdAt: Date }) => ({
-  id: user.id,
-  username: user.username,
-  email: user.email,
-  createdAt: user.createdAt,
-});
+type SafeUser = {
+  id: string;
+  username: string;
+  email: string;
+  createdAt: Date;
+};
+
+const toSafeUser = (user: SafeUser): SafeUser => {
+  return {
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    createdAt: user.createdAt,
+  };
+};
 
 export const signupUser = async (input: SignupInput) => {
   const existingUser = await prisma.user.findUnique({
@@ -23,6 +32,7 @@ export const signupUser = async (input: SignupInput) => {
     throw new HttpError(409, "Email is already registered");
   }
 
+  // Store only the hash. The plain password is never saved or returned to the client.
   const hashedPassword = await bcrypt.hash(input.password, SALT_ROUNDS);
 
   const user = await prisma.user.create({
@@ -39,9 +49,15 @@ export const signupUser = async (input: SignupInput) => {
     },
   });
 
-  const token = signAuthToken({ userId: user.id, email: user.email });
+  const token = signAuthToken({
+    userId: user.id,
+    email: user.email,
+  });
 
-  return { user: toSafeUser(user), token };
+  return {
+    user: toSafeUser(user),
+    token,
+  };
 };
 
 export const loginUser = async (input: LoginInput) => {
@@ -53,15 +69,22 @@ export const loginUser = async (input: LoginInput) => {
     throw new HttpError(401, "Invalid email or password");
   }
 
+  // Use bcrypt.compare so timing and hashing details stay inside bcrypt.
   const passwordMatches = await bcrypt.compare(input.password, user.password);
 
   if (!passwordMatches) {
     throw new HttpError(401, "Invalid email or password");
   }
 
-  const token = signAuthToken({ userId: user.id, email: user.email });
+  const token = signAuthToken({
+    userId: user.id,
+    email: user.email,
+  });
 
-  return { user: toSafeUser(user), token };
+  return {
+    user: toSafeUser(user),
+    token,
+  };
 };
 
 export const getCurrentUser = async (userId: string) => {
