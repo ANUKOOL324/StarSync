@@ -17,7 +17,7 @@ export function LandingPage() {
         transition={{ duration: 0.45, ease: 'easeOut' }}
         className="mx-auto w-full max-w-5xl"
       >
-        <p className="mb-4 text-sm font-medium uppercase tracking-[0.24em] text-teal-300">
+        <p className="mb-4 text-sm font-medium uppercase tracking-[0.24em] text-[#7FFFE0]">
           WebSocket Chat
         </p>
         <h1 className="max-w-3xl text-3xl font-thin tracking-tight text-gray-new-50 text-gray-200 sm:text-5xl lg:text-6xl">
@@ -26,7 +26,7 @@ export function LandingPage() {
         <div className="mt-8 flex flex-wrap gap-3">
           <Link
             to="/signup"
-            className="inline-flex items-center gap-2 rounded-lg bg-teal-300 px-4 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-teal-200"
+            className="inline-flex items-center gap-2 rounded-lg bg-[#18D6A3] px-4 py-3 text-sm font-semibold text-[#03110E] transition duration-150 hover:bg-[#35E0B4]"
           >
             Create account
             <ArrowRight size={17} aria-hidden="true" />
@@ -43,7 +43,7 @@ export function LandingPage() {
         <div className="mt-10 grid gap-3 sm:grid-cols-3">
           {highlights.map((item) => (
             <div key={item.label} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-              <item.icon className="mb-3 text-teal-300" size={20} aria-hidden="true" />
+              <item.icon className="mb-3 text-[#7FFFE0]" size={20} aria-hidden="true" />
               <p className="text-sm font-medium text-white">{item.label}</p>
             </div>
           ))}
@@ -52,3 +52,4 @@ export function LandingPage() {
     </main>
   )
 }
+

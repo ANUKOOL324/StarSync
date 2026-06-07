@@ -66,7 +66,7 @@ export function SignupPage() {
       transition={{ duration: 0.35 }}
       className="w-full max-w-md rounded-lg border border-white/10 bg-black/45 p-6 shadow-2xl shadow-black/40 backdrop-blur-xl"
     >
-      <p className="text-xs font-medium uppercase tracking-[0.22em] text-teal-200">Create profile</p>
+      <p className="text-xs font-medium uppercase tracking-[0.22em] text-[#7FFFE0]">Create profile</p>
       <h1 className="mt-3 text-3xl font-semibold text-white">Sign up</h1>
       <p className="mt-2 text-sm text-zinc-400">Create an account for the chat dashboard.</p>
 
@@ -98,7 +98,7 @@ export function SignupPage() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-teal-300 px-4 py-3 text-sm font-semibold text-zinc-950 shadow-lg shadow-teal-500/20 transition hover:bg-teal-200 disabled:cursor-not-allowed disabled:opacity-70"
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#18D6A3] px-4 py-3 text-sm font-semibold text-[#03110E] shadow-lg shadow-[#18D6A3]/15 transition duration-150 hover:bg-[#35E0B4] disabled:cursor-not-allowed disabled:opacity-70"
         >
           <UserPlus size={17} aria-hidden="true" />
           {isSubmitting ? 'Creating account...' : 'Create account'}
@@ -107,10 +107,11 @@ export function SignupPage() {
 
       <p className="mt-5 text-sm text-zinc-400">
         Already have an account?{' '}
-        <Link className="font-medium text-teal-200 hover:text-teal-100" to="/login">
+        <Link className="font-medium text-[#7FFFE0] hover:text-white" to="/login">
           Log in
         </Link>
       </p>
     </motion.section>
   )
 }
+

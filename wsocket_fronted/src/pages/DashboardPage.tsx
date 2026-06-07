@@ -14,14 +14,14 @@ import { useRooms } from '../hooks/useRooms'
 export function DashboardPage() {
   const navigate = useNavigate()
   const { logout, user } = useAuth()
-  const { createRoom, joinRoom, rooms } = useRooms()
+  const { createRoom, isLoadingRooms, joinRoom, roomError, rooms } = useRooms()
   const [modalMode, setModalMode] = useState<'create' | 'join' | null>(null)
 
-  const handleRoomSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleRoomSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const formData = new FormData(event.currentTarget)
     const value = String(formData.get('room') ?? '')
-    const room = modalMode === 'join' ? joinRoom(value) : createRoom(value)
+    const room = modalMode === 'join' ? await joinRoom(value) : await createRoom(value)
 
     if (room) {
       setModalMode(null)
@@ -30,10 +30,10 @@ export function DashboardPage() {
   }
 
   return (
-    <section className="min-h-dvh px-5 py-6 sm:px-8 lg:px-10">
+    <section className="neon-field min-h-dvh px-5 py-6 sm:px-8 lg:px-10">
       <header className="mx-auto flex max-w-6xl items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="grid size-10 place-items-center rounded-lg bg-teal-300 text-zinc-950 shadow-lg shadow-teal-500/20">
+          <div className="grid size-10 place-items-center rounded-lg bg-[#18181B] text-[#18D6A3] shadow-lg shadow-black/20 border border-white/10">
             <Radio size={19} aria-hidden="true" />
           </div>
           <div>
@@ -58,7 +58,7 @@ export function DashboardPage() {
           className="max-w-3xl"
         >
           <div className="mb-5 flex items-center gap-3 text-sm text-zinc-400">
-            <UserCircle size={18} className="text-teal-200" aria-hidden="true" />
+            <UserCircle size={18} className="text-[#7FFFE0]" aria-hidden="true" />
             <span>Signed in as {user?.username}</span>
           </div>
           <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-5xl">
@@ -74,9 +74,9 @@ export function DashboardPage() {
           <button
             type="button"
             onClick={() => setModalMode('create')}
-            className="rounded-lg border border-teal-200/20 bg-black/34 p-5 text-left shadow-2xl shadow-black/20 backdrop-blur-xl transition hover:border-teal-200/40 hover:bg-teal-300/8"
+            className="rounded-lg border border-[#18D6A3]/20 bg-[#18181B]/70 p-5 text-left shadow-2xl shadow-black/20 backdrop-blur-xl transition hover:border-[#18D6A3]/35 hover:bg-[#18D6A3]/10"
           >
-            <div className="mb-5 grid size-11 place-items-center rounded-lg bg-teal-300 text-zinc-950">
+            <div className="mb-5 grid size-11 place-items-center rounded-lg bg-[#18D6A3] text-[#03110E]">
               <Plus size={20} aria-hidden="true" />
             </div>
             <p className="text-lg font-semibold text-white">Create room</p>
@@ -90,7 +90,7 @@ export function DashboardPage() {
             onClick={() => setModalMode('join')}
             className="rounded-lg border border-white/10 bg-black/28 p-5 text-left shadow-2xl shadow-black/20 backdrop-blur-xl transition hover:border-white/20 hover:bg-white/7"
           >
-            <div className="mb-5 grid size-11 place-items-center rounded-lg bg-white/8 text-teal-200">
+            <div className="mb-5 grid size-11 place-items-center rounded-lg bg-white/8 text-[#7FFFE0]">
               <Hash size={20} aria-hidden="true" />
             </div>
             <p className="text-lg font-semibold text-white">Join room</p>
@@ -105,16 +105,26 @@ export function DashboardPage() {
             <p className="text-sm font-semibold text-white">Recent rooms</p>
             <p className="text-xs text-zinc-500">{rooms.length} saved</p>
           </div>
-          {rooms.length ? (
+          {isLoadingRooms ? (
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {[0, 1, 2].map((item) => (
+                <div key={item} className="h-16 animate-pulse rounded-lg bg-white/7" />
+              ))}
+            </div>
+          ) : roomError ? (
+            <div className="rounded-lg border border-red-300/20 bg-red-950/20 p-4 text-sm text-red-200">
+              {roomError}
+            </div>
+          ) : rooms.length ? (
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {rooms.slice(0, 6).map((room) => (
                 <button
                   key={room.id}
                   type="button"
                   onClick={() => navigate(`/rooms/${room.id}`)}
-                  className="flex items-center gap-3 rounded-lg border border-white/8 bg-white/5 p-3 text-left transition hover:border-teal-200/25 hover:bg-white/8"
+                  className="flex items-center gap-3 rounded-lg border border-white/8 bg-white/5 p-3 text-left transition hover:border-[#18D6A3]/25 hover:bg-white/8"
                 >
-                  <span className="grid size-9 place-items-center rounded-lg bg-black/32 text-teal-200">
+                  <span className="grid size-9 place-items-center rounded-lg bg-[#111113] text-[#7FFFE0]">
                     <Hash size={16} aria-hidden="true" />
                   </span>
                   <span className="min-w-0 flex-1">
@@ -154,3 +164,4 @@ export function DashboardPage() {
     </section>
   )
 }
+

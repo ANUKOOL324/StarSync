@@ -12,15 +12,15 @@ export function EmptyState({ description, title, variant = 'chat' }: EmptyStateP
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-lg border border-dashed border-teal-200/20 bg-black/28 p-6 text-center backdrop-blur-md"
+      className="mx-auto max-w-xs rounded-2xl border border-white/10 bg-white/[0.045] p-4 text-center shadow-[0_20px_60px_rgba(0,0,0,0.22)] backdrop-blur-xl"
     >
-      <div className="mx-auto mb-4 grid size-11 place-items-center rounded-lg bg-teal-300/12 text-teal-200">
-        <Icon size={21} aria-hidden="true" />
+      <div className="mx-auto mb-3 grid size-9 place-items-center rounded-full border border-[#18D6A3]/20 bg-[#18D6A3]/12 text-[#7FFFE0] shadow-lg shadow-[#18D6A3]/10">
+        <Icon size={18} aria-hidden="true" />
       </div>
-      <p className="text-base font-semibold text-white">{title}</p>
-      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-zinc-400">{description}</p>
+      <p className="text-sm font-semibold text-white">{title}</p>
+      <p className="mx-auto mt-1.5 max-w-52 text-sm leading-5 text-zinc-500">{description}</p>
     </motion.div>
   )
 }
