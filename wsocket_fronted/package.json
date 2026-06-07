@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@liveblocks/client": "^3.19.4",
+    "@liveblocks/react": "^3.19.4",
     "@monaco-editor/react": "^4.7.0",
     "@tailwindcss/vite": "^4.1.18",
     "axios": "^1.16.1",
@@ -18,7 +20,8 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.15.1",
-    "tailwindcss": "^4.3.0"
+    "tailwindcss": "^4.3.0",
+    "tldraw": "^5.1.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
