@@ -73,3 +73,50 @@ The app supports:
 - `javascript`
 - `typescript`
 - `python`
+
+## Common Issues
+
+### Docker Desktop is not running
+
+On Windows, this error usually means Docker Desktop is closed or still starting:
+
+```txt
+open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified
+```
+
+Open Docker Desktop, wait for the engine to start, then run:
+
+```powershell
+docker compose -f docker-compose.piston.yml up -d
+```
+
+### Code runner is unavailable
+
+If the editor shows `Code runner is currently unavailable`, check that:
+
+1. Docker Desktop is running.
+2. The Piston container is running.
+3. `CODE_RUNNER_URL` points to `http://localhost:2000/api/v2`.
+
+```powershell
+docker compose -f docker-compose.piston.yml ps
+Invoke-RestMethod http://localhost:2000/api/v2/runtimes
+```
+
+### C++ timeout
+
+C++ is supported, but compiling large C++ files inside Docker Desktop can be slow.
+For demos, use lightweight starter code:
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    cout << "hello" << endl;
+    return 0;
+}
+```
+
+Very heavy C++ code may timeout. That is expected for this local runner setup,
+and the API should return a clean error instead of exposing backend internals.
