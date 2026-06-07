@@ -1,4 +1,4 @@
-import { LogOut, Palette, Plus, Trash2 } from 'lucide-react'
+import { LogOut, Plus, Trash2 } from 'lucide-react'
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
@@ -21,6 +21,7 @@ import { OnlineUsersPanel } from './OnlineUsersPanel'
 import { RoomHeader } from './RoomHeader'
 import { RoomSidebar } from './RoomSidebar'
 import { EditorSkeleton } from '../editor/EditorSkeleton'
+import { WhiteboardSkeleton } from '../whiteboard/WhiteboardSkeleton'
 
 type ChatWorkspaceProps = {
   roomId: string | undefined
@@ -42,6 +43,12 @@ const COMFORTABLE_DETAILS_BREAKPOINT = 1536
 const LazyCodeEditorWorkspace = lazy(() =>
   import('../editor/CodeEditorWorkspace').then((module) => ({
     default: module.CodeEditorWorkspace,
+  }))
+)
+
+const LazyWhiteboardWorkspace = lazy(() =>
+  import('../whiteboard/WhiteboardWorkspace').then((module) => ({
+    default: module.WhiteboardWorkspace,
   }))
 )
 
@@ -513,18 +520,9 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
         )}
 
         {activeTab === 'whiteboard' && (
-          <div className="relative flex min-h-0 flex-1 flex-col items-center justify-center p-6 text-center select-none">
-            <div className="pointer-events-none absolute inset-0 opacity-10 [background-image:radial-gradient(circle_at_1px_1px,rgba(245,158,11,0.22)_1px,transparent_0)] [background-size:16px_16px]" />
-            <div className="mx-auto max-w-sm rounded-2xl border border-white/10 bg-white/[0.035] p-6 shadow-xl backdrop-blur-md">
-              <div className="mx-auto mb-4 grid size-12 place-items-center rounded-xl border border-[#F59E0B]/25 bg-[#F59E0B]/12 text-[#F59E0B] shadow-lg shadow-[#F59E0B]/10">
-                <Palette size={22} aria-hidden="true" />
-              </div>
-              <h3 className="text-base font-semibold text-white">Shared Sketch Canvas</h3>
-              <p className="mt-2 text-sm leading-6 text-zinc-500">
-                An interactive vector whiteboard for design blueprints and diagrams will be integrated here in the next update.
-              </p>
-            </div>
-          </div>
+          <Suspense fallback={<WhiteboardSkeleton />}>
+            <LazyWhiteboardWorkspace room={activeRoom} />
+          </Suspense>
         )}
       </div>
 

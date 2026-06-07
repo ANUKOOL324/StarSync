@@ -75,7 +75,7 @@ export function OnlineUsersPanel({
                     {isDirectMessage ? 'Direct message details' : 'Room details'}
                   </p>
                   <p className="mt-0.5 text-xs text-zinc-500">
-                    {isDirectMessage ? roomDisplay.displayName : 'Useful workspace context'}
+                    {isDirectMessage ? roomDisplay.displayName : 'Room overview'}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5">
@@ -272,19 +272,8 @@ export function OnlineUsersPanel({
             </section>
 
             <section className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 shadow-lg shadow-black/20 backdrop-blur-xl">
-              <p className="text-sm font-semibold text-white">Active Sketchers</p>
-              <p className="mt-0.5 text-xs text-zinc-500 mb-4">Interacting with the whiteboard</p>
-              <div className="grid gap-3">
-                {roomMembers.slice(0, 3).map((member) => (
-                  <div key={member.id} className="flex items-center gap-3 rounded-xl border border-transparent p-1.5 transition hover:border-white/8 hover:bg-white/[0.035]">
-                    <Avatar name={member.username} seed={member.username || member.email} size="sm" />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-zinc-100">{member.username}</p>
-                      <p className="text-xs text-zinc-500">Drawing...</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <p className="text-sm font-semibold text-white">Board Status</p>
+              <p className="mt-0.5 text-xs text-zinc-500">Liveblocks powers this room canvas.</p>
             </section>
           </>
         )}
