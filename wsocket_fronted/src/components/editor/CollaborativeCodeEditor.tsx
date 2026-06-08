@@ -1,4 +1,4 @@
-import Editor, { type BeforeMount } from '@monaco-editor/react'
+import Editor, { type BeforeMount, type OnMount } from '@monaco-editor/react'
 
 import type { EditorLanguage } from '../../types/editor'
 
@@ -7,6 +7,7 @@ type CollaborativeCodeEditorProps = {
   isLoading: boolean
   language: EditorLanguage
   onChange: (value: string) => void
+  onMount?: OnMount
 }
 
 const monacoLanguageMap: Record<EditorLanguage, string> = {
@@ -43,15 +44,17 @@ export function CollaborativeCodeEditor({
   isLoading,
   language,
   onChange,
+  onMount,
 }: CollaborativeCodeEditorProps) {
   return (
     <div className="min-h-[320px] min-w-0 flex-1 overflow-hidden border-y border-white/10 bg-[#05080A] md:min-h-0">
       <Editor
-        value={code}
+        defaultValue={code}
         loading={isLoading ? 'Loading editor...' : 'Preparing editor...'}
         language={monacoLanguageMap[language]}
         theme="ws-chat-dark"
         beforeMount={defineEditorTheme}
+        onMount={onMount}
         onChange={(value) => onChange(value ?? '')}
         options={{
           automaticLayout: true,
