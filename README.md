@@ -240,32 +240,65 @@ http://localhost:5173
 
 Use this flow when showing the project:
 
-1. Sign up or log in.
-2. Create a group room.
-3. Open the room and send a chat message.
-4. Open the same room with a second user.
-5. Show online room members and typing indicators.
-6. Start a direct message from a room member.
-7. Open the Editor tab.
-8. Type code and wait for autosave.
-9. Refresh the page and confirm the code persists.
-10. Run JavaScript or Python code.
-11. Open the Editor tab with a second user and show active collaborators.
-12. Open the Whiteboard tab with two users and draw together.
-13. Switch one user back to Chat and confirm editor presence clears.
+1. Start Docker Piston if you plan to demo code execution.
+2. Start the backend and frontend.
+3. Sign up or log in.
+4. Create a group room from the dashboard.
+5. Open the room and send a group chat message.
+6. Open the same room with a second user in another browser or incognito window.
+7. Show online room members and typing indicators.
+8. Start a direct message from a room member and send a private message.
+9. Return to the group room and open the Editor tab.
+10. Type code, wait for autosave, then refresh to confirm the code persists.
+11. Run JavaScript or Python code and show stdout in the output panel.
+12. Open the Editor tab with the second user and show active collaborators.
+13. Open the Whiteboard tab with both users and draw together.
+14. Switch one user back to Chat and confirm editor/board state does not break.
+
+Short presenter script:
+
+```txt
+This is a realtime collaboration workspace.
+REST APIs handle persistent actions like auth, rooms, messages, and editor saves.
+Native WebSocket handles chat, DMs, typing, online presence, editor sync, and editor presence.
+Docker Piston handles code execution safely outside the backend process.
+Liveblocks is used only for the whiteboard because high-frequency canvas sync is a different problem from chat.
+```
+
+## Final Demo Checklist
+
+Before recording or presenting:
+
+- [ ] Backend is running on `http://localhost:3001`
+- [ ] Frontend is running on `http://localhost:5173`
+- [ ] Database connection works
+- [ ] Docker Desktop is running
+- [ ] Piston responds at `http://localhost:2000/api/v2/runtimes`
+- [ ] `LIVEBLOCKS_SECRET_KEY` is configured if showing the whiteboard
+- [ ] User A and User B test accounts are ready
+- [ ] One normal browser and one incognito/second browser are open
+- [ ] Chat message persists after refresh
+- [ ] DM message persists after refresh
+- [ ] Editor code persists after refresh
+- [ ] Code runner shows output for a simple JavaScript or Python example
+- [ ] Whiteboard opens and drawing syncs between two users
 
 ## Screenshots To Capture
 
 Recommended screenshots for the repository:
 
-- Login page
-- Dashboard with recent rooms
-- Group chat workspace
-- Direct message view
-- Editor tab with output panel
-- Editor active collaborators in the toolbar and details panel
-- Whiteboard tab with two active users
-- Mobile/tablet sidebar drawer
+| Screenshot | What To Show |
+|---|---|
+| Login page | Dark auth UI and product branding |
+| Dashboard | Create room, join room, recent rooms |
+| Group chat workspace | Room sidebar, live chat, room details |
+| Typing/presence | Online users and typing indicator |
+| Direct message view | Private DM room with another user |
+| Editor tab | Monaco editor with saved code |
+| Code runner output | stdout/stderr panel after running code |
+| Editor collaborators | Active editor avatars/count |
+| Whiteboard tab | tldraw canvas with shared drawing |
+| Responsive drawer | Mobile/tablet sidebar or details drawer |
 
 Add screenshots under:
 
