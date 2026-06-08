@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 
-import { authorizeWhiteboardRoom } from "../services/liveblocksService";
+import { authorizeLiveblocksCollaborationRoom } from "../services/liveblocksService";
 import { HttpError } from "../utils/HttpError";
 
 export const authorizeLiveblocksRoom = async (request: Request, response: Response) => {
@@ -14,7 +14,7 @@ export const authorizeLiveblocksRoom = async (request: Request, response: Respon
     throw new HttpError(400, "Liveblocks room is required");
   }
 
-  const authResult = await authorizeWhiteboardRoom({
+  const authResult = await authorizeLiveblocksCollaborationRoom({
     liveblocksRoomId,
     userId: request.user.userId,
   });

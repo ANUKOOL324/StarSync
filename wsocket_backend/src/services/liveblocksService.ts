@@ -9,7 +9,9 @@ type LiveblocksAuthInput = {
   userId: string;
 };
 
+const EDITOR_ROOM_PREFIX = "editor:";
 const WHITEBOARD_ROOM_PREFIX = "whiteboard:";
+const ALLOWED_ROOM_PREFIXES = [WHITEBOARD_ROOM_PREFIX, EDITOR_ROOM_PREFIX];
 
 let liveblocksClient: Liveblocks | null = null;
 
@@ -28,20 +30,24 @@ const getLiveblocksClient = () => {
 };
 
 const getAppRoomIdFromLiveblocksRoom = (liveblocksRoomId: string) => {
-  if (!liveblocksRoomId.startsWith(WHITEBOARD_ROOM_PREFIX)) {
-    throw new HttpError(400, "Invalid whiteboard room");
+  const matchingPrefix = ALLOWED_ROOM_PREFIXES.find((prefix) => {
+    return liveblocksRoomId.startsWith(prefix);
+  });
+
+  if (!matchingPrefix) {
+    throw new HttpError(400, "Invalid Liveblocks room");
   }
 
-  const appRoomId = liveblocksRoomId.slice(WHITEBOARD_ROOM_PREFIX.length).trim();
+  const appRoomId = liveblocksRoomId.slice(matchingPrefix.length).trim();
 
   if (!appRoomId) {
-    throw new HttpError(400, "Invalid whiteboard room");
+    throw new HttpError(400, "Invalid Liveblocks room");
   }
 
   return appRoomId;
 };
 
-const verifyWhiteboardRoomMembership = async (appRoomId: string, userId: string) => {
+const verifyLiveblocksRoomMembership = async (appRoomId: string, userId: string) => {
   const roomMember = await prisma.roomMember.findUnique({
     where: {
       userId_roomId: {
@@ -55,11 +61,11 @@ const verifyWhiteboardRoomMembership = async (appRoomId: string, userId: string)
   });
 
   if (!roomMember) {
-    throw new HttpError(403, "You do not have access to this whiteboard");
+    throw new HttpError(403, "You do not have access to this collaboration room");
   }
 };
 
-const getWhiteboardUser = async (userId: string) => {
+const getLiveblocksUser = async (userId: string) => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
@@ -76,17 +82,17 @@ const getWhiteboardUser = async (userId: string) => {
   return user;
 };
 
-export const authorizeWhiteboardRoom = async ({
+export const authorizeLiveblocksCollaborationRoom = async ({
   liveblocksRoomId,
   userId,
 }: LiveblocksAuthInput) => {
   const appRoomId = getAppRoomIdFromLiveblocksRoom(liveblocksRoomId);
 
-  // Liveblocks is used only for whiteboard collaboration.
+  // Liveblocks is used for whiteboard sync and editor Yjs text sync.
   // The real access decision still belongs to our database membership table.
-  await verifyWhiteboardRoomMembership(appRoomId, userId);
+  await verifyLiveblocksRoomMembership(appRoomId, userId);
 
-  const user = await getWhiteboardUser(userId);
+  const user = await getLiveblocksUser(userId);
 
   const liveblocks = getLiveblocksClient();
   const session = liveblocks.prepareSession(userId, {
