@@ -1,15 +1,14 @@
+import { LiveblocksProvider, RoomProvider, useRoom } from '@liveblocks/react'
+import { getYjsProviderForRoom } from '@liveblocks/yjs'
+import type { OnMount } from '@monaco-editor/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { MonacoBinding } from 'y-monaco'
+import type * as Y from 'yjs'
 
 import { editorService } from '../../services/editorService'
-import type { AuthUser } from '../../types/auth'
+import { liveblocksService } from '../../services/liveblocksService'
 import type { ChatRoom } from '../../types/chat'
-import type {
-  CodeRunResult,
-  EditorLanguage,
-  EditorPresenceUser,
-  EditorSyncEvent,
-  SaveStatus,
-} from '../../types/editor'
+import type { CodeRunResult, EditorLanguage, EditorPresenceUser, SaveStatus } from '../../types/editor'
 import { getRoomDisplayInfo } from '../../utils/roomDisplay'
 import { CollaborativeCodeEditor } from './CollaborativeCodeEditor'
 import { EditorOutputPanel } from './EditorOutputPanel'
@@ -20,11 +19,14 @@ import { EditorToolbar } from './EditorToolbar'
 type CodeEditorWorkspaceProps = {
   activeCollaborators: EditorPresenceUser[]
   connectionStatus: 'connecting' | 'online' | 'offline'
-  currentUser: AuthUser | null
-  lastEditorSync: EditorSyncEvent | null
   room: ChatRoom
-  onEditorChange: (content: string, language: EditorLanguage) => void
 }
+
+type CodeEditorWorkspaceContentProps = CodeEditorWorkspaceProps
+
+type MonacoEditorInstance = Parameters<OnMount>[0]
+type MonacoEditorModel = ReturnType<MonacoEditorInstance['getModel']>
+type SharedEditorText = Y.Text
 
 const starterCodeByLanguage: Record<EditorLanguage, string> = {
   c: '#include <stdio.h>\n\nint main() {\n    printf("Hello from C\\n");\n    return 0;\n}\n',
@@ -36,33 +38,59 @@ const starterCodeByLanguage: Record<EditorLanguage, string> = {
 
 const supportedLanguages = new Set<EditorLanguage>(['c', 'cpp', 'javascript', 'typescript', 'python'])
 
+const getEditorLiveblocksRoomId = (roomId: string) => {
+  return `editor:${roomId}`
+}
+
 const isSupportedEditorLanguage = (language: string): language is EditorLanguage => {
   return supportedLanguages.has(language as EditorLanguage)
 }
 
-export function CodeEditorWorkspace({
+const replaceYTextContent = (yText: SharedEditorText, content: string) => {
+  yText.doc?.transact(() => {
+    yText.delete(0, yText.length)
+    yText.insert(0, content)
+  })
+}
+
+export function CodeEditorWorkspace(props: CodeEditorWorkspaceProps) {
+  const editorRoomId = getEditorLiveblocksRoomId(props.room.id)
+
+  return (
+    <LiveblocksProvider
+      authEndpoint={async (requestedRoom) => {
+        return liveblocksService.authorizeRoom(requestedRoom ?? editorRoomId)
+      }}
+    >
+      <RoomProvider id={editorRoomId} initialPresence={{}}>
+        <CodeEditorWorkspaceContent key={props.room.id} {...props} />
+      </RoomProvider>
+    </LiveblocksProvider>
+  )
+}
+
+function CodeEditorWorkspaceContent({
   activeCollaborators,
   connectionStatus,
-  currentUser,
-  lastEditorSync,
   room,
-  onEditorChange,
-}: CodeEditorWorkspaceProps) {
+}: CodeEditorWorkspaceContentProps) {
+  const liveblocksRoom = useRoom()
   const [code, setCode] = useState('')
   const [documentTitle, setDocumentTitle] = useState('main')
   const [editorError, setEditorError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isRunning, setIsRunning] = useState(false)
   const [language, setLanguage] = useState<EditorLanguage>('javascript')
-  const [lastRemoteUserName, setLastRemoteUserName] = useState<string | null>(null)
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null)
   const [runError, setRunError] = useState<string | null>(null)
   const [runResult, setRunResult] = useState<CodeRunResult | null>(null)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const [stdin, setStdin] = useState('')
   const [loadRetryCount, setLoadRetryCount] = useState(0)
-  const suppressNextEmitRef = useRef(false)
-  const syncTimerRef = useRef<number | null>(null)
+  const [monacoEditor, setMonacoEditor] = useState<MonacoEditorInstance | null>(null)
+
+  const loadedDocumentContentRef = useRef('')
+  const yTextRef = useRef<SharedEditorText | null>(null)
 
   const roomDisplay = getRoomDisplayInfo(room)
   const codeIsEmpty = code.trim().length === 0
@@ -95,6 +123,7 @@ export function CodeEditorWorkspace({
         : 'javascript'
       const documentContent = document.content || starterCodeByLanguage[documentLanguage]
 
+      loadedDocumentContentRef.current = documentContent
       setDocumentTitle(document.title)
       setLanguage(documentLanguage)
       setCode(documentContent)
@@ -123,15 +152,80 @@ export function CodeEditorWorkspace({
   }, [loadDocument, loadRetryCount])
 
   useEffect(() => {
-    if (!lastEditorSync || lastEditorSync.roomId !== room.id) return
-    if (lastEditorSync.updatedBy.id === currentUser?.id) return
+    if (isLoading) return
 
-    suppressNextEmitRef.current = true
-    setCode(lastEditorSync.content)
-    setLanguage(lastEditorSync.language)
-    setLastRemoteUserName(lastEditorSync.updatedBy.username)
-    setSaveStatus('remote')
-  }, [currentUser?.id, lastEditorSync, room.id])
+    const editor = monacoEditor
+    const model = editor?.getModel()
+
+    if (!editor || !model) return
+
+    let binding: MonacoBinding | null = null
+    let hasCreatedBinding = false
+    let shouldIgnoreChanges = false
+
+    const provider = getYjsProviderForRoom(liveblocksRoom, undefined, true)
+    const yDocument = provider.getYDoc()
+    const yText = yDocument.getText('monaco')
+    yTextRef.current = yText
+
+    const handleYTextChange = () => {
+      if (shouldIgnoreChanges) return
+
+      const nextCode = yText.toString()
+      setCode(nextCode)
+      setSaveStatus('unsaved')
+    }
+
+    const createBindingAfterFirstSync = () => {
+      if (hasCreatedBinding) return
+
+      hasCreatedBinding = true
+
+      const savedSnapshot = loadedDocumentContentRef.current
+
+      if (yText.length === 0 && savedSnapshot.length > 0) {
+        shouldIgnoreChanges = true
+        replaceYTextContent(yText, savedSnapshot)
+        shouldIgnoreChanges = false
+      }
+
+      const sharedCode = yText.toString()
+
+      if (sharedCode !== model.getValue()) {
+        shouldIgnoreChanges = true
+        model.setValue(sharedCode)
+        shouldIgnoreChanges = false
+      }
+
+      setCode(sharedCode)
+
+      binding = new MonacoBinding(yText, model as NonNullable<MonacoEditorModel>, new Set([editor]))
+      yText.observe(handleYTextChange)
+    }
+
+    const handleProviderSync = (isSynced: boolean) => {
+      if (isSynced) {
+        createBindingAfterFirstSync()
+      }
+    }
+
+    provider.on('sync', handleProviderSync)
+
+    if (provider.synced) {
+      createBindingAfterFirstSync()
+    }
+
+    return () => {
+      provider.off('sync', handleProviderSync)
+      yText.unobserve(handleYTextChange)
+      binding?.destroy()
+      provider.destroy()
+
+      if (yTextRef.current === yText) {
+        yTextRef.current = null
+      }
+    }
+  }, [isLoading, liveblocksRoom, monacoEditor, room.id])
 
   useEffect(() => {
     const documentHasLocalChanges = saveStatus === 'unsaved' || saveStatus === 'syncing'
@@ -145,32 +239,13 @@ export function CodeEditorWorkspace({
     return () => window.clearTimeout(saveTimer)
   }, [isLoading, saveDocument, saveStatus])
 
-  useEffect(() => {
-    return () => {
-      if (syncTimerRef.current) {
-        window.clearTimeout(syncTimerRef.current)
-      }
-    }
-  }, [])
+  const handleEditorMount: OnMount = (editor) => {
+    setMonacoEditor(editor)
+  }
 
   const handleCodeChange = (nextCode: string) => {
     setCode(nextCode)
-
-    if (suppressNextEmitRef.current) {
-      suppressNextEmitRef.current = false
-      return
-    }
-
     setSaveStatus('unsaved')
-
-    if (syncTimerRef.current) {
-      window.clearTimeout(syncTimerRef.current)
-    }
-
-    syncTimerRef.current = window.setTimeout(() => {
-      setSaveStatus('syncing')
-      onEditorChange(nextCode, language)
-    }, 500)
   }
 
   const handleLanguageChange = (nextLanguage: EditorLanguage) => {
@@ -179,7 +254,12 @@ export function CodeEditorWorkspace({
     setLanguage(nextLanguage)
     setCode(nextCode)
     setSaveStatus('unsaved')
-    onEditorChange(nextCode, nextLanguage)
+
+    const sharedText = yTextRef.current
+
+    if (sharedText) {
+      replaceYTextContent(sharedText, nextCode)
+    }
   }
 
   const handleRunCode = async () => {
@@ -252,10 +332,12 @@ export function CodeEditorWorkspace({
       />
 
       <CollaborativeCodeEditor
+        key={room.id}
         code={code}
         isLoading={isLoading}
         language={language}
         onChange={handleCodeChange}
+        onMount={handleEditorMount}
       />
 
       <EditorOutputPanel
@@ -269,7 +351,7 @@ export function CodeEditorWorkspace({
       <EditorStatusBar
         connectionStatus={connectionStatus}
         language={language}
-        remoteUserName={lastRemoteUserName}
+        remoteUserName={null}
         saveStatus={saveStatus}
       />
     </div>

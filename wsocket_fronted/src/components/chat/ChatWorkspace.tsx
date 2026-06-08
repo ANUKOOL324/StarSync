@@ -197,12 +197,10 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
     hasMoreMessages,
     isLoadingHistory,
     isLoadingOlder,
-    lastEditorSync,
     loadOlderMessages,
     messages,
     onlineUsers,
     retryMessage,
-    sendEditorChange,
     sendEditorPresence,
     sendMessage,
     sendStopTyping,
@@ -507,17 +505,14 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
         )}
 
         {activeTab === 'editor' && (
-          <Suspense fallback={<EditorSkeleton />}>
-            <LazyCodeEditorWorkspace
-              connectionStatus={connectionStatus}
-              currentUser={user}
-              lastEditorSync={lastEditorSync}
-              activeCollaborators={editorPresenceUsers}
-              room={activeRoom}
-              onEditorChange={sendEditorChange}
-            />
-          </Suspense>
-        )}
+            <Suspense fallback={<EditorSkeleton />}>
+              <LazyCodeEditorWorkspace
+                connectionStatus={connectionStatus}
+                activeCollaborators={editorPresenceUsers}
+                room={activeRoom}
+              />
+            </Suspense>
+          )}
 
         {activeTab === 'whiteboard' && (
           <Suspense fallback={<WhiteboardSkeleton />}>
