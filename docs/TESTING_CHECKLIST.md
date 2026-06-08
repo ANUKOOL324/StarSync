@@ -69,3 +69,44 @@ This document contains testing checklists for backend, frontend, and manual brow
   - [ ] View layout on mobile screen (width < 768px)
   - [ ] Sidebar and details panels should slide out/hide behind drawers
   - [ ] Input panels and canvas resize correctly without breaking layout
+
+## Final Demo Readiness Checklist
+
+- [ ] **Startup**
+  - [ ] Docker Desktop is running if code execution is part of the demo.
+  - [ ] Piston responds at `http://localhost:2000/api/v2/runtimes`.
+  - [ ] Backend starts without TypeScript/build errors.
+  - [ ] Frontend starts without console-breaking errors.
+
+- [ ] **Core Product Flow**
+  - [ ] User can sign up or log in.
+  - [ ] User can create a group room.
+  - [ ] Group chat sends and persists after refresh.
+  - [ ] Direct message sends and persists after refresh.
+  - [ ] Typing indicator appears for the other user.
+  - [ ] Online presence updates when another user joins/leaves.
+
+- [ ] **Editor Demo**
+  - [ ] Monaco loads only when opening the Editor tab.
+  - [ ] Code autosaves and reloads after refresh.
+  - [ ] JavaScript or Python code runs through Piston.
+  - [ ] Editor presence appears when two users open the Editor tab.
+
+- [ ] **Whiteboard Demo**
+  - [ ] `LIVEBLOCKS_SECRET_KEY` is configured in backend `.env`.
+  - [ ] Board tab opens after Liveblocks auth.
+  - [ ] Drawing syncs between two users in the same room.
+  - [ ] User outside the room cannot access the whiteboard auth route.
+
+## Screenshot Checklist
+
+- [ ] Login page
+- [ ] Dashboard with create/join/recent rooms
+- [ ] Group chat with messages
+- [ ] Typing indicator and online users
+- [ ] Direct message room
+- [ ] Editor tab with Monaco
+- [ ] Code runner output panel
+- [ ] Editor collaborators
+- [ ] Whiteboard/tldraw canvas
+- [ ] Mobile or tablet drawer layout
