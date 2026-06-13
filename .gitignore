@@ -9,3 +9,4 @@ AGENTS.md
 .agent/
 .codex/
 /src/generated/prisma
+*.tsbuildinfo
