@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { dmService } from '../services/dmService'
-import { roomService } from '../services/roomService'
+import { getRoomJoinErrorMessage, roomService } from '../services/roomService'
 import type { ChatRoom } from '../types/chat'
+import type { CreateRoomPayload, UpdateRoomPayload } from '../services/roomService'
 
 const readSeenCounts = () => {
   try {
@@ -92,8 +93,8 @@ export function useRooms() {
     )
   }, [])
 
-  const createRoom = async (name: string) => {
-    const room = await roomService.create(name)
+  const createRoom = async (payload: CreateRoomPayload) => {
+    const room = await roomService.create(payload)
     setRooms((currentRooms) => [room, ...currentRooms.filter((item) => item.id !== room.id)])
     markRoomRead(room.id)
     return room
@@ -106,40 +107,40 @@ export function useRooms() {
     return room
   }
 
-  const joinRoom = async (slugOrName: string) => {
-    const slug = roomService.createSlug(slugOrName)
-
+  const joinRoom = async (joinCode: string) => {
     try {
-      const room = await roomService.get(slug)
+      const room = await roomService.join(joinCode)
       setRooms((currentRooms) => [room, ...currentRooms.filter((item) => item.id !== room.id)])
       markRoomRead(room.id)
       return room
-    } catch {
-      const name = slug
-        .split('-')
-        .filter(Boolean)
-        .map((part) => `${part[0]?.toUpperCase() ?? ''}${part.slice(1)}`)
-        .join(' ')
-
-      const room = await roomService.create(name || slug, slug)
-      setRooms((currentRooms) => [room, ...currentRooms.filter((item) => item.id !== room.id)])
-      markRoomRead(room.id)
-      return room
+    } catch (error) {
+      throw new Error(getRoomJoinErrorMessage(error))
     }
   }
-
-  const updateRoom = async (roomId: string, name: string) => {
+  const updateRoom = async (roomId: string, payload: UpdateRoomPayload) => {
     const previousRooms = rooms
-    const optimisticSlug = roomService.createSlug(name)
+    const optimisticSlug = payload.name ? roomService.createSlug(payload.name) : ''
+    const hasMemberLimitChange =
+      Object.prototype.hasOwnProperty.call(payload, 'maxMembers') || payload.unlimitedMembers !== undefined
+    const nextMaxMembers = payload.unlimitedMembers ? null : payload.maxMembers
 
     setRooms((currentRooms) =>
-      currentRooms.map((room) =>
-        room.id === roomId ? { ...room, name: name.trim(), slug: optimisticSlug || room.slug } : room,
-      ),
+      currentRooms.map((room) => {
+        if (room.id !== roomId) {
+          return room
+        }
+
+        return {
+          ...room,
+          name: payload.name?.trim() || room.name,
+          slug: optimisticSlug || room.slug,
+          maxMembers: hasMemberLimitChange ? nextMaxMembers ?? null : room.maxMembers,
+        }
+      }),
     )
 
     try {
-      const room = await roomService.update(roomId, name)
+      const room = await roomService.update(roomId, payload)
       setRooms((currentRooms) => currentRooms.map((item) => (item.id === room.id ? room : item)))
       return room
     } catch (error) {
@@ -178,3 +179,4 @@ export function useRooms() {
     updateRoom,
   }
 }
+
