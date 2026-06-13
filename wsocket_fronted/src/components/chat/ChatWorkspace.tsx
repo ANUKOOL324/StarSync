@@ -276,7 +276,7 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
     event.preventDefault()
     const formData = new FormData(event.currentTarget)
     const name = String(formData.get('name') ?? '')
-    const room = await createRoom(name)
+    const room = await createRoom({ name })
 
     if (room) {
       setIsCreateModalOpen(false)
@@ -291,7 +291,7 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
     const name = String(formData.get('name') ?? '')
 
     try {
-      const room = await updateRoom(activeRoom.id, name)
+      const room = await updateRoom(activeRoom.id, { name })
       setIsSettingsOpen(false)
       navigate(`/rooms/${room.id}`, { replace: true })
     } catch {
@@ -537,6 +537,8 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
 
       <OnlineUsersPanel
         activeTab={activeTab}
+        currentUserId={user?.id}
+        isCurrentUserAdmin={isAdmin}
         isOpen={isInfoOpen}
         isLoadingMembers={isLoadingMembers}
         membersError={membersError}
@@ -578,16 +580,20 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
           </div>
 
           {isAdmin ? (
-            <form onSubmit={handleRenameRoom} className="grid gap-3">
-              <label className="grid gap-2 text-sm text-zinc-300">
-                Rename room
-                <Input name="name" defaultValue={activeRoom.name} placeholder="Room name" />
-              </label>
-              <Button type="submit">Save changes</Button>
-            </form>
+            <div className="grid gap-4">
+              <form onSubmit={handleRenameRoom} className="grid gap-3">
+                <label className="grid gap-2 text-sm text-zinc-300">
+                  Rename room
+                  <Input name="name" defaultValue={activeRoom.name} placeholder="Room name" />
+                </label>
+                <Button type="submit">Save name</Button>
+              </form>
+            </div>
           ) : (
             <p className="rounded-lg border border-white/8 bg-white/4 p-3 text-sm text-zinc-400">
-              Only the room admin can rename or delete this room.
+              {activeRoom.type === 'DM'
+                ? 'Direct messages do not use group admin settings.'
+                : 'Only the active room admin can rename or delete this room.'}
             </p>
           )}
 
@@ -597,8 +603,9 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
             </p>
           ) : null}
 
-          <div className="grid gap-2 border-t border-white/8 pt-4">
-            <Button type="button" variant="ghost" onClick={handleLeaveRoom}>
+          <div className="grid gap-2 rounded-lg border border-red-400/15 bg-red-950/10 p-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-red-400/60">Danger Zone</p>
+            <Button type="button" variant="ghost" onClick={handleLeaveRoom} className="border-red-400/20 text-red-300 hover:bg-red-950/30 hover:text-red-200">
               <LogOut size={16} aria-hidden="true" />
               Leave room
             </Button>
@@ -607,7 +614,7 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
                 type="button"
                 variant="ghost"
                 onClick={() => setIsDeleteConfirmOpen(true)}
-                className="border-red-300/20 text-red-200 hover:bg-red-950/30 hover:text-red-100"
+                className="border-red-400/20 text-red-300 hover:bg-red-950/30 hover:text-red-200"
               >
                 <Trash2 size={16} aria-hidden="true" />
                 Delete room

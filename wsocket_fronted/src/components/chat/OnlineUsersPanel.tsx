@@ -1,4 +1,4 @@
-import { CalendarDays, Crown, FileCode, Grid, Users, X } from 'lucide-react'
+import { CalendarDays, Crown, FileCode, Grid, UserMinus, Users, X } from 'lucide-react'
 import type { CSSProperties } from 'react'
 
 import type { ChatRoom, OnlineUser, RoomMember } from '../../types/chat'
@@ -8,13 +8,17 @@ import { Avatar } from '../ui/Avatar'
 
 type OnlineUsersPanelProps = {
   activeTab: 'chat' | 'editor' | 'whiteboard'
+  currentUserId?: string
+  isCurrentUserAdmin: boolean
   isOpen: boolean
   isLoadingMembers: boolean
   membersError: string | null
   onClose?: () => void
+  onRequestRemoveMember?: (member: RoomMember) => void
   editorPresenceUsers: EditorPresenceUser[]
   onlineUsers: OnlineUser[]
   panelWidth: number
+  removingMemberId?: string | null
   room: ChatRoom
   roomMembers: RoomMember[]
 }
@@ -29,15 +33,27 @@ const formatCreatedDate = (value?: string) => {
   }).format(new Date(value))
 }
 
+const getRoleBadgeClassName = (role: RoomMember['role']) => {
+  if (role === 'ADMIN') {
+    return 'border-[#FACC15]/25 bg-[#FACC15]/10 text-[#FDE68A]'
+  }
+
+  return 'border-white/10 bg-white/[0.04] text-zinc-400'
+}
+
 export function OnlineUsersPanel({
   activeTab,
+  currentUserId,
+  isCurrentUserAdmin,
   isOpen,
   isLoadingMembers,
   membersError,
   onClose,
+  onRequestRemoveMember,
   editorPresenceUsers,
   onlineUsers,
   panelWidth,
+  removingMemberId,
   room,
   roomMembers,
 }: OnlineUsersPanelProps) {
@@ -86,7 +102,7 @@ export function OnlineUsersPanel({
                     <button
                       type="button"
                       onClick={onClose}
-                  className="grid size-8 place-items-center rounded-lg text-slate-400 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-[#18D6A3]/40 xl:hidden"
+                      className="grid size-8 place-items-center rounded-lg text-slate-400 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-[#18D6A3]/40 xl:hidden"
                       aria-label="Close room details"
                     >
                       <X size={18} aria-hidden="true" />
@@ -98,8 +114,18 @@ export function OnlineUsersPanel({
               <dl className="grid gap-3 text-sm">
                 <div className="flex items-center justify-between gap-4 border-t border-white/8 pt-3">
                   <dt className="text-zinc-500">Members</dt>
-                  <dd className="font-medium text-zinc-100">{displayMemberCount} {memberLabel}</dd>
+                  <dd className="font-medium text-zinc-100">
+                    {displayMemberCount} / {room.maxMembers ?? 'Unlimited'} {memberLabel}
+                  </dd>
                 </div>
+                {!isDirectMessage ? (
+                  <div className="flex items-center justify-between gap-4 border-t border-white/8 pt-3">
+                    <dt className="text-zinc-500">Room code</dt>
+                    <dd className="max-w-36 truncate font-mono text-xs font-medium text-[#7FFFE0]">
+                      {room.joinCode ?? 'No code'}
+                    </dd>
+                  </div>
+                ) : null}
                 <div className="flex items-center justify-between gap-4 border-t border-white/8 pt-3">
                   <dt className="flex items-center gap-2 text-zinc-500">
                     <CalendarDays size={14} aria-hidden="true" />
@@ -148,20 +174,44 @@ export function OnlineUsersPanel({
 
                 {!isLoadingMembers && !membersError ? roomMembers.map((member) => {
                   const memberIsOnline = onlineUserIds.has(member.id)
+                  const canRemoveMember = Boolean(
+                    isCurrentUserAdmin &&
+                    !isDirectMessage &&
+                    member.id !== currentUserId &&
+                    member.role === 'MEMBER' &&
+                    onRequestRemoveMember,
+                  )
 
                   return (
                     <div key={member.id} className="flex items-center gap-3 rounded-xl border border-transparent p-1.5 transition hover:border-white/8 hover:bg-white/[0.035]">
                       <Avatar name={member.username} seed={member.username || member.email} size="sm" />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-zinc-100">{member.username}</p>
-                        <p className="text-xs text-zinc-500">{memberIsOnline ? 'Online' : 'Member'}</p>
+                        <div className="flex min-w-0 items-center gap-2">
+                          <p className="truncate text-sm font-medium text-zinc-100">{member.username}</p>
+                          <span className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold ${getRoleBadgeClassName(member.role)}`}>
+                            {member.role}
+                          </span>
+                        </div>
+                        <p className="truncate text-xs text-zinc-500">{member.email}</p>
                       </div>
-                      <span
-                        className={[
-                          'size-2 rounded-full',
-                          memberIsOnline ? 'bg-[#22C55E] shadow-[0_0_12px_rgba(34,197,94,0.55)]' : 'bg-zinc-600',
-                        ].join(' ')}
-                      />
+                      {canRemoveMember ? (
+                        <button
+                          type="button"
+                          onClick={() => onRequestRemoveMember?.(member)}
+                          disabled={removingMemberId === member.id}
+                          className="grid size-8 shrink-0 place-items-center rounded-lg border border-red-300/15 text-red-200 transition hover:bg-red-950/30 hover:text-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                          aria-label={`Remove ${member.username}`}
+                        >
+                          <UserMinus size={15} aria-hidden="true" />
+                        </button>
+                      ) : (
+                        <span
+                          className={[
+                            'size-2 shrink-0 rounded-full',
+                            memberIsOnline ? 'bg-[#22C55E] shadow-[0_0_12px_rgba(34,197,94,0.55)]' : 'bg-zinc-600',
+                          ].join(' ')}
+                        />
+                      )}
                     </div>
                   )
                 }) : null}
@@ -281,3 +331,4 @@ export function OnlineUsersPanel({
     </aside>
   )
 }
+
