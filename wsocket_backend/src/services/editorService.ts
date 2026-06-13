@@ -10,7 +10,10 @@ import type {
 type RoomAccessResult = {
   id: string;
   type: "GROUP" | "DM";
-  members: Array<{ userId: string }>;
+  members: Array<{
+    userId: string;
+    status: "ACTIVE" | "REMOVED";
+  }>;
 };
 
 type PistonRunPayload = {
@@ -170,7 +173,7 @@ const resolveRuntimeVersion = async (language: string) => {
   return matchingRuntime.version;
 };
 
-const findRoomForEditorAccess = async (roomId: string): Promise<RoomAccessResult> => {
+const findRoomForEditorAccess = async (roomId: string, userId: string): Promise<RoomAccessResult> => {
   const room = await prisma.room.findFirst({
     where: {
       OR: [{ id: roomId }, { slug: roomId }],
@@ -179,8 +182,10 @@ const findRoomForEditorAccess = async (roomId: string): Promise<RoomAccessResult
       id: true,
       type: true,
       members: {
+        where: { userId },
         select: {
           userId: true,
+          status: true,
         },
       },
     },
@@ -192,22 +197,21 @@ const findRoomForEditorAccess = async (roomId: string): Promise<RoomAccessResult
 
   return room;
 };
-
 export const verifyEditorRoomAccess = async (roomId: string, userId: string) => {
-  const room = await findRoomForEditorAccess(roomId);
-  const userIsRoomMember = room.members.some((member) => member.userId === userId);
+  const room = await findRoomForEditorAccess(roomId, userId);
+  const userIsActiveRoomMember = room.members.some((member) => {
+    return member.userId === userId && member.status === "ACTIVE";
+  });
 
   // Editor access is stricter than simply viewing a public group room.
   // A user becomes a room member through the normal room join flow first.
-  // If we auto-added members here, someone could directly call the editor API
-  // with a room id and silently gain editor access.
-  if (!userIsRoomMember) {
+  // Removed members stay blocked because their membership status is no longer ACTIVE.
+  if (!userIsActiveRoomMember) {
     throw new HttpError(403, "You do not have access to this room editor");
   }
 
   return room.id;
 };
-
 export const getOrCreateEditorDocument = async (roomId: string, userId: string) => {
   const verifiedRoomId = await verifyEditorRoomAccess(roomId, userId);
 
@@ -342,3 +346,5 @@ export const runCode = async (input: RunCodeInput, userId: string) => {
     clearTimeout(timeoutId);
   }
 };
+
+

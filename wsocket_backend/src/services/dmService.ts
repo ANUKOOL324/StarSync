@@ -1,3 +1,5 @@
+import crypto from "node:crypto";
+
 import { prisma } from "../prisma/client";
 import { HttpError } from "../utils/HttpError";
 
@@ -11,6 +13,8 @@ const dmRoomSelect = {
   id: true,
   name: true,
   slug: true,
+  joinCode: true,
+  maxMembers: true,
   type: true,
   createdAt: true,
   adminId: true,
@@ -18,6 +22,7 @@ const dmRoomSelect = {
     select: userSelect,
   },
   members: {
+    where: { status: "ACTIVE" },
     select: {
       user: {
         select: userSelect,
@@ -40,7 +45,9 @@ const dmRoomSelect = {
   },
   _count: {
     select: {
-      members: true,
+      members: {
+        where: { status: "ACTIVE" },
+      },
       messages: true,
     },
   },
@@ -69,6 +76,7 @@ const verifyUsersBelongToSourceRoom = async ({
       type: true,
       members: {
         where: {
+          status: "ACTIVE",
           userId: {
             in: [currentUserId, targetUserId],
           },
@@ -106,6 +114,8 @@ const formatDmRoom = (room: any, currentUserId: string) => {
     id: room.id,
     name: otherUser?.username ?? room.name,
     slug: room.slug,
+    joinCode: room.joinCode,
+    maxMembers: room.maxMembers,
     type: room.type,
     createdAt: room.createdAt,
     adminId: room.adminId,
@@ -135,9 +145,6 @@ export const createOrGetDmRoom = async (
   }
 
   if (sourceRoomId) {
-    // The frontend uses sourceRoomId when a DM is started from the room member picker.
-    // This backend check prevents a user from editing the request and DMing somebody
-    // who is not actually part of the room context they opened.
     await verifyUsersBelongToSourceRoom({
       currentUserId,
       sourceRoomId,
@@ -160,11 +167,13 @@ export const createOrGetDmRoom = async (
     data: {
       name: targetUser.username,
       slug: dmSlug,
+      joinCode: `DM-${crypto.randomUUID()}`,
+      maxMembers: null,
       type: "DM",
       members: {
         create: [
-          { userId: currentUserId, role: "ADMIN" },
-          { userId: targetUserId, role: "MEMBER" },
+          { userId: currentUserId, role: "ADMIN", status: "ACTIVE" },
+          { userId: targetUserId, role: "MEMBER", status: "ACTIVE" },
         ],
       },
     },
@@ -179,7 +188,7 @@ export const getDmRoomsForUser = async (currentUserId: string) => {
     where: {
       type: "DM",
       members: {
-        some: { userId: currentUserId },
+        some: { userId: currentUserId, status: "ACTIVE" },
       },
     },
     orderBy: { createdAt: "desc" },

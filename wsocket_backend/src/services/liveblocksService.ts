@@ -57,10 +57,11 @@ const verifyLiveblocksRoomMembership = async (appRoomId: string, userId: string)
     },
     select: {
       id: true,
+      status: true,
     },
   });
 
-  if (!roomMember) {
+  if (!roomMember || roomMember.status !== "ACTIVE") {
     throw new HttpError(403, "You do not have access to this collaboration room");
   }
 };
@@ -112,3 +113,5 @@ export const authorizeLiveblocksCollaborationRoom = async ({
 
   return JSON.parse(authResponse.body) as { token: string };
 };
+
+
