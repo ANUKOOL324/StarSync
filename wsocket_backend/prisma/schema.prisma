@@ -21,6 +21,11 @@ enum RoomRole {
   MEMBER
 }
 
+enum RoomMemberStatus {
+  ACTIVE
+  REMOVED
+}
+
 model User {
   id          String       @id @default(cuid())
   username    String
@@ -36,6 +41,8 @@ model Room {
   id           String        @id @default(cuid())
   name         String        @default("")
   slug         String        @unique
+  joinCode     String        @unique
+  maxMembers   Int?
   type         RoomType      @default(GROUP)
   createdAt    DateTime      @default(now())
   adminId      String?
@@ -60,13 +67,14 @@ model CodeDocument {
 }
 
 model RoomMember {
-  id       String   @id @default(cuid())
+  id       String           @id @default(cuid())
   userId   String
   roomId   String
-  role     RoomRole @default(MEMBER)
-  joinedAt DateTime @default(now())
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  room     Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  role     RoomRole         @default(MEMBER)
+  status   RoomMemberStatus @default(ACTIVE)
+  joinedAt DateTime         @default(now())
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room     Room             @relation(fields: [roomId], references: [id], onDelete: Cascade)
 
   @@unique([userId, roomId])
   @@index([roomId])
