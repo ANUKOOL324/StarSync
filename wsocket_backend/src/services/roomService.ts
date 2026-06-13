@@ -1,6 +1,10 @@
 import { prisma } from "../prisma/client";
 import { HttpError } from "../utils/HttpError";
-import type { CreateRoomInput, UpdateRoomInput } from "../validations/roomValidation";
+import type { CreateRoomInput, JoinRoomInput, UpdateRoomInput } from "../validations/roomValidation";
+import { ensureActiveRoomAdmin, ensureGroupRoom, findRoomForAccess, getActiveRoomMember } from "./roomAccessService";
+
+const JOIN_CODE_PREFIX = "RM";
+const JOIN_CODE_CHARACTERS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 const createSlug = (roomName: string): string => {
   const lowercaseName = roomName.toLowerCase().trim();
@@ -10,10 +14,43 @@ const createSlug = (roomName: string): string => {
   return cleanSlug;
 };
 
+const normalizeJoinCode = (joinCode: string): string => {
+  return joinCode.trim().toUpperCase();
+};
+
+const createReadableJoinCode = (): string => {
+  let code = "";
+
+  for (let index = 0; index < 5; index += 1) {
+    const randomIndex = Math.floor(Math.random() * JOIN_CODE_CHARACTERS.length);
+    code += JOIN_CODE_CHARACTERS[randomIndex];
+  }
+
+  return `${JOIN_CODE_PREFIX}-${code}`;
+};
+
+const generateUniqueJoinCode = async (): Promise<string> => {
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const joinCode = createReadableJoinCode();
+    const existingRoom = await prisma.room.findUnique({
+      where: { joinCode },
+      select: { id: true },
+    });
+
+    if (!existingRoom) {
+      return joinCode;
+    }
+  }
+
+  throw new HttpError(500, "Could not generate room code");
+};
+
 const roomSelect = {
   id: true,
   name: true,
   slug: true,
+  joinCode: true,
+  maxMembers: true,
   type: true,
   createdAt: true,
   adminId: true,
@@ -26,40 +63,13 @@ const roomSelect = {
   },
   _count: {
     select: {
-      members: true,
+      members: {
+        where: { status: "ACTIVE" },
+      },
       messages: true,
     },
   },
 } as const;
-
-const findRoomForManagement = async (roomId: string) => {
-  const room = await prisma.room.findFirst({
-    where: {
-      OR: [{ id: roomId }, { slug: roomId }],
-    },
-    select: {
-      id: true,
-      adminId: true,
-      slug: true,
-    },
-  });
-
-  if (!room) {
-    throw new HttpError(404, "Room not found");
-  }
-
-  return room;
-};
-
-const verifyRoomAdmin = (room: { adminId: string | null }, userId: string) => {
-  // Room management is intentionally limited to the creator/admin.
-  // The frontend can hide buttons, but this backend check is the real protection.
-  const userOwnsRoom = room.adminId === userId;
-
-  if (!userOwnsRoom) {
-    throw new HttpError(403, "Only the room admin can manage this room");
-  }
-};
 
 const ensureSlugIsAvailable = async (slug: string, currentRoomId?: string) => {
   const existingRoom = await prisma.room.findUnique({
@@ -72,6 +82,48 @@ const ensureSlugIsAvailable = async (slug: string, currentRoomId?: string) => {
   }
 };
 
+const findExistingRoomMember = async (roomId: string, userId: string) => {
+  const roomMember = await prisma.roomMember.findUnique({
+    where: {
+      userId_roomId: {
+        roomId,
+        userId,
+      },
+    },
+    select: {
+      id: true,
+      status: true,
+    },
+  });
+
+  return roomMember;
+};
+
+const getSafeMaxMembers = (input: CreateRoomInput): number | null => {
+  if (input.unlimitedMembers) {
+    return null;
+  }
+
+  return input.maxMembers ?? null;
+};
+
+const countActiveRoomMembers = async (roomId: string): Promise<number> => {
+  return prisma.roomMember.count({
+    where: {
+      roomId,
+      status: "ACTIVE",
+    },
+  });
+};
+
+const getRequestedMaxMembers = (input: UpdateRoomInput): number | null | undefined => {
+  if (input.unlimitedMembers) {
+    return null;
+  }
+
+  return input.maxMembers;
+};
+
 export const createRoom = async (input: CreateRoomInput, adminId: string) => {
   const roomSlug = input.slug ?? createSlug(input.name);
 
@@ -81,16 +133,22 @@ export const createRoom = async (input: CreateRoomInput, adminId: string) => {
 
   await ensureSlugIsAvailable(roomSlug);
 
+  const joinCode = await generateUniqueJoinCode();
+  const maxMembers = getSafeMaxMembers(input);
+
   const createdRoom = await prisma.room.create({
     data: {
       name: input.name,
       slug: roomSlug,
+      joinCode,
+      maxMembers,
       type: "GROUP",
       adminId,
       members: {
         create: {
           userId: adminId,
           role: "ADMIN",
+          status: "ACTIVE",
         },
       },
     },
@@ -100,14 +158,72 @@ export const createRoom = async (input: CreateRoomInput, adminId: string) => {
   return createdRoom;
 };
 
-export const getRooms = async () => {
+export const getRooms = async (userId: string) => {
   const rooms = await prisma.room.findMany({
-    where: { type: "GROUP" },
+    where: {
+      type: "GROUP",
+      members: {
+        some: {
+          userId,
+          status: "ACTIVE",
+        },
+      },
+    },
     orderBy: { createdAt: "desc" },
     select: roomSelect,
   });
 
   return rooms;
+};
+
+export const joinRoomByCode = async (input: JoinRoomInput, userId: string) => {
+  const joinCode = normalizeJoinCode(input.joinCode);
+  const room = await prisma.room.findUnique({
+    where: { joinCode },
+    select: roomSelect,
+  });
+
+  if (!room || room.type !== "GROUP") {
+    throw new HttpError(404, "Invalid room code.", { code: "INVALID_ROOM_CODE" });
+  }
+
+  const existingRoomMember = await findExistingRoomMember(room.id, userId);
+
+  if (existingRoomMember?.status === "REMOVED") {
+    throw new HttpError(403, "You were removed from this room and cannot rejoin.", {
+      code: "ROOM_ACCESS_REMOVED",
+    });
+  }
+
+  if (existingRoomMember?.status === "ACTIVE") {
+    return room;
+  }
+
+  const activeMemberCount = room._count.members;
+
+  if (room.maxMembers !== null && activeMemberCount >= room.maxMembers) {
+    throw new HttpError(409, "This room is full.", { code: "ROOM_FULL" });
+  }
+
+  await prisma.roomMember.create({
+    data: {
+      roomId: room.id,
+      userId,
+      role: "MEMBER",
+      status: "ACTIVE",
+    },
+  });
+
+  const joinedRoom = await prisma.room.findUnique({
+    where: { id: room.id },
+    select: roomSelect,
+  });
+
+  if (!joinedRoom) {
+    throw new HttpError(404, "Room not found");
+  }
+
+  return joinedRoom;
 };
 
 export const getRoomByIdOrSlug = async (roomId: string, userId: string) => {
@@ -118,8 +234,10 @@ export const getRoomByIdOrSlug = async (roomId: string, userId: string) => {
     select: {
       ...roomSelect,
       members: {
+        where: { status: "ACTIVE" },
         select: {
           userId: true,
+          role: true,
           user: {
             select: {
               id: true,
@@ -136,12 +254,10 @@ export const getRoomByIdOrSlug = async (roomId: string, userId: string) => {
     throw new HttpError(404, "Room not found");
   }
 
-  // Group rooms are visible to signed-in users. DM rooms are only visible to members.
-  const userCanViewRoom =
-    room.type === "GROUP" || room.members.some((member) => member.userId === userId);
+  const currentUserIsActiveMember = room.members.some((member) => member.userId === userId);
 
-  if (!userCanViewRoom) {
-    throw new HttpError(403, "You do not have access to this room");
+  if (!currentUserIsActiveMember) {
+    throw new HttpError(403, "You do not have access to this room", { code: "ROOM_ACCESS_DENIED" });
   }
 
   const otherMember = room.members.find((member) => member.userId !== userId);
@@ -158,127 +274,108 @@ export const getRoomByIdOrSlug = async (roomId: string, userId: string) => {
 };
 
 export const addGroupRoomMember = async (roomId: string, userId: string) => {
-  const room = await prisma.room.findUnique({
-    where: { id: roomId },
-    select: {
-      id: true,
-      type: true,
-      members: {
-        where: { userId },
-        select: { id: true },
-      },
-    },
-  });
+  const room = await findRoomForAccess(roomId);
 
-  if (!room || room.type !== "GROUP" || room.members.length > 0) {
+  if (room.type !== "GROUP") {
     return;
   }
 
-  // Group rooms are open in this project. When a signed-in user actually joins
-  // the websocket room, we record membership so the DM picker can show real people.
-  await prisma.roomMember.upsert({
-    where: {
-      userId_roomId: {
-        roomId: room.id,
-        userId,
-      },
-    },
-    update: {},
-    create: {
-      roomId: room.id,
-      userId,
-      role: "MEMBER",
-    },
-  });
+  const activeRoomMember = await getActiveRoomMember(room.id, userId);
+
+  if (!activeRoomMember) {
+    throw new HttpError(403, "Join this room with a room code before opening chat");
+  }
 };
 
 export const getRoomMembers = async (roomId: string, userId: string) => {
-  const room = await prisma.room.findFirst({
+  const room = await findRoomForAccess(roomId);
+  const currentUserMember = await getActiveRoomMember(room.id, userId);
+
+  if (!currentUserMember) {
+    throw new HttpError(403, "You do not have access to this room");
+  }
+
+  const members = await prisma.roomMember.findMany({
     where: {
-      OR: [{ id: roomId }, { slug: roomId }],
+      roomId: room.id,
+      status: "ACTIVE",
+    },
+    orderBy: {
+      joinedAt: "asc",
     },
     select: {
-      id: true,
-      type: true,
-      members: {
+      role: true,
+      joinedAt: true,
+      user: {
         select: {
-          userId: true,
-          user: {
-            select: {
-              id: true,
-              username: true,
-              email: true,
-            },
-          },
-        },
-        orderBy: {
-          joinedAt: "asc",
+          id: true,
+          username: true,
+          email: true,
         },
       },
     },
   });
 
-  if (!room) {
-    throw new HttpError(404, "Room not found");
-  }
-
-  const currentUserIsMember = room.members.some((member) => member.userId === userId);
-
-  if (!currentUserIsMember && room.type === "DM") {
-    throw new HttpError(403, "You do not have access to this room");
-  }
-
-  if (!currentUserIsMember && room.type === "GROUP") {
-    await prisma.roomMember.upsert({
-      where: {
-        userId_roomId: {
-          roomId: room.id,
-          userId,
-        },
-      },
-      update: {},
-      create: {
-        roomId: room.id,
-        userId,
-        role: "MEMBER",
-      },
-    });
-
-    const currentUser = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        username: true,
-        email: true,
-      },
-    });
-
-    if (currentUser) {
-      return [...room.members.map((member) => member.user), currentUser];
-    }
-  }
-
-  return room.members.map((member) => member.user);
+  return members.map((member) => ({
+    id: member.user.id,
+    username: member.user.username,
+    email: member.user.email,
+    role: member.role,
+    joinedAt: member.joinedAt,
+  }));
 };
 
 export const updateRoom = async (roomId: string, input: UpdateRoomInput, userId: string) => {
-  const room = await findRoomForManagement(roomId);
-  verifyRoomAdmin(room, userId);
+  const { room } = await ensureActiveRoomAdmin(roomId, userId);
+  const updateData: {
+    name?: string;
+    slug?: string;
+    maxMembers?: number | null;
+  } = {};
 
-  const nextRoomSlug = input.slug ?? createSlug(input.name);
+  if (input.name) {
+    const nextRoomSlug = createSlug(input.name);
 
-  if (!nextRoomSlug) {
-    throw new HttpError(400, "Room slug is invalid");
+    if (!nextRoomSlug) {
+      throw new HttpError(400, "Room name is invalid");
+    }
+
+    await ensureSlugIsAvailable(nextRoomSlug, room.id);
+
+    updateData.name = input.name;
+    updateData.slug = nextRoomSlug;
   }
 
-  await ensureSlugIsAvailable(nextRoomSlug, room.id);
+  const requestedMaxMembers = getRequestedMaxMembers(input);
+
+  if (requestedMaxMembers !== undefined) {
+    if (requestedMaxMembers !== null) {
+      const activeMemberCount = await countActiveRoomMembers(room.id);
+
+      if (requestedMaxMembers < activeMemberCount) {
+        throw new HttpError(409, "Member limit cannot be lower than current active members");
+      }
+    }
+
+    updateData.maxMembers = requestedMaxMembers;
+  }
+
+  if (Object.keys(updateData).length === 0) {
+    const currentRoom = await prisma.room.findUnique({
+      where: { id: room.id },
+      select: roomSelect,
+    });
+
+    if (!currentRoom) {
+      throw new HttpError(404, "Room not found");
+    }
+
+    return currentRoom;
+  }
 
   const updatedRoom = await prisma.room.update({
     where: { id: room.id },
-    data: {
-      name: input.name,
-      slug: nextRoomSlug,
-    },
+    data: updateData,
     select: roomSelect,
   });
 
@@ -286,14 +383,49 @@ export const updateRoom = async (roomId: string, input: UpdateRoomInput, userId:
 };
 
 export const deleteRoom = async (roomId: string, userId: string) => {
-  const room = await findRoomForManagement(roomId);
-  verifyRoomAdmin(room, userId);
+  const { room } = await ensureActiveRoomAdmin(roomId, userId);
 
-  // Prisma schema uses onDelete: Cascade for room messages, so deleting the room
-  // also removes its message history in a single trusted backend operation.
   await prisma.room.delete({
     where: { id: room.id },
   });
 
   return { id: room.id };
+};
+
+export const removeRoomMember = async (roomId: string, targetUserId: string, adminUserId: string) => {
+  const { room } = await ensureActiveRoomAdmin(roomId, adminUserId);
+  ensureGroupRoom(room);
+
+  if (targetUserId === adminUserId) {
+    throw new HttpError(400, "Admins cannot remove themselves");
+  }
+
+  const targetRoomMember = await prisma.roomMember.findUnique({
+    where: {
+      userId_roomId: {
+        roomId: room.id,
+        userId: targetUserId,
+      },
+    },
+    select: {
+      id: true,
+      role: true,
+      status: true,
+    },
+  });
+
+  if (!targetRoomMember || targetRoomMember.status !== "ACTIVE") {
+    throw new HttpError(404, "Active room member not found");
+  }
+
+  if (targetRoomMember.role === "ADMIN") {
+    throw new HttpError(400, "Admins cannot remove another admin");
+  }
+
+  await prisma.roomMember.update({
+    where: { id: targetRoomMember.id },
+    data: { status: "REMOVED" },
+  });
+
+  return { roomId: room.id, userId: targetUserId };
 };
