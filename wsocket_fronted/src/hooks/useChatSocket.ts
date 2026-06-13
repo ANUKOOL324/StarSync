@@ -62,6 +62,7 @@ export function useChatSocket(roomId: string, userId: string | undefined) {
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'online' | 'offline'>(
     'connecting',
   )
+  const [socketError, setSocketError] = useState<string | null>(null)
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([])
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([])
   const [editorPresenceUsers, setEditorPresenceUsers] = useState<EditorPresenceUser[]>([])
@@ -92,6 +93,7 @@ export function useChatSocket(roomId: string, userId: string | undefined) {
       setEditorPresenceUsers([])
       setLastEditorSync(null)
       setConnectionStatus('offline')
+      setSocketError(null)
       return
     }
 
@@ -106,6 +108,7 @@ export function useChatSocket(roomId: string, userId: string | undefined) {
       setTypingUsers([])
       setEditorPresenceUsers([])
       setLastEditorSync(null)
+      setSocketError(null)
       setHasMoreMessages(false)
       nextCursorRef.current = null
     })
@@ -127,6 +130,10 @@ export function useChatSocket(roomId: string, userId: string | undefined) {
             })),
           )
         }
+      } catch {
+        if (isActive) {
+          setSocketError('You do not have access to this room')
+        }
       } finally {
         if (isActive) {
           setIsLoadingHistory(false)
@@ -146,7 +153,13 @@ export function useChatSocket(roomId: string, userId: string | undefined) {
     }
 
     socket.onmessage = (event) => {
-      const serverEvent = JSON.parse(event.data) as ServerEvent | ChatMessage
+      let serverEvent: ServerEvent | ChatMessage
+
+      try {
+        serverEvent = JSON.parse(event.data) as ServerEvent | ChatMessage
+      } catch {
+        return
+      }
 
       if ('type' in serverEvent && serverEvent.type === 'presence') {
         setConnectionStatus('online')
@@ -208,6 +221,7 @@ export function useChatSocket(roomId: string, userId: string | undefined) {
       }
 
       if ('type' in serverEvent && serverEvent.type === 'error') {
+        setSocketError(serverEvent.payload.message)
         return
       }
 
@@ -419,6 +433,9 @@ export function useChatSocket(roomId: string, userId: string | undefined) {
     sendMessage,
     sendStopTyping,
     sendTyping,
+    socketError,
     typingUsers,
   }
 }
+
+
