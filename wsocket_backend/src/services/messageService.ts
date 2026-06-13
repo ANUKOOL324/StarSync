@@ -26,7 +26,10 @@ const findAccessibleRoom = async (roomId: string, userId: string) => {
       type: true,
       members: {
         where: { userId },
-        select: { id: true },
+        select: {
+          id: true,
+          status: true,
+        },
       },
     },
   });
@@ -35,10 +38,13 @@ const findAccessibleRoom = async (roomId: string, userId: string) => {
     throw new HttpError(404, "Room not found");
   }
 
-  // Group rooms are public in this app. DM rooms are private to their two members.
-  const userCanAccessRoom = room.type === "GROUP" || room.members.length > 0;
+  const existingMember = room.members[0] ?? null;
 
-  if (!userCanAccessRoom) {
+  if (existingMember?.status === "REMOVED") {
+    throw new HttpError(403, "You were removed from this room");
+  }
+
+  if (existingMember?.status !== "ACTIVE") {
     throw new HttpError(403, "You do not have access to this room");
   }
 
@@ -96,3 +102,4 @@ export const getRoomMessages = async (roomId: string, limit: number, userId: str
     nextCursor,
   };
 };
+

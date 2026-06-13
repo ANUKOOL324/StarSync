@@ -276,18 +276,24 @@ const resolveRoomId = async (roomId: string, userId: string): Promise<string | n
       type: true,
       members: {
         where: { userId },
-        select: { id: true },
+        select: {
+          id: true,
+          status: true,
+        },
       },
     },
   });
 
   if (!room) return null;
 
-  const userCanJoinRoom = room.type === "GROUP" || room.members.length > 0;
+  const existingMember = room.members[0] ?? null;
 
-  return userCanJoinRoom ? room.id : null;
+  if (existingMember?.status === "REMOVED") {
+    return null;
+  }
+
+  return existingMember?.status === "ACTIVE" ? room.id : null;
 };
-
 const handleJoinMessage = async (client: ChatClient, roomIdFromClient: string) => {
   const nextRoomId = await resolveRoomId(roomIdFromClient, client.user.id);
 
@@ -587,6 +593,8 @@ export const attachWebSocketServer = (server: Server) => {
 
   return webSocketServer;
 };
+
+
 
 
 
