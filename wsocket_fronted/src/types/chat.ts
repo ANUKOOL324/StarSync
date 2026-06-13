@@ -1,4 +1,4 @@
-﻿export type ChatUser = {
+export type ChatUser = {
   id: string
   username: string
   email: string
@@ -21,6 +21,8 @@ export type ChatRoom = {
   id: string
   name: string
   slug: string
+  joinCode?: string
+  maxMembers?: number | null
   description: string
   type?: 'GROUP' | 'DM'
   createdAt?: string
@@ -43,6 +45,8 @@ export type OnlineUser = {
 }
 
 export type RoomMember = ChatUser & {
+  role: 'ADMIN' | 'MEMBER'
+  joinedAt: string
   isOnline?: boolean
 }
 
@@ -50,3 +54,5 @@ export type TypingUser = {
   id: string
   username: string
 }
+
+

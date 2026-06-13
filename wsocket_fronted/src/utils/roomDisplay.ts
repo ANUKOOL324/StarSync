@@ -14,15 +14,13 @@ export const getRoomDisplayInfo = (room: ChatRoom): RoomDisplayInfo => {
   if (!isDirectMessage) {
     return {
       avatarName: room.name || 'Room',
-      avatarSeed: room.slug || room.name || room.id,
+      avatarSeed: room.joinCode || room.slug || room.name || room.id,
       displayName: room.name || 'Room',
       isDirectMessage: false,
-      subtitle: room.slug ? `#${room.slug}` : 'Group room',
+      subtitle: room.joinCode ? `Room code ${room.joinCode}` : 'Group room',
     }
   }
 
-  // GET /api/v1/dms already returns otherUser for the current logged-in user.
-  // If that data is missing, keep the UI human-readable instead of showing dm-* slugs.
   const otherUser = room.otherUser
   const fallbackName = 'Direct Message'
   const displayName = otherUser?.username || fallbackName
