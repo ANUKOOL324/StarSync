@@ -7,4 +7,8 @@ export const roomMemberService = {
 
     return response.data.members
   },
+
+  remove: async (roomId: string, userId: string) => {
+    await apiClient.delete(`/rooms/${roomId}/members/${userId}`)
+  },
 }
