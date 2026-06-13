@@ -1,4 +1,4 @@
-import { LayoutDashboard, LogIn, MessageCircle, Radio, Sparkles, UserPlus } from 'lucide-react'
+import { LayoutDashboard, LogIn, MessageCircle, Sparkles, UserPlus } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 
 const navItems = [
@@ -13,11 +13,13 @@ export function Sidebar() {
   return (
     <aside className="flex w-full flex-col border-b border-white/10 bg-black/50 p-4 shadow-2xl shadow-black/30 backdrop-blur-xl md:h-dvh md:w-72 md:border-b-0 md:border-r">
       <div className="flex items-center gap-3">
-        <div className="grid size-10 place-items-center rounded-lg border border-teal-200/40 bg-teal-300 text-zinc-950 shadow-lg shadow-teal-500/20">
-          <Radio size={20} aria-hidden="true" />
-        </div>
+        <img
+          src="/starsync-logo.png"
+          alt="StarSync logo"
+          className="h-10 w-10 rounded-full object-cover border border-white/10"
+        />
         <div>
-          <p className="text-sm font-semibold text-white">WS Chat</p>
+          <p className="text-sm font-semibold text-white">StarSync</p>
           <p className="text-xs text-zinc-400">Realtime rooms</p>
         </div>
       </div>
