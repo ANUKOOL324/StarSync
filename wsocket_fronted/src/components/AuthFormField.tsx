@@ -11,7 +11,7 @@ export function AuthFormField({ label, error, id, ...props }: AuthFormFieldProps
       <span>{label}</span>
       <input
         id={id}
-        className="rounded-lg border border-white/10 bg-white/92 px-4 py-3 text-zinc-950 outline-none transition placeholder:text-zinc-500 focus:border-teal-300 focus:ring-4 focus:ring-teal-300/15"
+        className="rounded-lg border border-white/10 bg-[#0B0D0F]/72 px-4 py-3 text-zinc-100 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition placeholder:text-zinc-500 focus:border-[#DCDDDF]/45 focus:ring-4 focus:ring-white/10"
         {...props}
       />
       {error ? <span className="text-xs text-red-300">{error}</span> : null}
