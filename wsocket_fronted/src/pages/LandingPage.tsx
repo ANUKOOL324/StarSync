@@ -284,7 +284,7 @@ export function LandingPage() {
               <h1 className="mt-0 bg-gradient-to-b from-[#F8F8FA] via-[#DCDDDF] to-[#A7A8AE] bg-clip-text text-7xl font-normal leading-[1.06] tracking-[-0.075em] text-transparent sm:text-8xl lg:text-9xl">
                 StarSync
               </h1>
-              <p className="mt-4 text-base font-normal tracking-[0.14em] text-[#C8C9CE] sm:text-lg">
+              <p className="mt-4 text-base font-normal tracking-[0.03em] text-[#C8C9CE] sm:text-lg">
                 A collaboration hub
               </p>
 
