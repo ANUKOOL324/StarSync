@@ -1,7 +1,6 @@
 import { LogOut, Plus, Trash2 } from 'lucide-react'
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import type { PointerEvent as ReactPointerEvent } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 
 import { useAuth } from '../../hooks/useAuth'
@@ -13,6 +12,7 @@ import { getRoomDisplayInfo } from '../../utils/roomDisplay'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
 import { Modal } from '../ui/Modal'
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '../ui/resizable'
 import { MessageInput } from './MessageInput'
 import { ChatWorkspaceSkeleton } from './ChatWorkspaceSkeleton'
 import { MessageList } from './MessageList'
@@ -27,16 +27,6 @@ type ChatWorkspaceProps = {
   roomId: string | undefined
 }
 
-type ResizablePanelSide = 'left' | 'right'
-
-const LEFT_PANEL_DEFAULT_WIDTH = 360
-const LEFT_PANEL_MIN_WIDTH = 280
-const LEFT_PANEL_MAX_WIDTH = 430
-
-const RIGHT_PANEL_DEFAULT_WIDTH = 392
-const RIGHT_PANEL_MIN_WIDTH = 300
-const RIGHT_PANEL_MAX_WIDTH = 460
-const MAIN_CHAT_MIN_WIDTH = 540
 const DESKTOP_PANEL_BREAKPOINT = 1280
 const COMFORTABLE_DETAILS_BREAKPOINT = 1536
 
@@ -51,24 +41,6 @@ const LazyWhiteboardWorkspace = lazy(() =>
     default: module.WhiteboardWorkspace,
   }))
 )
-
-const clampPanelWidth = (width: number, minWidth: number, maxWidth: number) => {
-  return Math.min(Math.max(width, minWidth), maxWidth)
-}
-
-const readSavedPanelWidth = (storageKey: string, fallbackWidth: number, minWidth: number, maxWidth: number) => {
-  if (typeof window === 'undefined') {
-    return fallbackWidth
-  }
-
-  const savedWidth = Number(window.localStorage.getItem(storageKey))
-
-  if (!Number.isFinite(savedWidth)) {
-    return fallbackWidth
-  }
-
-  return clampPanelWidth(savedWidth, minWidth, maxWidth)
-}
 
 export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
   const workspaceRef = useRef<HTMLElement | null>(null)
@@ -103,12 +75,6 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
     return window.matchMedia(`(min-width: ${DESKTOP_PANEL_BREAKPOINT}px)`).matches
   })
   const [activeTab, setActiveTab] = useState<'chat' | 'editor' | 'whiteboard'>('chat')
-  const [leftPanelWidth, setLeftPanelWidth] = useState(() =>
-    readSavedPanelWidth('ws-chat-left-panel-width', LEFT_PANEL_DEFAULT_WIDTH, LEFT_PANEL_MIN_WIDTH, LEFT_PANEL_MAX_WIDTH)
-  )
-  const [rightPanelWidth, setRightPanelWidth] = useState(() =>
-    readSavedPanelWidth('ws-chat-right-panel-width', RIGHT_PANEL_DEFAULT_WIDTH, RIGHT_PANEL_MIN_WIDTH, RIGHT_PANEL_MAX_WIDTH)
-  )
 
   useEffect(() => {
     const previousHtmlOverflow = document.documentElement.style.overflow
@@ -165,14 +131,6 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
       window.removeEventListener('resize', handleWindowResize)
     }
   }, [])
-
-  useEffect(() => {
-    window.localStorage.setItem('ws-chat-left-panel-width', String(leftPanelWidth))
-  }, [leftPanelWidth])
-
-  useEffect(() => {
-    window.localStorage.setItem('ws-chat-right-panel-width', String(rightPanelWidth))
-  }, [rightPanelWidth])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -317,72 +275,6 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
     navigate('/dashboard', { replace: true })
   }
 
-  const handlePanelResizeStart = (side: ResizablePanelSide, event: ReactPointerEvent<HTMLButtonElement>) => {
-    if (window.innerWidth < DESKTOP_PANEL_BREAKPOINT) {
-      return
-    }
-
-    event.preventDefault()
-
-    if (side === 'left') {
-      setIsSidebarOpen(true)
-    } else {
-      setIsInfoOpen(true)
-    }
-
-    const workspaceElement = workspaceRef.current
-
-    if (!workspaceElement) {
-      return
-    }
-
-    const workspaceBounds = workspaceElement.getBoundingClientRect()
-    const availableWorkspaceWidth = workspaceBounds.width
-    const otherPanelWidth = side === 'left'
-      ? (isInfoOpen ? rightPanelWidth : 0)
-      : (isSidebarOpen ? leftPanelWidth : 0)
-    const resizeRailsWidth = 24
-    const maximumWidthThatKeepsChatReadable = Math.max(
-      side === 'left' ? LEFT_PANEL_MIN_WIDTH : RIGHT_PANEL_MIN_WIDTH,
-      availableWorkspaceWidth - otherPanelWidth - MAIN_CHAT_MIN_WIDTH - resizeRailsWidth,
-    )
-
-    const handlePointerMove = (pointerEvent: PointerEvent) => {
-      if (side === 'left') {
-        const nextLeftWidth = pointerEvent.clientX - workspaceBounds.left
-        const safeLeftWidth = clampPanelWidth(
-          nextLeftWidth,
-          LEFT_PANEL_MIN_WIDTH,
-          Math.min(LEFT_PANEL_MAX_WIDTH, maximumWidthThatKeepsChatReadable),
-        )
-
-        setLeftPanelWidth(safeLeftWidth)
-        return
-      }
-
-      const nextRightWidth = workspaceBounds.right - pointerEvent.clientX
-      const safeRightWidth = clampPanelWidth(
-        nextRightWidth,
-        RIGHT_PANEL_MIN_WIDTH,
-        Math.min(RIGHT_PANEL_MAX_WIDTH, maximumWidthThatKeepsChatReadable),
-      )
-
-      setRightPanelWidth(safeRightWidth)
-    }
-
-    const stopResizing = () => {
-      window.removeEventListener('pointermove', handlePointerMove)
-      window.removeEventListener('pointerup', stopResizing)
-      document.body.style.cursor = ''
-      document.body.style.userSelect = ''
-    }
-
-    document.body.style.cursor = 'col-resize'
-    document.body.style.userSelect = 'none'
-    window.addEventListener('pointermove', handlePointerMove)
-    window.addEventListener('pointerup', stopResizing)
-  }
-
   return (
     <section
       ref={workspaceRef}
@@ -428,127 +320,154 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
         </button>
       ) : null}
 
-      <RoomSidebar
-        activeRoom={activeRoom}
-        activeRoomId={activeRoom.id}
-        activeTab={activeTab}
-        dmRooms={dmRooms}
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-        onlineUsers={onlineUsers}
-        onCreateDm={createDm}
-        onCreateRoom={() => setIsCreateModalOpen(true)}
-        onLogout={logout}
-        onSelectRoom={(nextRoomId) => navigate(`/rooms/${nextRoomId}`)}
-        onTabChange={setActiveTab}
-        panelWidth={leftPanelWidth}
-        rooms={rooms}
-        user={user}
-      />
-
-      <button
-        type="button"
-        onPointerDown={(event) => handlePanelResizeStart('left', event)}
-        onDoubleClick={() => setIsSidebarOpen((current) => !current)}
-        className={[
-          'group relative hidden w-2 shrink-0 cursor-col-resize items-stretch justify-center bg-[#05080A] transition hover:bg-[#18D6A3]/8 xl:flex',
-          'before:absolute before:inset-y-0 before:left-1/2 before:w-5 before:-translate-x-1/2 before:content-[""]',
-          isSidebarOpen ? 'border-r border-white/10' : 'border-r border-[#18D6A3]/20',
-        ].join(' ')}
-        aria-label={isSidebarOpen ? 'Resize or double click to hide sidebar' : 'Drag or double click to show sidebar'}
+      <ResizablePanelGroup
+        direction="horizontal"
+        id="starsync-room-layout"
+        className="relative z-0 min-h-0 min-w-0 flex-1"
       >
-        <span className="my-5 block w-px rounded-full bg-white/10 transition group-hover:w-1 group-hover:bg-[#18D6A3]/70" />
-      </button>
-
-      <div className="neon-field relative z-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#09090B]">
-        <RoomHeader
-          connectionStatus={connectionStatus}
-          isAdmin={isAdmin}
-          isInfoOpen={isInfoOpen}
-          memberCount={visibleMemberCount}
-          room={activeRoom}
-          onOpenSettings={() => {
-            setRoomActionError(null)
-            setIsSettingsOpen(true)
-          }}
-          onToggleInfo={() => {
-            if (window.innerWidth < DESKTOP_PANEL_BREAKPOINT) {
-              setIsInfoOpen(true)
-              return
-            }
-
-            setIsInfoOpen((current) => !current)
-          }}
-        />
-        {activeTab === 'chat' && (
+        {isSidebarOpen ? (
           <>
-            <div className="min-h-0 flex-1 overflow-hidden">
-              <MessageList
-                connectionStatus={connectionStatus}
-                hasMoreMessages={hasMoreMessages}
-                isLoadingHistory={isLoadingHistory}
-                isLoadingOlder={isLoadingOlder}
-                messages={messages}
-                onLoadOlderMessages={loadOlderMessages}
-                onRetryMessage={retryMessage}
+            <ResizablePanel
+              id="room-sidebar"
+              defaultSize="22%"
+              minSize="18%"
+              maxSize="30%"
+              className="contents xl:block"
+            >
+              <RoomSidebar
+                activeRoom={activeRoom}
+                activeRoomId={activeRoom.id}
+                activeTab={activeTab}
+                dmRooms={dmRooms}
+                isOpen={isSidebarOpen}
+                onClose={() => setIsSidebarOpen(false)}
+                onlineUsers={onlineUsers}
+                onCreateDm={createDm}
+                onCreateRoom={() => setIsCreateModalOpen(true)}
+                onLogout={logout}
+                onSelectRoom={(nextRoomId) => navigate(`/rooms/${nextRoomId}`)}
+                onTabChange={setActiveTab}
+                rooms={rooms}
+                user={user}
               />
-            </div>
-            <TypingIndicator typingUsers={typingUsers} />
-            <MessageInput
-              disabled={connectionStatus !== 'online'}
-              roomName={activeRoomDisplay?.displayName ?? activeRoom.name}
-              onStopTyping={sendStopTyping}
-              onTyping={sendTyping}
-              onSend={sendMessage}
-            />
+            </ResizablePanel>
+            <ResizableHandle className="hidden border-r border-white/10 xl:flex" withHandle />
           </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setIsSidebarOpen(true)}
+            className="group relative hidden w-2 shrink-0 items-stretch justify-center border-r border-[#18D6A3]/20 bg-[#05080A] transition hover:bg-[#18D6A3]/8 xl:flex"
+            aria-label="Open room sidebar"
+          >
+            <span className="my-5 block w-px rounded-full bg-white/10 transition group-hover:w-1 group-hover:bg-[#18D6A3]/70" />
+          </button>
         )}
 
-        {activeTab === 'editor' && (
-            <Suspense fallback={<EditorSkeleton />}>
-              <LazyCodeEditorWorkspace
-                connectionStatus={connectionStatus}
-                activeCollaborators={editorPresenceUsers}
+        <ResizablePanel
+          id="room-workspace"
+          defaultSize={isInfoOpen ? '54%' : '78%'}
+          minSize="44%"
+          className="min-w-0"
+        >
+          <div className="neon-field relative z-0 flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#09090B]">
+            <RoomHeader
+              connectionStatus={connectionStatus}
+              isAdmin={isAdmin}
+              isInfoOpen={isInfoOpen}
+              memberCount={visibleMemberCount}
+              room={activeRoom}
+              onOpenSettings={() => {
+                setRoomActionError(null)
+                setIsSettingsOpen(true)
+              }}
+              onToggleInfo={() => {
+                if (window.innerWidth < DESKTOP_PANEL_BREAKPOINT) {
+                  setIsInfoOpen(true)
+                  return
+                }
+
+                setIsInfoOpen((current) => !current)
+              }}
+            />
+            {activeTab === 'chat' && (
+              <>
+                <div className="min-h-0 flex-1 overflow-hidden">
+                  <MessageList
+                    connectionStatus={connectionStatus}
+                    hasMoreMessages={hasMoreMessages}
+                    isLoadingHistory={isLoadingHistory}
+                    isLoadingOlder={isLoadingOlder}
+                    messages={messages}
+                    onLoadOlderMessages={loadOlderMessages}
+                    onRetryMessage={retryMessage}
+                  />
+                </div>
+                <TypingIndicator typingUsers={typingUsers} />
+                <MessageInput
+                  disabled={connectionStatus !== 'online'}
+                  roomName={activeRoomDisplay?.displayName ?? activeRoom.name}
+                  onStopTyping={sendStopTyping}
+                  onTyping={sendTyping}
+                  onSend={sendMessage}
+                />
+              </>
+            )}
+
+            {activeTab === 'editor' && (
+              <Suspense fallback={<EditorSkeleton />}>
+                <LazyCodeEditorWorkspace
+                  connectionStatus={connectionStatus}
+                  activeCollaborators={editorPresenceUsers}
+                  room={activeRoom}
+                />
+              </Suspense>
+            )}
+
+            {activeTab === 'whiteboard' && (
+              <Suspense fallback={<WhiteboardSkeleton />}>
+                <LazyWhiteboardWorkspace room={activeRoom} />
+              </Suspense>
+            )}
+          </div>
+        </ResizablePanel>
+
+        {isInfoOpen ? (
+          <>
+            <ResizableHandle className="hidden border-l border-white/10 xl:flex" withHandle />
+            <ResizablePanel
+              id="room-details"
+              defaultSize="24%"
+              minSize="18%"
+              maxSize="32%"
+              className="contents xl:block"
+            >
+              <OnlineUsersPanel
+                activeTab={activeTab}
+                currentUserId={user?.id}
+                isCurrentUserAdmin={isAdmin}
+                isOpen={isInfoOpen}
+                isLoadingMembers={isLoadingMembers}
+                membersError={membersError}
+                onClose={() => setIsInfoOpen(false)}
+                onlineUsers={onlineUsers}
+                editorPresenceUsers={editorPresenceUsers}
                 room={activeRoom}
+                roomMembers={roomMembers}
               />
-            </Suspense>
-          )}
-
-        {activeTab === 'whiteboard' && (
-          <Suspense fallback={<WhiteboardSkeleton />}>
-            <LazyWhiteboardWorkspace room={activeRoom} />
-          </Suspense>
+            </ResizablePanel>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setIsInfoOpen(true)}
+            className="group relative hidden w-2 shrink-0 items-stretch justify-center border-l border-[#18D6A3]/20 bg-[#05080A] transition hover:bg-[#18D6A3]/8 xl:flex"
+            aria-label="Open room details"
+          >
+            <span className="my-5 block w-px rounded-full bg-white/10 transition group-hover:w-1 group-hover:bg-[#18D6A3]/70" />
+          </button>
         )}
-      </div>
-
-      <button
-        type="button"
-        onPointerDown={(event) => handlePanelResizeStart('right', event)}
-        onDoubleClick={() => setIsInfoOpen((current) => !current)}
-        className={[
-          'group relative hidden w-2 shrink-0 cursor-col-resize items-stretch justify-center bg-[#05080A] transition hover:bg-[#18D6A3]/8 xl:flex',
-          'before:absolute before:inset-y-0 before:left-1/2 before:w-5 before:-translate-x-1/2 before:content-[""]',
-          isInfoOpen ? 'border-l border-white/10' : 'border-l border-[#18D6A3]/20',
-        ].join(' ')}
-        aria-label={isInfoOpen ? 'Resize or double click to hide room details' : 'Drag or double click to show room details'}
-      >
-        <span className="my-5 block w-px rounded-full bg-white/10 transition group-hover:w-1 group-hover:bg-[#18D6A3]/70" />
-      </button>
-
-      <OnlineUsersPanel
-        activeTab={activeTab}
-        currentUserId={user?.id}
-        isCurrentUserAdmin={isAdmin}
-        isOpen={isInfoOpen}
-        isLoadingMembers={isLoadingMembers}
-        membersError={membersError}
-        onClose={() => setIsInfoOpen(false)}
-        onlineUsers={onlineUsers}
-        editorPresenceUsers={editorPresenceUsers}
-        panelWidth={rightPanelWidth}
-        room={activeRoom}
-        roomMembers={roomMembers}
-      />
+      </ResizablePanelGroup>
 
       <Modal
         isOpen={isCreateModalOpen}

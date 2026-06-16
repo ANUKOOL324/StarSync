@@ -1,5 +1,4 @@
 import { ChevronDown, ChevronRight, Code, LogOut, MessageSquare, Palette, Plus, Search, X } from 'lucide-react'
-import type { CSSProperties } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
@@ -22,7 +21,6 @@ type RoomSidebarProps = {
   onLogout: () => void
   onSelectRoom: (roomId: string) => void
   onTabChange: (tab: WorkspaceTab) => void
-  panelWidth: number
   rooms: ChatRoom[]
   user: AuthUser | null
 }
@@ -88,7 +86,6 @@ export function RoomSidebar({
   onLogout,
   onSelectRoom,
   onTabChange,
-  panelWidth,
   rooms,
   user,
 }: RoomSidebarProps) {
@@ -221,10 +218,9 @@ export function RoomSidebar({
           ? 'border-r border-white/10'
           : 'pointer-events-none xl:pointer-events-auto',
         isOpen
-          ? 'xl:w-[var(--sidebar-panel-width)] xl:overflow-visible'
+          ? 'xl:w-full xl:overflow-visible'
           : 'xl:w-0 xl:overflow-hidden xl:border-r-0 xl:p-0',
       ].join(' ')}
-      style={{ '--sidebar-panel-width': `${panelWidth}px` } as CSSProperties}
       aria-hidden={!isOpen}
     >
       <div className="relative flex min-h-0 flex-1 flex-col">

@@ -1,5 +1,4 @@
 import { CalendarDays, Crown, FileCode, Grid, UserMinus, Users, X } from 'lucide-react'
-import type { CSSProperties } from 'react'
 
 import type { ChatRoom, OnlineUser, RoomMember } from '../../types/chat'
 import type { EditorPresenceUser } from '../../types/editor'
@@ -17,7 +16,6 @@ type OnlineUsersPanelProps = {
   onRequestRemoveMember?: (member: RoomMember) => void
   editorPresenceUsers: EditorPresenceUser[]
   onlineUsers: OnlineUser[]
-  panelWidth: number
   removingMemberId?: string | null
   room: ChatRoom
   roomMembers: RoomMember[]
@@ -52,7 +50,6 @@ export function OnlineUsersPanel({
   onRequestRemoveMember,
   editorPresenceUsers,
   onlineUsers,
-  panelWidth,
   removingMemberId,
   room,
   roomMembers,
@@ -75,10 +72,9 @@ export function OnlineUsersPanel({
           ? 'translate-x-0 border-l border-white/10'
           : 'translate-x-full pointer-events-none xl:pointer-events-auto',
         isOpen
-          ? 'xl:w-[var(--details-panel-width)]'
+          ? 'xl:w-full'
           : 'xl:w-0 xl:overflow-hidden xl:border-l-0 xl:p-0',
       ].join(' ')}
-      style={{ '--details-panel-width': `${panelWidth}px` } as CSSProperties}
       aria-hidden={!isOpen}
     >
       <div className="relative grid gap-3">
