@@ -110,6 +110,31 @@ input {
     radial-gradient(circle at 50% 52%, transparent 0 8rem, rgba(0, 0, 0, 0.24) 18rem);
 }
 
+.dashboard-workspace-field {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(rgba(87, 241, 219, 0.14) 1px, transparent 1px) 0 0 / 18px 18px,
+    radial-gradient(circle at 15% 20%, rgba(87, 241, 219, 0.16), transparent 30rem),
+    radial-gradient(circle at 85% 80%, rgba(139, 83, 23, 0.22), transparent 32rem),
+    linear-gradient(130deg, #050807 0%, #071112 48%, #050807 100%);
+  transition:
+    background 280ms ease,
+    opacity 280ms ease;
+}
+
+.dashboard-workspace-field::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.34), transparent 28%, transparent 72%, rgba(0, 0, 0, 0.42)),
+    radial-gradient(circle at 50% 38%, transparent 0 10rem, rgba(0, 0, 0, 0.26) 22rem),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.18), transparent 18%, rgba(0, 0, 0, 0.38));
+}
+
 .chat-mobile-sidebar {
   position: fixed;
   inset-block: 0;
