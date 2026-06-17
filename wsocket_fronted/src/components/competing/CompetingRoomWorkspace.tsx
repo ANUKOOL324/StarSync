@@ -138,6 +138,10 @@ const getOnlineMemberIds = (onlineUsers: Array<{ id: string }>) => {
   return new Set(onlineUsers.map((onlineUser) => onlineUser.id))
 }
 
+/**
+ * ProblemPanel - Displays problem statements, constraints, sample inputs/outputs,
+ * hints, submissions history, and locked editorial tabs.
+ */
 function ProblemPanel({ room }: { room: ChatRoom }) {
   const topics = room.topics?.length ? room.topics : ['Array', 'Two Pointers']
   const difficulty = room.difficulty ?? 'MEDIUM'
