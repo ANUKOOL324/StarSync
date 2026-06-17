@@ -1,9 +1,0 @@
-CREATE TYPE "RoomPurpose" AS ENUM ('COLLABORATIVE', 'COMPETING');
-
-CREATE TYPE "ProblemDifficulty" AS ENUM ('EASY', 'MEDIUM', 'HARD');
-
-ALTER TABLE "Room"
-ADD COLUMN "purpose" "RoomPurpose" NOT NULL DEFAULT 'COLLABORATIVE',
-ADD COLUMN "difficulty" "ProblemDifficulty",
-ADD COLUMN "topics" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
-ADD COLUMN "durationMinutes" INTEGER;
