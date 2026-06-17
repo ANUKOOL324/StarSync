@@ -25,6 +25,10 @@ export type ChatRoom = {
   maxMembers?: number | null
   description: string
   type?: 'GROUP' | 'DM'
+  purpose?: 'COLLABORATIVE' | 'COMPETING'
+  difficulty?: 'EASY' | 'MEDIUM' | 'HARD' | null
+  topics?: string[]
+  durationMinutes?: number | null
   createdAt?: string
   adminId?: string
   admin?: ChatUser
