@@ -182,16 +182,19 @@ const getRequestedMaxMembers = (input: UpdateRoomInput): number | null | undefin
 };
 
 export const createRoom = async (input: CreateRoomInput, adminId: string) => {
-  const roomSlug = input.slug ?? createSlug(input.name);
+  const roomSlug = input.slug ?? (await createUniqueSlugForRoomName(input.name));
 
   if (!roomSlug) {
     throw new HttpError(400, "Room slug is invalid");
   }
 
-  await ensureSlugIsAvailable(roomSlug);
+  if (input.slug) {
+    await ensureSlugIsAvailable(roomSlug);
+  }
 
   const joinCode = await generateUniqueJoinCode();
   const maxMembers = getSafeMaxMembers(input);
+  const roomPurpose = getRoomPurpose(input);
 
   const createdRoom = await prisma.room.create({
     data: {
@@ -200,6 +203,10 @@ export const createRoom = async (input: CreateRoomInput, adminId: string) => {
       joinCode,
       maxMembers,
       type: "GROUP",
+      purpose: roomPurpose,
+      difficulty: getCompetingRoomDifficulty(input),
+      topics: getCompetingRoomTopics(input),
+      durationMinutes: getCompetingRoomDuration(input),
       adminId,
       members: {
         create: {
