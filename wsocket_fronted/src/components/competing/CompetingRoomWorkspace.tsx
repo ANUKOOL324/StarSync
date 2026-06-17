@@ -302,6 +302,10 @@ function ProblemPanel({ room }: { room: ChatRoom }) {
   )
 }
 
+/**
+ * MembersAndChatPanel - Handles online users presence list, typing indicators,
+ * and live chat integration within the competing room session.
+ */
 function MembersAndChatPanel({
   connectionStatus,
   hasMoreMessages,
