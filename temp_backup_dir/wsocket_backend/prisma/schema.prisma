@@ -1,0 +1,109 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum RoomType {
+  GROUP
+  DM
+}
+
+enum RoomPurpose {
+  COLLABORATIVE
+  COMPETING
+}
+
+enum ProblemDifficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum RoomRole {
+  ADMIN
+  MEMBER
+}
+
+enum RoomMemberStatus {
+  ACTIVE
+  REMOVED
+}
+
+model User {
+  id          String       @id @default(cuid())
+  username    String
+  email       String       @unique
+  password    String
+  createdAt   DateTime     @default(now())
+  rooms       Room[]       @relation("RoomAdmin")
+  messages    Message[]
+  memberships RoomMember[]
+}
+
+model Room {
+  id           String        @id @default(cuid())
+  name         String        @default("")
+  slug         String        @unique
+  joinCode     String        @unique
+  maxMembers   Int?
+  type         RoomType      @default(GROUP)
+  purpose      RoomPurpose   @default(COLLABORATIVE)
+  difficulty   ProblemDifficulty?
+  topics       String[]      @default([])
+  durationMinutes Int?
+  createdAt    DateTime      @default(now())
+  adminId      String?
+  admin        User?         @relation("RoomAdmin", fields: [adminId], references: [id], onDelete: Cascade)
+  messages     Message[]
+  members      RoomMember[]
+  codeDocument CodeDocument?
+
+  @@index([type])
+}
+
+model CodeDocument {
+  id        String   @id @default(cuid())
+  roomId    String   @unique
+  title     String   @default("main")
+  language  String   @default("javascript")
+  content   String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+}
+
+model RoomMember {
+  id       String           @id @default(cuid())
+  userId   String
+  roomId   String
+  role     RoomRole         @default(MEMBER)
+  status   RoomMemberStatus @default(ACTIVE)
+  joinedAt DateTime         @default(now())
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room     Room             @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roomId])
+  @@index([roomId])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+  senderId  String
+  roomId    String
+  sender    User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([senderId])
+  @@index([roomId])
+}
