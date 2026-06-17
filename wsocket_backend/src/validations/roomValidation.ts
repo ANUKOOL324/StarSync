@@ -27,6 +27,14 @@ export const createRoomSchema = z.object({
   unlimitedMembers: z.boolean().optional(),
   purpose: roomPurposeSchema.optional(),
   difficulty: problemDifficultySchema.optional(),
+  topics: z.array(z.string().trim().min(1).max(40)).max(10, "Too many topics selected").optional(),
+  durationMinutes: z
+    .number({ message: "Duration must be a number" })
+    .int("Duration must be a whole number")
+    .refine((value) => supportedDurationOptions.includes(value as (typeof supportedDurationOptions)[number]), {
+      message: "Choose 15, 30, 45, or 60 minutes",
+    })
+    .optional(),
 });
 
 export const joinRoomSchema = z.object({
