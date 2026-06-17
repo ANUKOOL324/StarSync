@@ -25,6 +25,8 @@ export const createRoomSchema = z.object({
     .optional(),
   maxMembers: optionalMaxMembersSchema,
   unlimitedMembers: z.boolean().optional(),
+  purpose: roomPurposeSchema.optional(),
+  difficulty: problemDifficultySchema.optional(),
 });
 
 export const joinRoomSchema = z.object({
