@@ -16,6 +16,17 @@ enum RoomType {
   DM
 }
 
+enum RoomPurpose {
+  COLLABORATIVE
+  COMPETING
+}
+
+enum ProblemDifficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
 enum RoomRole {
   ADMIN
   MEMBER
