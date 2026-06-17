@@ -473,6 +473,10 @@ function EditorPanel({
   )
 }
 
+/**
+ * CompetingRoomWorkspace - The main workspace view for users in a COMPETING session.
+ * Features a split pane layout with problem statement, live code editor, and chat panel.
+ */
 export function CompetingRoomWorkspace({ room }: CompetingRoomWorkspaceProps) {
   const navigate = useNavigate()
   const { user } = useAuth()
