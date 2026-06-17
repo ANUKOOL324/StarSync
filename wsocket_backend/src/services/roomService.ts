@@ -136,6 +136,34 @@ const getSafeMaxMembers = (input: CreateRoomInput): number | null => {
   return input.maxMembers ?? null;
 };
 
+const getRoomPurpose = (input: CreateRoomInput) => {
+  return input.purpose ?? "COLLABORATIVE";
+};
+
+const getCompetingRoomDifficulty = (input: CreateRoomInput) => {
+  if (getRoomPurpose(input) !== "COMPETING") {
+    return null;
+  }
+
+  return input.difficulty ?? null;
+};
+
+const getCompetingRoomTopics = (input: CreateRoomInput) => {
+  if (getRoomPurpose(input) !== "COMPETING") {
+    return [];
+  }
+
+  return input.topics ?? [];
+};
+
+const getCompetingRoomDuration = (input: CreateRoomInput) => {
+  if (getRoomPurpose(input) !== "COMPETING") {
+    return null;
+  }
+
+  return input.durationMinutes ?? null;
+};
+
 const countActiveRoomMembers = async (roomId: string): Promise<number> => {
   return prisma.roomMember.count({
     where: {
