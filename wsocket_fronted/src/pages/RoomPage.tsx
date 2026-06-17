@@ -51,5 +51,27 @@ export function RoomPage() {
     }
   }, [roomId])
 
+  if (isLoadingRoom) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-[#05070A] text-slate-300">
+        <Loader />
+      </div>
+    )
+  }
+
+  if (roomError || !room) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-[#05070A] px-4 text-center">
+        <div className="rounded-2xl border border-red-300/20 bg-red-950/15 p-6 text-red-100 shadow-xl shadow-black/20">
+          {roomError ?? 'Room not found'}
+        </div>
+      </div>
+    )
+  }
+
+  if (room.purpose === 'COMPETING') {
+    return <CompetingRoomWorkspace room={room} />
+  }
+
   return <ChatWorkspace roomId={roomId} />
 }
