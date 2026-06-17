@@ -55,6 +55,10 @@ model Room {
   joinCode     String        @unique
   maxMembers   Int?
   type         RoomType      @default(GROUP)
+  purpose      RoomPurpose   @default(COLLABORATIVE)
+  difficulty   ProblemDifficulty?
+  topics       String[]      @default([])
+  durationMinutes Int?
   createdAt    DateTime      @default(now())
   adminId      String?
   admin        User?         @relation("RoomAdmin", fields: [adminId], references: [id], onDelete: Cascade)
