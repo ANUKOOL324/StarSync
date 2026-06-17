@@ -422,6 +422,10 @@ function MembersAndChatPanel({
   )
 }
 
+/**
+ * EditorPanel - Integrates the Yjs-synchronized shared code editor workspace
+ * with language selection, running code preview, and submitting solutions.
+ */
 function EditorPanel({
   connectionStatus,
   editorPresenceUsers,
