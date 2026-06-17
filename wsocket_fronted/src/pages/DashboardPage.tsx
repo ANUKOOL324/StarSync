@@ -40,6 +40,7 @@ type WorkspaceTemplate = {
   description: string
   icon: ReactNode
   defaultRoomName: string
+  purpose: 'COLLABORATIVE' | 'COMPETING'
 }
 
 type StaticRoomPreview = {
@@ -56,23 +57,46 @@ type WorkspaceActionCardProps = {
   title: string
 }
 
+const topicOptions = [
+  'Array',
+  'String',
+  'Hashing',
+  'Two Pointers',
+  'Sliding Window',
+  'Stack',
+  'Queue',
+  'Linked List',
+  'Tree',
+  'Graph',
+  'Dynamic Programming',
+  'Greedy',
+  'Binary Search',
+  'Sorting',
+  'Math',
+]
+
+const durationOptions = [15, 30, 45, 60]
+
 const workspaceTemplates: WorkspaceTemplate[] = [
   {
-    title: 'Collaborate',
+    title: 'Collaborative Room',
     description: 'Create your room to collaborate',
     defaultRoomName: 'Collaboration Room',
+    purpose: 'COLLABORATIVE',
     icon: <MessageSquare size={16} aria-hidden="true" />,
   },
   {
-    title: 'Compete',
+    title: 'Competing Room',
     description: 'Create your room to compete',
     defaultRoomName: 'Contest Room',
+    purpose: 'COMPETING',
     icon: <Trophy size={16} aria-hidden="true" />,
   },
   {
     title: 'Develop',
     description: 'Create your room to develop',
     defaultRoomName: 'Development Room',
+    purpose: 'COMPETING',
     icon: <Code2 size={16} aria-hidden="true" />,
   },
 ]
