@@ -52,6 +52,10 @@ const roomSelect = {
   joinCode: true,
   maxMembers: true,
   type: true,
+  purpose: true,
+  difficulty: true,
+  topics: true,
+  durationMinutes: true,
   createdAt: true,
   adminId: true,
   admin: {
