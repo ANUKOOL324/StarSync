@@ -10,6 +10,9 @@ const optionalMaxMembersSchema = z
   .nullable()
   .optional();
 
+const roomPurposeSchema = z.enum(["COLLABORATIVE", "COMPETING"]);
+const problemDifficultySchema = z.enum(["EASY", "MEDIUM", "HARD"]);
+
 export const createRoomSchema = z.object({
   name: z.string().trim().min(2, "Room name must be at least 2 characters").max(60),
   slug: z
