@@ -86,6 +86,31 @@ const ensureSlugIsAvailable = async (slug: string, currentRoomId?: string) => {
   }
 };
 
+const createUniqueSlugForRoomName = async (roomName: string): Promise<string> => {
+  const baseSlug = createSlug(roomName);
+
+  if (!baseSlug) {
+    throw new HttpError(400, "Room slug is invalid");
+  }
+
+  let candidateSlug = baseSlug;
+
+  for (let attemptNumber = 1; attemptNumber <= 25; attemptNumber += 1) {
+    const existingRoom = await prisma.room.findUnique({
+      where: { slug: candidateSlug },
+      select: { id: true },
+    });
+
+    if (!existingRoom) {
+      return candidateSlug;
+    }
+
+    candidateSlug = `${baseSlug}-${attemptNumber + 1}`;
+  }
+
+  throw new HttpError(500, "Could not create a unique room slug");
+};
+
 const findExistingRoomMember = async (roomId: string, userId: string) => {
   const roomMember = await prisma.roomMember.findUnique({
     where: {
