@@ -304,6 +304,11 @@ export function DashboardPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(false)
   const [defaultRoomName, setDefaultRoomName] = useState('')
+  const [createRoomPurpose, setCreateRoomPurpose] = useState<'COLLABORATIVE' | 'COMPETING'>('COLLABORATIVE')
+  const [selectedDifficulty, setSelectedDifficulty] = useState<'EASY' | 'MEDIUM' | 'HARD'>('MEDIUM')
+  const [selectedDuration, setSelectedDuration] = useState(15)
+  const [selectedTopics, setSelectedTopics] = useState<string[]>(['Array'])
+  const [topicSearchQuery, setTopicSearchQuery] = useState('')
   const [roomPreviewPage, setRoomPreviewPage] = useState(1)
 
   const closeModal = () => {
@@ -311,11 +316,33 @@ export function DashboardPage() {
     setUseMemberLimit(false)
     setFormError(null)
     setDefaultRoomName('')
+    setCreateRoomPurpose('COLLABORATIVE')
+    setSelectedDifficulty('MEDIUM')
+    setSelectedDuration(15)
+    setSelectedTopics(['Array'])
+    setTopicSearchQuery('')
   }
 
-  const openCreateModal = (roomName = '') => {
+  const toggleTopic = (topic: string) => {
+    setSelectedTopics((currentTopics) => {
+      const topicAlreadySelected = currentTopics.includes(topic)
+
+      if (topicAlreadySelected) {
+        return currentTopics.filter((selectedTopic) => selectedTopic !== topic)
+      }
+
+      return [...currentTopics, topic]
+    })
+  }
+
+  const openCreateModal = (roomName = '', purpose: 'COLLABORATIVE' | 'COMPETING' = 'COLLABORATIVE') => {
     setFormError(null)
     setDefaultRoomName(roomName)
+    setCreateRoomPurpose(purpose)
+    setSelectedDifficulty('MEDIUM')
+    setSelectedDuration(15)
+    setSelectedTopics(purpose === 'COMPETING' ? ['Array'] : [])
+    setTopicSearchQuery('')
     setIsCreateModalOpen(true)
   }
 
@@ -332,6 +359,10 @@ export function DashboardPage() {
         name: roomName,
         unlimitedMembers: !useMemberLimit,
         maxMembers: useMemberLimit ? maxMembersValue : null,
+        purpose: createRoomPurpose,
+        difficulty: createRoomPurpose === 'COMPETING' ? selectedDifficulty : undefined,
+        topics: createRoomPurpose === 'COMPETING' ? selectedTopics : undefined,
+        durationMinutes: createRoomPurpose === 'COMPETING' ? selectedDuration : undefined,
       })
 
       closeModal()
@@ -355,6 +386,15 @@ export function DashboardPage() {
     const roomCode = (room.joinCode ?? '').toLowerCase()
 
     return roomName.includes(query) || roomCode.includes(query)
+  })
+
+  const topicSearchText = topicSearchQuery.trim().toLowerCase()
+  const filteredTopicOptions = topicOptions.filter((topic) => {
+    if (!topicSearchText) {
+      return true
+    }
+
+    return topic.toLowerCase().includes(topicSearchText)
   })
 
   const staticRoomSearchText = staticRoomSearchQuery.trim().toLowerCase()
@@ -748,12 +788,144 @@ export function DashboardPage() {
 
       <div className="relative z-10 flex min-w-0 flex-1 flex-col lg:hidden">{renderMainContent(true)}</div>
 
-      <Modal isOpen={isCreateModalOpen} onClose={closeModal} title="Create room">
+      <Modal
+        isOpen={isCreateModalOpen}
+        onClose={closeModal}
+        title={createRoomPurpose === 'COMPETING' ? 'Create competing room' : 'Create room'}
+      >
         <form onSubmit={handleRoomSubmit} className="grid gap-4">
           <label className="grid gap-2 text-sm text-zinc-300">
             Room name
             <Input name="roomName" placeholder="DSA Study Group" defaultValue={defaultRoomName} autoFocus />
           </label>
+
+          {createRoomPurpose === 'COMPETING' ? (
+            <div className="grid gap-4 rounded-lg border border-white/10 bg-white/[0.035] p-3">
+              <div className="grid gap-2">
+                <p className="text-sm font-medium text-white">Difficulty</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['EASY', 'MEDIUM', 'HARD'] as const).map((difficulty) => (
+                    <button
+                      key={difficulty}
+                      type="button"
+                      onClick={() => setSelectedDifficulty(difficulty)}
+                      className={[
+                        'rounded-lg border px-3 py-2 text-sm font-semibold transition',
+                        selectedDifficulty === difficulty
+                          ? 'border-[#57F1DB]/40 bg-[#57F1DB]/12 text-[#D6FFF6]'
+                          : 'border-white/10 bg-black/20 text-zinc-400 hover:border-white/20 hover:text-white',
+                      ].join(' ')}
+                    >
+                      {difficulty[0] + difficulty.slice(1).toLowerCase()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid gap-2">
+                <p className="text-sm font-medium text-white">Topics</p>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className="flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-left text-sm text-white outline-none transition hover:border-white/20 focus:border-[#57F1DB]/35"
+                    >
+                      <span className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                        {selectedTopics.length ? (
+                          selectedTopics.map((topic) => (
+                            <Badge
+                              key={topic}
+                              className="gap-1 rounded-full border-[#57F1DB]/30 bg-[#57F1DB]/12 px-2.5 py-1 text-xs text-[#D6FFF6]"
+                            >
+                              {topic}
+                              <span
+                                role="button"
+                                tabIndex={0}
+                                aria-label={`Remove ${topic}`}
+                                className="rounded-full text-[#A7B8B3] transition hover:text-white"
+                                onClick={(event) => {
+                                  event.preventDefault()
+                                  event.stopPropagation()
+                                  toggleTopic(topic)
+                                }}
+                                onKeyDown={(event) => {
+                                  if (event.key === 'Enter' || event.key === ' ') {
+                                    event.preventDefault()
+                                    event.stopPropagation()
+                                    toggleTopic(topic)
+                                  }
+                                }}
+                              >
+                                <X size={12} aria-hidden="true" />
+                              </span>
+                            </Badge>
+                          ))
+                        ) : (
+                          <span className="text-zinc-500">Select topics...</span>
+                        )}
+                      </span>
+                      <ChevronDown size={16} className="shrink-0 text-zinc-500" aria-hidden="true" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="start"
+                    className="w-[var(--radix-dropdown-menu-trigger-width)] border-white/10 bg-[#0B0D0F]/95 p-0 text-white shadow-2xl shadow-black/50 backdrop-blur-xl"
+                  >
+                    <div className="flex items-center gap-2 border-b border-white/10 px-3 py-2">
+                      <Search size={15} className="text-zinc-500" aria-hidden="true" />
+                      <input
+                        value={topicSearchQuery}
+                        onChange={(event) => setTopicSearchQuery(event.target.value)}
+                        onKeyDown={(event) => event.stopPropagation()}
+                        placeholder="Search topics..."
+                        className="h-8 min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-zinc-600"
+                      />
+                    </div>
+                    <ScrollArea className="max-h-56">
+                      <div className="p-1">
+                        {filteredTopicOptions.length ? (
+                          filteredTopicOptions.map((topic) => {
+                            const isSelected = selectedTopics.includes(topic)
+
+                            return (
+                              <DropdownMenuItem
+                                key={topic}
+                                onSelect={(event) => {
+                                  event.preventDefault()
+                                  toggleTopic(topic)
+                                }}
+                                className="flex cursor-pointer items-center justify-between rounded-lg px-3 py-2 text-sm text-zinc-300 focus:bg-[#57F1DB]/10 focus:text-[#D6FFF6]"
+                              >
+                                <span>{topic}</span>
+                                {isSelected ? <Check size={15} className="text-[#57F1DB]" aria-hidden="true" /> : null}
+                              </DropdownMenuItem>
+                            )
+                          })
+                        ) : (
+                          <p className="px-3 py-3 text-sm text-zinc-500">No topics found.</p>
+                        )}
+                      </div>
+                    </ScrollArea>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
+              <label className="grid gap-2 text-sm text-zinc-300">
+                Duration
+                <select
+                  value={selectedDuration}
+                  onChange={(event) => setSelectedDuration(Number(event.target.value))}
+                  className="h-11 rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none transition focus:border-[#57F1DB]/35"
+                >
+                  {durationOptions.map((duration) => (
+                    <option key={duration} value={duration}>
+                      {duration} mins
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          ) : null}
 
           <div className="grid gap-3 rounded-lg border border-white/10 bg-white/[0.035] p-3">
             <p className="text-sm font-medium text-white">Member limit</p>

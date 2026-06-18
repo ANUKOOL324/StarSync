@@ -7,6 +7,10 @@ export type CreateRoomPayload = {
   name: string
   maxMembers?: number | null
   unlimitedMembers?: boolean
+  purpose?: 'COLLABORATIVE' | 'COMPETING'
+  difficulty?: 'EASY' | 'MEDIUM' | 'HARD'
+  topics?: string[]
+  durationMinutes?: number
 }
 
 export type UpdateRoomPayload = {
@@ -26,6 +30,10 @@ const normalizeRoom = (room: ChatRoom): ChatRoom => ({
   ...room,
   description: room.description || 'Realtime room',
   type: room.type ?? 'GROUP',
+  purpose: room.purpose ?? 'COLLABORATIVE',
+  difficulty: room.difficulty ?? null,
+  topics: room.topics ?? [],
+  durationMinutes: room.durationMinutes ?? null,
 })
 
 export const getRoomJoinErrorMessage = (error: unknown) => {
@@ -57,6 +65,10 @@ export const roomService = {
       name: payload.name.trim(),
       maxMembers: payload.unlimitedMembers ? null : payload.maxMembers,
       unlimitedMembers: payload.unlimitedMembers,
+      purpose: payload.purpose,
+      difficulty: payload.difficulty,
+      topics: payload.topics,
+      durationMinutes: payload.durationMinutes,
     })
 
     return normalizeRoom(response.data.room)
