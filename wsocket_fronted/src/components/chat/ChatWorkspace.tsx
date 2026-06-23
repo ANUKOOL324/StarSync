@@ -75,6 +75,9 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
     return window.matchMedia(`(min-width: ${DESKTOP_PANEL_BREAKPOINT}px)`).matches
   })
   const [activeTab, setActiveTab] = useState<'chat' | 'editor' | 'whiteboard'>('chat')
+  const [whiteboardCollaborators, setWhiteboardCollaborators] = useState<
+    { id: string; username: string; email: string }[]
+  >([])
 
   useEffect(() => {
     const previousHtmlOverflow = document.documentElement.style.overflow
@@ -165,7 +168,6 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
     sendTyping,
     typingUsers,
   } = useChatSocket(activeRoom?.id ?? '', user?.id)
-  const visibleMemberCount = roomMembers.length || activeRoom?._count?.members || 0
 
   useEffect(() => {
     let isCurrentRequest = true
@@ -373,10 +375,15 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
           <div className="neon-field relative z-0 flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#09090B]">
             <RoomHeader
               connectionStatus={connectionStatus}
-              isAdmin={isAdmin}
               isInfoOpen={isInfoOpen}
-              memberCount={visibleMemberCount}
               room={activeRoom}
+              activeCollaborators={
+                activeTab === 'whiteboard'
+                  ? whiteboardCollaborators
+                  : activeTab === 'editor'
+                  ? editorPresenceUsers
+                  : undefined
+              }
               onOpenSettings={() => {
                 setRoomActionError(null)
                 setIsSettingsOpen(true)
@@ -426,7 +433,11 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
 
             {activeTab === 'whiteboard' && (
               <Suspense fallback={<WhiteboardSkeleton />}>
-                <LazyWhiteboardWorkspace room={activeRoom} />
+                <LazyWhiteboardWorkspace
+                  room={activeRoom}
+                  currentUser={user}
+                  onCollaboratorsChange={setWhiteboardCollaborators}
+                />
               </Suspense>
             )}
           </div>
@@ -443,7 +454,6 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
               className="contents xl:block"
             >
               <OnlineUsersPanel
-                activeTab={activeTab}
                 currentUserId={user?.id}
                 isCurrentUserAdmin={isAdmin}
                 isOpen={isInfoOpen}
@@ -451,7 +461,6 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
                 membersError={membersError}
                 onClose={() => setIsInfoOpen(false)}
                 onlineUsers={onlineUsers}
-                editorPresenceUsers={editorPresenceUsers}
                 room={activeRoom}
                 roomMembers={roomMembers}
               />
@@ -473,10 +482,11 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         title="Create room"
+        size="sm"
       >
         <form onSubmit={handleCreateRoom} className="grid gap-4">
           <Input name="name" placeholder="Room name" autoFocus />
-          <Button type="submit">
+          <Button type="submit" className="w-fit px-5 justify-self-end cursor-pointer">
             <Plus size={17} aria-hidden="true" />
             Create room
           </Button>
@@ -489,15 +499,6 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
         title="Room settings"
       >
         <div className="grid gap-5">
-          <div className="rounded-lg border border-white/8 bg-white/4 p-3">
-            <p className="text-sm font-semibold text-white">
-              {activeRoomDisplay?.displayName ?? activeRoom.name}
-            </p>
-            <p className="mt-1 text-xs text-zinc-500">
-              {activeRoomDisplay?.subtitle ?? `#${activeRoom.slug}`}
-            </p>
-          </div>
-
           {isAdmin ? (
             <div className="grid gap-4">
               <form onSubmit={handleRenameRoom} className="grid gap-3">
@@ -505,7 +506,9 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
                   Rename room
                   <Input name="name" defaultValue={activeRoom.name} placeholder="Room name" />
                 </label>
-                <Button type="submit">Save name</Button>
+                <Button type="submit" size="sm" className="w-fit justify-self-end cursor-pointer">
+                  Save name
+                </Button>
               </form>
             </div>
           ) : (
@@ -522,20 +525,26 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
             </p>
           ) : null}
 
-          <div className="grid gap-2 rounded-lg border border-red-400/15 bg-red-950/10 p-3">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-red-400/60">Danger Zone</p>
-            <Button type="button" variant="ghost" onClick={handleLeaveRoom} className="border-red-400/20 text-red-300 hover:bg-red-950/30 hover:text-red-200">
-              <LogOut size={16} aria-hidden="true" />
+          <div className="flex gap-2 justify-end mt-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleLeaveRoom}
+              className="cursor-pointer"
+            >
+              <LogOut size={14} aria-hidden="true" />
               Leave room
             </Button>
             {isAdmin ? (
               <Button
                 type="button"
                 variant="ghost"
+                size="sm"
                 onClick={() => setIsDeleteConfirmOpen(true)}
-                className="border-red-400/20 text-red-300 hover:bg-red-950/30 hover:text-red-200"
+                className="border-red-500/25 text-red-400 hover:bg-red-950/30 hover:text-red-300 hover:border-red-500/45 cursor-pointer"
               >
-                <Trash2 size={16} aria-hidden="true" />
+                <Trash2 size={14} aria-hidden="true" />
                 Delete room
               </Button>
             ) : null}

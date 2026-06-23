@@ -86,10 +86,7 @@ const ensureSlugIsAvailable = async (slug: string, currentRoomId?: string) => {
   }
 };
 
-/**
- * Generates a unique URL-friendly slug for a room name.
- * If the base slug exists, appends incremental suffixes up to 25 attempts.
- */
+
 const createUniqueSlugForRoomName = async (roomName: string): Promise<string> => {
   const baseSlug = createSlug(roomName);
 

@@ -89,8 +89,8 @@ export const authorizeLiveblocksCollaborationRoom = async ({
 }: LiveblocksAuthInput) => {
   const appRoomId = getAppRoomIdFromLiveblocksRoom(liveblocksRoomId);
 
-  // Liveblocks is used for whiteboard sync and editor Yjs text sync.
-  // The real access decision still belongs to our database membership table.
+  
+  
   await verifyLiveblocksRoomMembership(appRoomId, userId);
 
   const user = await getLiveblocksUser(userId);

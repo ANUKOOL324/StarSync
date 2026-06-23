@@ -11,7 +11,7 @@ export type AuthTokenPayload = {
 export type JwtPayload = AuthTokenPayload;
 
 export const signAuthToken = (payload: AuthTokenPayload): string => {
-  // jsonwebtoken accepts readable expiry strings like "7d" or "15m".
+  
   const tokenExpiryTime = env.jwtExpiresIn as StringValue;
 
   const signedToken = jwt.sign(payload, env.jwtSecret, {

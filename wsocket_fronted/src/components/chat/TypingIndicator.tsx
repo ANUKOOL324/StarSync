@@ -7,10 +7,13 @@ export type TypingUser = {
 
 type TypingIndicatorProps = {
   typingUsers: TypingUser[]
+  variant?: 'default' | 'sidebar'
 }
 
-export function TypingIndicator({ typingUsers }: TypingIndicatorProps) {
+export function TypingIndicator({ typingUsers, variant = 'default' }: TypingIndicatorProps) {
   if (typingUsers.length === 0) return null
+
+  const isSidebar = variant === 'sidebar'
 
   const formatTypingText = (users: TypingUser[]) => {
     if (users.length === 1) return `${users[0].username} is typing...`
@@ -26,9 +29,11 @@ export function TypingIndicator({ typingUsers }: TypingIndicatorProps) {
         initial={{ opacity: 0, y: 4 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 4 }}
-        className="mx-auto flex w-full max-w-5xl shrink-0 items-center gap-2 px-4 py-1 text-xs text-slate-400 select-none sm:px-7"
+        className={[
+          'flex w-full shrink-0 items-center gap-2 py-1 text-xs text-slate-400 select-none',
+          isSidebar ? 'px-3' : 'mx-auto max-w-5xl px-4 sm:px-7',
+        ].join(' ')}
       >
-        {/* Modular inline styles for custom Discord-style typing dot animations */}
         <style>{`
           @keyframes typingDotBounce {
             0%, 100% {

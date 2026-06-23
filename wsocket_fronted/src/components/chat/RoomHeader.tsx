@@ -2,29 +2,26 @@ import { Info, Settings } from 'lucide-react'
 
 import type { ChatRoom } from '../../types/chat'
 import { getRoomDisplayInfo } from '../../utils/roomDisplay'
-import { Avatar } from '../ui/Avatar'
+import { Avatar, AvatarGroup, AvatarGroupCount } from '../ui/Avatar'
 
 type RoomHeaderProps = {
+  activeCollaborators?: { id: string; username: string; email: string }[]
   connectionStatus: 'connecting' | 'online' | 'offline'
-  isAdmin?: boolean
   isInfoOpen: boolean
-  memberCount: number
   room: ChatRoom
   onOpenSettings: () => void
   onToggleInfo: () => void
 }
 
 export function RoomHeader({
+  activeCollaborators,
   connectionStatus,
-  isAdmin,
   isInfoOpen,
-  memberCount,
   onOpenSettings,
   onToggleInfo,
   room,
 }: RoomHeaderProps) {
   const liveStatusText = connectionStatus === 'online' ? 'Live' : connectionStatus
-  const memberLabel = memberCount === 1 ? 'member' : 'members'
   const isOnline = connectionStatus === 'online'
   const roomDisplay = getRoomDisplayInfo(room)
 
@@ -39,18 +36,44 @@ export function RoomHeader({
             size="lg"
           />
 
-          <div className="min-w-0">
-            <div className="flex min-w-0 items-center gap-2">
+          <div className="min-w-0 flex-1 sm:flex-initial">
+            <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
               <p className="truncate text-base font-semibold text-slate-100 sm:text-lg">
                 {roomDisplay.displayName}
               </p>
-              {isAdmin && !roomDisplay.isDirectMessage ? (
-                <span className="hidden shrink-0 rounded-full border border-[#18D6A3]/25 bg-[#18D6A3]/10 px-2 py-0.5 text-[11px] font-medium text-[#7FFFE0] sm:inline-flex">
-                  Admin
-                </span>
-              ) : null}
+
+              {activeCollaborators !== undefined && activeCollaborators.length > 0 && (
+                <div
+                  className="flex items-center shrink-0"
+                  title={`${activeCollaborators.length} active user${activeCollaborators.length === 1 ? '' : 's'}`}
+                >
+                  {activeCollaborators.length === 1 ? (
+                    <div className="flex h-8 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.035] px-2.5">
+                      <Avatar
+                        name={activeCollaborators[0].username}
+                        seed={activeCollaborators[0].username || activeCollaborators[0].email}
+                        size="xs"
+                      />
+                      <span className="text-xs text-slate-300 font-medium">1 active</span>
+                    </div>
+                  ) : (
+                    <AvatarGroup className="*:data-[slot=avatar]:ring-[#05080a] *:data-[slot=avatar]:ring-2">
+                      {activeCollaborators.slice(0, 3).map((collaborator) => (
+                        <Avatar
+                          key={collaborator.id}
+                          name={collaborator.username}
+                          seed={collaborator.username || collaborator.email}
+                          size="xs"
+                        />
+                      ))}
+                      <AvatarGroupCount className="size-7 text-[10px] bg-[#18181B] text-slate-300 ring-2 ring-[#05080a] border-none">
+                        +{activeCollaborators.length}
+                      </AvatarGroupCount>
+                    </AvatarGroup>
+                  )}
+                </div>
+              )}
             </div>
-            <p className="truncate text-xs text-slate-500">{roomDisplay.subtitle}</p>
           </div>
         </div>
 
@@ -66,14 +89,10 @@ export function RoomHeader({
             <span className="capitalize">{liveStatusText}</span>
           </div>
 
-          <div className="hidden rounded-full border border-white/10 bg-white/[0.045] px-3 py-1.5 text-xs text-slate-300 md:block">
-            {memberCount} / {room.maxMembers ?? 'Unlimited'} {memberLabel}
-          </div>
-
           <button
             type="button"
             onClick={onOpenSettings}
-            className="grid size-9 place-items-center rounded-lg text-slate-400 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-[#18D6A3]/40"
+            className="grid size-9 place-items-center rounded-lg text-slate-400 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-[#18D6A3]/40 cursor-pointer"
             aria-label="Open room settings"
           >
             <Settings size={18} aria-hidden="true" />
@@ -83,7 +102,7 @@ export function RoomHeader({
             type="button"
             onClick={onToggleInfo}
             className={[
-              'grid size-9 place-items-center rounded-lg transition focus:outline-none focus:ring-2 focus:ring-[#18D6A3]/40',
+              'grid size-9 place-items-center rounded-lg transition focus:outline-none focus:ring-2 focus:ring-[#18D6A3]/40 cursor-pointer',
               isInfoOpen
                 ? 'border border-[#18D6A3]/25 bg-[#18D6A3]/10 text-[#7FFFE0] shadow-sm shadow-[#18D6A3]/10'
                 : 'border border-transparent text-slate-400 hover:bg-white/10 hover:text-white',

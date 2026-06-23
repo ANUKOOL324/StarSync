@@ -32,7 +32,7 @@ export const signupUser = async (input: SignupInput) => {
     throw new HttpError(409, "Email is already registered");
   }
 
-  // Store only the hash. The plain password is never saved or returned to the client.
+  
   const hashedPassword = await bcrypt.hash(input.password, SALT_ROUNDS);
 
   const user = await prisma.user.create({
@@ -69,7 +69,7 @@ export const loginUser = async (input: LoginInput) => {
     throw new HttpError(401, "Invalid email or password");
   }
 
-  // Use bcrypt.compare so timing and hashing details stay inside bcrypt.
+  
   const passwordMatches = await bcrypt.compare(input.password, user.password);
 
   if (!passwordMatches) {

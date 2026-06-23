@@ -47,9 +47,10 @@ export function CollaborativeCodeEditor({
   onMount,
 }: CollaborativeCodeEditorProps) {
   return (
-    <div className="min-h-[320px] min-w-0 flex-1 overflow-hidden border-y border-white/10 bg-[#05080A] md:min-h-0">
+    <div className="h-full min-h-0 min-w-0 flex-1 overflow-hidden bg-[#05080A]">
       <Editor
         defaultValue={code}
+        height="100%"
         loading={isLoading ? 'Loading editor...' : 'Preparing editor...'}
         language={monacoLanguageMap[language]}
         theme="ws-chat-dark"

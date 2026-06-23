@@ -1,4 +1,4 @@
-import { LiveblocksProvider, RoomProvider, useMutation, useOthers, useStatus, useStorage, useStorageRoot } from '@liveblocks/react'
+import { LiveblocksProvider, RoomProvider, useMutation, useOthers, useStorage, useStorageRoot, useUpdateMyPresence } from '@liveblocks/react'
 import type { JsonObject } from '@liveblocks/client'
 import { useEffect, useMemo, useRef } from 'react'
 import { createTLStore, getSnapshot, loadSnapshot, Tldraw } from 'tldraw'
@@ -7,12 +7,18 @@ import 'tldraw/tldraw.css'
 
 import { liveblocksService } from '../../services/liveblocksService'
 import type { ChatRoom } from '../../types/chat'
-import { getRoomDisplayInfo } from '../../utils/roomDisplay'
-import { Avatar } from '../ui/Avatar'
 import { WhiteboardSkeleton } from './WhiteboardSkeleton'
+
+export type WhiteboardCollaborator = {
+  id: string
+  username: string
+  email: string
+}
 
 type WhiteboardWorkspaceProps = {
   room: ChatRoom
+  currentUser?: { id: string; username: string; email: string } | null
+  onCollaboratorsChange?: (collaborators: WhiteboardCollaborator[]) => void
 }
 
 const getWhiteboardRoomId = (roomId: string) => {
@@ -23,26 +29,81 @@ const stringifySnapshot = (snapshot: unknown) => {
   return JSON.stringify(snapshot)
 }
 
-function WhiteboardCanvas({ room }: WhiteboardWorkspaceProps) {
-  const roomDisplay = getRoomDisplayInfo(room)
+
+const CURSOR_COLORS = [
+  '#18D6A3', '#F59E0B', '#8B5CF6', '#EF4444',
+  '#3B82F6', '#EC4899', '#10B981', '#F97316',
+]
+const getUserColor = (seed: string): string => {
+  let hash = 0
+  for (let i = 0; i < seed.length; i++) {
+    hash = seed.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  return CURSOR_COLORS[Math.abs(hash) % CURSOR_COLORS.length]
+}
+
+type WhiteboardCanvasProps = {
+  room: ChatRoom
+  currentUser?: { id: string; username: string; email: string } | null
+  onCollaboratorsChange?: (collaborators: WhiteboardCollaborator[]) => void
+}
+
+function WhiteboardCanvas({ room, currentUser, onCollaboratorsChange }: WhiteboardCanvasProps) {
   const store = useMemo(() => createTLStore({ id: room.id }), [room.id])
   const [storageRoot] = useStorageRoot()
   const boardSnapshot = useStorage((root) => root.boardSnapshot as JsonObject | null)
   const others = useOthers()
-  const liveblocksStatus = useStatus()
   const saveTimerRef = useRef<number | null>(null)
   const isApplyingRemoteSnapshotRef = useRef(false)
   const lastSavedSnapshotRef = useRef<string | null>(null)
+  const canvasContainerRef = useRef<HTMLDivElement>(null)
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const updateMyPresence = useUpdateMyPresence() as (data: any) => void
 
   const saveBoardSnapshot = useMutation(
     ({ storage }, nextSnapshot: JsonObject) => {
-      // The whiteboard is stored as one tldraw snapshot in Liveblocks Storage.
-      // This is intentionally simple for Phase 1. Later we can move to a
-      // deeper shape-level sync model if the board becomes larger.
+      
+      
+      
       storage.set('boardSnapshot', nextSnapshot)
     },
     [],
   )
+
+  const collaborators = useMemo(() => {
+    const list = others.map((user) => ({
+      id: String(user.connectionId),
+      username: String(user.info?.name ?? 'User'),
+      email: String(user.info?.email ?? user.connectionId),
+    }))
+
+    if (currentUser) {
+      list.unshift({
+        id: currentUser.id,
+        username: currentUser.username,
+        email: currentUser.email,
+      })
+    }
+
+    return list
+  }, [others, currentUser])
+
+  useEffect(() => {
+    onCollaboratorsChange?.(collaborators)
+  }, [collaborators, onCollaboratorsChange])
+
+  
+  useEffect(() => {
+    if (!currentUser) return
+    updateMyPresence({
+      user: {
+        name: currentUser.username,
+        color: getUserColor(currentUser.id ?? currentUser.username),
+      },
+      cursor: null,
+    })
+  }, [currentUser, updateMyPresence])
 
   useEffect(() => {
     if (!storageRoot) {
@@ -98,52 +159,87 @@ function WhiteboardCanvas({ room }: WhiteboardWorkspaceProps) {
     })
   }, [boardSnapshot, store])
 
+  
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const rect = canvasContainerRef.current?.getBoundingClientRect()
+    if (!rect) return
+    updateMyPresence({
+      cursor: {
+        x: ((e.clientX - rect.left) / rect.width) * 100,
+        y: ((e.clientY - rect.top) / rect.height) * 100,
+      },
+    })
+  }
+
+  const handlePointerLeave = () => {
+    updateMyPresence({ cursor: null })
+  }
+
   if (!storageRoot) {
     return <WhiteboardSkeleton />
   }
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#05080A]">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-[#09090B]/88 px-4 py-3 backdrop-blur-xl">
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-white">Shared Whiteboard</p>
-          <p className="mt-0.5 truncate text-xs text-slate-500">
-            {roomDisplay.displayName} canvas
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className="rounded-full border border-[#18D6A3]/20 bg-[#18D6A3]/10 px-3 py-1 text-xs font-medium text-[#7FFFE0]">
-            {liveblocksStatus === 'connected' ? 'Live' : 'Connecting'}
-          </span>
-          <div className="flex -space-x-2">
-            {others.slice(0, 4).map((user) => (
-              <div key={user.connectionId} className="rounded-full border-2 border-[#09090B]">
-                <Avatar
-                  name={String(user.info?.name ?? 'User')}
-                  seed={String(user.info?.email ?? user.connectionId)}
-                  size="sm"
-                />
-              </div>
-            ))}
-          </div>
-          <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-xs text-slate-400">
-            {others.length + 1} active
-          </span>
-        </div>
-      </div>
-
       <div className="relative min-h-0 flex-1 overflow-hidden">
         <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_1px_1px,rgba(24,214,163,0.28)_1px,transparent_0)] [background-size:18px_18px]" />
-        <div className="absolute inset-3 overflow-hidden rounded-2xl border border-white/10 bg-[#F8FAFC] shadow-2xl shadow-black/25">
+        <div
+          ref={canvasContainerRef}
+          className="absolute inset-3 overflow-hidden rounded-2xl border border-white/10 bg-[#F8FAFC] shadow-2xl shadow-black/25"
+          onPointerMove={handlePointerMove}
+          onPointerLeave={handlePointerLeave}
+        >
           <Tldraw store={store} />
+
+          
+          {others.map((other) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const presence = other.presence as any
+            const cursor = presence?.cursor
+            if (!cursor || cursor.x == null || cursor.y == null) return null
+
+            const remoteUser = presence?.user
+            const name: string = remoteUser?.name ?? `User ${other.connectionId}`
+            const color: string = remoteUser?.color ?? getUserColor(String(other.connectionId))
+
+            return (
+              <div
+                key={other.connectionId}
+                className="pointer-events-none absolute"
+                style={{
+                  left: `${cursor.x as number}%`,
+                  top: `${cursor.y as number}%`,
+                  zIndex: 50,
+                  transform: 'translate(0, 0)',
+                }}
+              >
+                
+                <svg width="16" height="20" viewBox="0 0 16 20" fill="none">
+                  <path
+                    d="M0 0L0 14L4 10L7 17L9 16L6 9L11 9Z"
+                    fill={color}
+                    stroke="#05080a"
+                    strokeWidth="1"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                
+                <span
+                  className="absolute left-3 top-3 rounded rounded-tl-none px-1.5 py-0.5 text-[11px] font-bold leading-4 whitespace-nowrap shadow-sm"
+                  style={{ background: color, color: '#05080a' }}
+                >
+                  {name}
+                </span>
+              </div>
+            )
+          })}
         </div>
       </div>
     </div>
   )
 }
 
-export function WhiteboardWorkspace({ room }: WhiteboardWorkspaceProps) {
+export function WhiteboardWorkspace({ room, currentUser, onCollaboratorsChange }: WhiteboardWorkspaceProps) {
   const whiteboardRoomId = getWhiteboardRoomId(room.id)
 
   return (
@@ -157,7 +253,7 @@ export function WhiteboardWorkspace({ room }: WhiteboardWorkspaceProps) {
         initialPresence={{}}
         initialStorage={{ boardSnapshot: null }}
       >
-        <WhiteboardCanvas room={room} />
+        <WhiteboardCanvas room={room} currentUser={currentUser} onCollaboratorsChange={onCollaboratorsChange} />
       </RoomProvider>
     </LiveblocksProvider>
   )

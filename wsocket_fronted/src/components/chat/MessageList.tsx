@@ -14,6 +14,7 @@ type MessageListProps = {
   messages: ChatMessage[]
   onLoadOlderMessages?: () => Promise<void> | void
   onRetryMessage: (message: ChatMessage) => void
+  variant?: 'default' | 'sidebar'
 }
 
 export function MessageList({
@@ -24,7 +25,10 @@ export function MessageList({
   messages,
   onLoadOlderMessages,
   onRetryMessage,
+  variant = 'default',
 }: MessageListProps) {
+  const isSidebar = variant === 'sidebar'
+  const isEmpty = messages.length === 0 && connectionStatus !== 'connecting' && !isLoadingHistory
   const endRef = useRef<HTMLDivElement | null>(null)
   const listRef = useRef<HTMLDivElement | null>(null)
   const previousLengthRef = useRef(0)
@@ -78,9 +82,13 @@ export function MessageList({
     <div
       ref={listRef}
       onScroll={handleScroll}
-      className="h-full overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 sm:py-5 lg:px-8"
+      className={[
+        'h-full overflow-y-auto overscroll-contain',
+        isSidebar ? 'px-3 py-3' : 'px-4 py-4 sm:px-6 sm:py-5 lg:px-8',
+        isEmpty ? 'flex flex-col justify-center' : '',
+      ].join(' ')}
     >
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-2">
+      <div className={['flex w-full flex-col gap-2', isSidebar ? '' : 'mx-auto max-w-5xl'].join(' ')}>
         {isLoadingOlder ? (
           <div className="py-2 text-center text-xs text-zinc-500">Loading older messages...</div>
         ) : null}
@@ -89,6 +97,7 @@ export function MessageList({
           <EmptyState
             title="No messages yet"
             description="Start the conversation."
+            variant={isSidebar ? 'sidebar' : 'chat'}
           />
         ) : null}
         {connectionStatus === 'offline' && messages.length ? (

@@ -73,6 +73,22 @@ const workspaceTabs: Array<{
   { id: 'whiteboard', label: 'Board', icon: Palette },
 ]
 
+const activeTabClasses: Record<WorkspaceTab, { active: string; focus: string }> = {
+  chat: {
+    active: "bg-emerald-500/14 text-[#86EFAC] shadow-sm shadow-emerald-500/10",
+    focus: "focus:ring-emerald-500/35",
+  },
+  editor: {
+    active: "bg-blue-500/14 text-[#93C5FD] shadow-sm shadow-blue-500/10",
+    focus: "focus:ring-blue-500/35",
+  },
+  whiteboard: {
+    active: "bg-amber-500/14 text-[#FDE68A] shadow-sm shadow-amber-500/10",
+    focus: "focus:ring-amber-500/35",
+  },
+}
+
+
 export function RoomSidebar({
   activeRoom,
   activeRoomId,
@@ -138,7 +154,7 @@ export function RoomSidebar({
   const filteredRoomMembers = useMemo(() => {
     return roomMembers
       .filter((member) => member.id !== user?.id)
-      // Exclude members who already have an existing DM (they appear in DM rooms list instead)
+      
       .filter((member) => !dmRoomByOtherUserId.has(member.id))
       .filter((member) => {
         if (!normalizedSearchQuery) {
@@ -261,22 +277,25 @@ export function RoomSidebar({
           Create room
         </button>
 
-        <label className="group mt-3 flex h-10 items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.045] px-3 text-slate-500 shadow-sm shadow-black/20 backdrop-blur-xl transition focus-within:border-[#18D6A3]/30 focus-within:bg-white/[0.065] focus-within:text-[#18D6A3] focus-within:ring-2 focus-within:ring-[#18D6A3]/10">
-          <Search size={15} aria-hidden="true" className="transition group-focus-within:text-[#18D6A3]" />
-          <input
-            aria-label="Search rooms and direct messages"
-            value={roomSearchQuery}
-            onChange={(event) => setRoomSearchQuery(event.target.value)}
-            placeholder="Search rooms"
-            className="min-w-0 flex-1 bg-transparent text-sm text-slate-100 outline-none placeholder:text-slate-500"
-          />
-        </label>
+        <div className="mt-3 rounded-2xl bg-gradient-to-b from-[#5A5A5C]/80 via-white/15 to-[#28282A]/85 p-[1px] shadow-sm shadow-black/20 transition duration-200 focus-within:from-[#18D6A3]/60 focus-within:to-[#18D6A3]/20">
+          <label className="group flex h-[38px] items-center gap-2 rounded-[15px] bg-[#18181B]/78 px-3 text-slate-500 backdrop-blur-xl transition duration-200 focus-within:bg-[#1c1c21] focus-within:text-[#18D6A3]">
+            <Search size={15} aria-hidden="true" className="transition group-focus-within:text-[#18D6A3]" />
+            <input
+              aria-label="Search rooms and direct messages"
+              value={roomSearchQuery}
+              onChange={(event) => setRoomSearchQuery(event.target.value)}
+              placeholder="Search rooms"
+              className="min-w-0 flex-1 bg-transparent text-sm text-[#F7F7F8] outline-none placeholder:text-slate-500"
+            />
+          </label>
+        </div>
 
         <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.035] p-1 shadow-sm shadow-black/20 backdrop-blur-xl">
           <div className="grid grid-cols-3 gap-1">
             {workspaceTabs.map((tab) => {
               const TabIcon = tab.icon
               const isActiveTab = activeTab === tab.id
+              const tabStyles = activeTabClasses[tab.id]
 
               return (
                 <button
@@ -290,10 +309,10 @@ export function RoomSidebar({
                     }
                   }}
                   className={[
-                    'flex h-9 items-center justify-center gap-1.5 rounded-xl text-xs font-medium transition duration-150 focus:outline-none focus:ring-2 focus:ring-[#18D6A3]/35',
+                    'flex h-9 items-center justify-center gap-1.5 rounded-xl text-xs font-medium transition duration-150 focus:outline-none focus:ring-2',
                     isActiveTab
-                      ? 'bg-[#18D6A3]/14 text-[#7FFFE0] shadow-sm shadow-[#18D6A3]/10'
-                      : 'text-slate-500 hover:bg-white/[0.055] hover:text-slate-200',
+                      ? `${tabStyles.active} ${tabStyles.focus}`
+                      : 'text-slate-500 hover:bg-white/[0.055] hover:text-slate-200 focus:ring-[#18D6A3]/35',
                   ].join(' ')}
                   aria-pressed={isActiveTab}
                 >
@@ -306,7 +325,7 @@ export function RoomSidebar({
         </div>
 
         <div className="mt-4 min-h-0 flex-1 overflow-y-auto pr-1">
-          {/* ── Rooms ── */}
+          
           <section>
             <SectionHeader
               isOpen={isRoomsOpen}
@@ -337,7 +356,7 @@ export function RoomSidebar({
             ) : null}
           </section>
 
-          {/* ── Direct Messages ── */}
+          
           <section className="mt-4">
             <SectionHeader
               isOpen={isDirectMessagesOpen}
@@ -346,7 +365,7 @@ export function RoomSidebar({
             />
             {isDirectMessagesOpen ? (
               <div className="mt-1.5 grid gap-1.5">
-                {/* Existing DM conversations */}
+                
                 {filteredDmRooms.map((dmRoom) => {
                   const isActiveDm = dmRoom.id === activeRoomId
                   const otherUser = dmRoom.otherUser
@@ -397,7 +416,7 @@ export function RoomSidebar({
                   )
                 })}
 
-                {/* Room members without existing DMs — for starting new conversations */}
+                
                 {isDirectMessageRoom ? (
                   <p className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 text-sm leading-5 text-slate-500 backdrop-blur-xl">
                     Open a group room to message members.
@@ -461,7 +480,7 @@ export function RoomSidebar({
                     })
                   : null}
 
-                {/* Empty state: shown when no DM rooms and no new-conversation members */}
+                
                 {!filteredDmRooms.length &&
                 !isDirectMessageRoom &&
                 !isLoadingRoomMembers &&
@@ -481,7 +500,6 @@ export function RoomSidebar({
             <Avatar name={user?.username ?? 'User'} seed={user?.username ?? user?.email ?? 'user'} size="md" />
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold text-slate-100">{user?.username}</p>
-              <p className="truncate text-xs text-slate-500">{user?.email}</p>
             </div>
             <button
               type="button"

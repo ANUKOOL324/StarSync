@@ -1,17 +1,26 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useLocation } from 'react-router-dom'
 
 import { ChatWorkspace } from '../components/chat/ChatWorkspace'
 import { CompetingRoomWorkspace } from '../components/competing/CompetingRoomWorkspace'
-import { Loader } from '../components/ui/Loader'
+import { WorkspaceSkeleton } from '../components/ui/WorkspaceSkeleton'
+import { ChatWorkspaceSkeleton } from '../components/chat/ChatWorkspaceSkeleton'
 import { roomService } from '../services/roomService'
+import { useRooms } from '../hooks/useRooms'
 import type { ChatRoom } from '../types/chat'
 
 export function RoomPage() {
   const { roomId } = useParams()
+  const location = useLocation()
+  const { rooms } = useRooms()
   const [room, setRoom] = useState<ChatRoom | null>(null)
   const [isLoadingRoom, setIsLoadingRoom] = useState(true)
   const [roomError, setRoomError] = useState<string | null>(null)
+
+  
+  const statePurpose = location.state?.purpose as 'COLLABORATIVE' | 'COMPETING' | undefined
+  const cachedRoom = rooms.find((r) => r.id === roomId)
+  const roomPurpose = statePurpose ?? cachedRoom?.purpose ?? room?.purpose
 
   useEffect(() => {
     if (!roomId) {
@@ -52,11 +61,10 @@ export function RoomPage() {
   }, [roomId])
 
   if (isLoadingRoom) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center bg-[#05070A] text-slate-300">
-        <Loader />
-      </div>
-    )
+    if (roomPurpose === 'COMPETING') {
+      return <WorkspaceSkeleton />
+    }
+    return <ChatWorkspaceSkeleton />
   }
 
   if (roomError || !room) {

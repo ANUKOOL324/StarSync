@@ -1,6 +1,6 @@
 export function EditorSkeleton() {
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+    <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-[#05080A]/75 px-4 py-3">
         <div className="grid gap-2">
           <span className="h-4 w-28 rounded-full bg-white/10" />

@@ -234,7 +234,7 @@ const leaveCurrentRoom = (client: ChatClient) => {
 
   if (!previousRoomId) return;
 
-  // Leaving a room must also clear typing state so other users do not see stale indicators.
+  
   clearTypingTimer(client.id);
   broadcastTypingUpdate(client, previousRoomId, false);
   clearEditorPresenceForClient(client);
@@ -245,7 +245,7 @@ const leaveCurrentRoom = (client: ChatClient) => {
 const resolveAuthenticatedSocketUser = async (
   tokenPayload: AuthTokenPayload,
 ): Promise<SocketUser> => {
-  // The JWT proves the token was signed by us. This database lookup proves the user still exists.
+  
   const user = await prisma.user.findUnique({
     where: { id: tokenPayload.userId },
     select: {
@@ -321,7 +321,7 @@ const handleTypingStart = async (client: ChatClient, roomId: string) => {
   const staleTypingTimer = setTimeout(() => {
     typingTimersByClientId.delete(client.id);
     broadcastTypingUpdate(client, verifiedRoomId, false);
-  }, 3000); // Stop showing user after 2-3 seconds of no typing
+  }, 3000); 
 
   typingTimersByClientId.set(client.id, staleTypingTimer);
 };
@@ -355,7 +355,7 @@ const handleChatMessage = async (client: ChatClient, parsedMessage: ChatMessage)
     clearTypingTimer(client.id);
     broadcastTypingUpdate(client, client.room, false);
 
-    // The sender id comes from the authenticated socket, never from the frontend payload.
+    
     const savedMessage = await createMessage({
       content: messageContent,
       roomId: client.room,
@@ -412,8 +412,8 @@ const handleEditorChange = async (client: ChatClient, parsedMessage: EditorChang
   }
 
   try {
-    // The socket user was verified from JWT. This check confirms that the
-    // verified user is allowed to use the editor for this specific room.
+    
+    
     await verifyEditorRoomAccess(verifiedRoomId, client.user.id);
 
     broadcastToOtherClientsInRoom(verifiedRoomId, client.id, {
@@ -445,8 +445,8 @@ const handleEditorPresence = async (client: ChatClient, parsedMessage: EditorPre
   }
 
   try {
-    // Presence is still protected by the same editor access check as editor sync.
-    // This prevents a user from appearing inside an editor they cannot open.
+    
+    
     await verifyEditorRoomAccess(verifiedRoomId, client.user.id);
 
     if (nextStatus === "inactive") {
@@ -481,8 +481,8 @@ const registerClientHandlers = (
     let verifiedUser: SocketUser;
 
     try {
-      // A client may send "join" immediately after the socket opens.
-      // Waiting here prevents a race while Prisma confirms the user still exists.
+      
+      
       verifiedUser = await authenticatedUserPromise;
     } catch (error) {
       console.warn("Closing WebSocket for unresolved authenticated user", error);
@@ -561,8 +561,8 @@ export const attachWebSocketServer = (server: Server) => {
       return;
     }
 
-    // The temporary user value lets us create the client immediately.
-    // Message handling still waits for resolveAuthenticatedSocketUser before trusting it.
+    
+    
     const client: ChatClient = {
       id: crypto.randomUUID(),
       socket,

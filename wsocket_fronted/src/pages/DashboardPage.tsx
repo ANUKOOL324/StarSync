@@ -5,9 +5,10 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Code2,
+  Hash,
   Home,
   LayoutGrid,
+  Loader2,
   LogOut,
   Menu,
   MessageSquare,
@@ -60,6 +61,7 @@ type StaticRoomPreview = {
 }
 
 type WorkspaceActionCardProps = {
+  actionLabel?: string
   description: string
   icon: ReactNode
   onClick: () => void
@@ -84,29 +86,22 @@ const topicOptions = [
   'Math',
 ]
 
-const durationOptions = [15, 30, 45, 60]
+
 
 const workspaceTemplates: WorkspaceTemplate[] = [
   {
     title: 'Collaborative Room',
-    description: 'Create your room to collaborate',
+    description: 'Create a full workspace with chat, editor, and whiteboard.',
     defaultRoomName: 'Collaboration Room',
     purpose: 'COLLABORATIVE',
     icon: <MessageSquare size={16} aria-hidden="true" />,
   },
   {
     title: 'Competing Room',
-    description: 'Create your room to compete',
+    description: 'Create a coding room for practice, contests, and interview-style problem solving.',
     defaultRoomName: 'Contest Room',
     purpose: 'COMPETING',
     icon: <Trophy size={16} aria-hidden="true" />,
-  },
-  {
-    title: 'Develop',
-    description: 'Create your room to develop',
-    defaultRoomName: 'Development Room',
-    purpose: 'COMPETING',
-    icon: <Code2 size={16} aria-hidden="true" />,
   },
 ]
 
@@ -188,7 +183,7 @@ const staticRoomPreviews: StaticRoomPreview[] = [
 const roomPreviewPageSize = 6
 
 const cardFrameClassName =
-  'rounded-2xl bg-gradient-to-b from-[#5A5A5C]/80 via-white/15 to-[#28282A]/85 p-[2px] shadow-[0_18px_60px_rgba(0,0,0,0.22)] transition duration-300 hover:-translate-y-0.5'
+  'rounded-2xl bg-gradient-to-b from-[#5A5A5C]/80 via-white/15 to-[#28282A]/85 p-[2px] shadow-[0_18px_60px_rgba(0,0,0,0.22)] transition duration-300 hover:-translate-y-0.5 cursor-pointer'
 
 const actionCardClassName =
   'relative flex h-full min-h-[7.25rem] flex-col justify-between overflow-hidden rounded-[14px] bg-[#18181B]/78 p-3.5 backdrop-blur-2xl transition duration-300 group-hover:bg-[#1F1F23]/88'
@@ -196,7 +191,13 @@ const actionCardClassName =
 const iconBoxClassName =
   'grid h-8 w-8 place-items-center rounded-lg border border-white/15 bg-gradient-to-b from-[#5A5A5C]/35 to-[#28282A]/35 text-[#D6FFF6] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]'
 
-function WorkspaceActionCard({ description, icon, onClick, title }: WorkspaceActionCardProps) {
+function WorkspaceActionCard({
+  actionLabel = 'Create room',
+  description,
+  icon,
+  onClick,
+  title,
+}: WorkspaceActionCardProps) {
   return (
     <button type="button" onClick={onClick} className={`${cardFrameClassName} group text-left`}>
       <Card className={actionCardClassName}>
@@ -212,7 +213,7 @@ function WorkspaceActionCard({ description, icon, onClick, title }: WorkspaceAct
         </CardHeader>
         <CardFooter className="relative mt-2">
           <span className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.045] px-3 py-1 text-sm font-semibold text-[#D6FFF6] transition duration-200 group-hover:border-[#57F1DB]/40 group-hover:bg-[#57F1DB]/10">
-            Create room
+            {actionLabel}
             <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" aria-hidden="true" />
           </span>
         </CardFooter>
@@ -221,46 +222,60 @@ function WorkspaceActionCard({ description, icon, onClick, title }: WorkspaceAct
   )
 }
 
-function StaticRoomCard({ room }: { room: StaticRoomPreview }) {
+function StaticRoomCard({
+  onUseTemplate,
+  room,
+}: {
+  onUseTemplate: () => void
+  room: StaticRoomPreview
+}) {
   return (
-    <Card className="flex min-h-[13rem] flex-col justify-between rounded-2xl border border-white/10 bg-[#060A12]/76 p-5 shadow-[0_18px_52px_rgba(0,0,0,0.2)] transition duration-300 hover:-translate-y-0.5 hover:border-[#57F1DB]/25 hover:bg-[#090E17]/86">
-      <div>
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h3 className="text-lg font-semibold tracking-tight text-[#F7F7F8]">{room.title}</h3>
-            <p className="mt-2 text-sm font-medium text-[#D6FFF6]">{room.roomType}</p>
+    <button
+      type="button"
+      onClick={onUseTemplate}
+      className="group text-left cursor-pointer transition-transform duration-300 hover:-translate-y-0.5 w-full"
+    >
+      <Card className="flex min-h-[13rem] flex-col justify-between rounded-2xl border border-white/10 bg-[#060A12]/76 p-5 shadow-[0_18px_52px_rgba(0,0,0,0.2)] transition duration-300 group-hover:border-[#57F1DB]/25 group-hover:bg-[#090E17]/86">
+        <div>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-semibold tracking-tight text-[#F7F7F8]">{room.title}</h3>
+              <p className="mt-2 text-sm font-medium text-[#D6FFF6]">{room.roomType}</p>
+            </div>
+            <Badge
+              className={[
+                'shrink-0 border-white/8 px-3 py-1 text-xs font-bold',
+                room.badge === 'Paid'
+                  ? 'border-amber-300/25 bg-amber-400/10 text-amber-200'
+                  : 'bg-[#1F2937]/85 text-white',
+              ].join(' ')}
+            >
+              {room.badge}
+            </Badge>
           </div>
-          <Badge
-            className={[
-              'shrink-0 border-white/8 px-3 py-1 text-xs font-bold',
-              room.badge === 'Paid'
-                ? 'bg-[#6D28D9]/85 text-white'
-                : 'bg-[#1F2937]/85 text-white',
-            ].join(' ')}
-          >
-            {room.badge}
-          </Badge>
+          <p className="mt-5 max-w-md text-sm leading-6 text-[#E5E7EB]">{room.description}</p>
         </div>
-        <p className="mt-5 max-w-md text-sm leading-6 text-[#E5E7EB]">{room.description}</p>
-      </div>
-      <button
-        type="button"
-        className="mt-5 inline-flex h-10 w-full items-center justify-center rounded-lg border border-white/10 bg-black/20 text-sm font-semibold text-[#F7F7F8] transition hover:border-[#57F1DB]/35 hover:bg-white/[0.04]"
-      >
-        Join Room
-      </button>
-    </Card>
+        <span
+          className="mt-5 inline-flex items-center gap-1.5 self-start rounded-full border border-[#57F1DB]/30 bg-[#57F1DB]/10 px-3.5 py-1.5 text-xs font-semibold text-[#D6FFF6] transition duration-300 group-hover:border-[#57F1DB]/50 group-hover:bg-[#57F1DB]/20"
+        >
+          Join room
+          <ArrowRight size={14} aria-hidden="true" />
+        </span>
+      </Card>
+    </button>
   )
 }
 
 function RealRoomCard({
   membersCount,
   onClick,
+  purpose,
   roomCode,
   roomName,
 }: {
   membersCount: number
   onClick: () => void
+  purpose?: 'COLLABORATIVE' | 'COMPETING'
   roomCode?: string
   roomName: string
 }) {
@@ -268,13 +283,18 @@ function RealRoomCard({
     <button
       type="button"
       onClick={onClick}
-      className="group rounded-2xl bg-gradient-to-b from-[#5A5A5C]/70 via-white/12 to-[#28282A]/75 p-[2px] text-left shadow-[0_16px_48px_rgba(0,0,0,0.2)] transition duration-300 hover:-translate-y-0.5"
+      className="group rounded-2xl bg-gradient-to-b from-[#5A5A5C]/70 via-white/12 to-[#28282A]/75 p-[2px] text-left shadow-[0_16px_48px_rgba(0,0,0,0.2)] transition duration-300 hover:-translate-y-0.5 cursor-pointer"
     >
       <Card className="flex h-full min-h-[9rem] flex-col justify-between rounded-[14px] bg-[#111316]/86 p-5 transition duration-300 group-hover:bg-[#181B1E]/92">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <h3 className="truncate text-base font-semibold text-[#F7F7F8]">{roomName}</h3>
-            <p className="mt-1 text-sm text-[#A7B8B3]">{membersCount} members</p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <Badge className="border-[#57F1DB]/20 bg-[#57F1DB]/8 text-[10px] text-[#D6FFF6]">
+                {purpose === 'COMPETING' ? 'Competing' : 'Collaborative'}
+              </Badge>
+              <span className="text-sm text-[#A7B8B3]">{membersCount} members</span>
+            </div>
           </div>
           {roomCode ? (
             <Badge className="shrink-0 border-white/8 bg-white/[0.04] font-mono text-[10px] text-[#BACAC5]">
@@ -282,7 +302,7 @@ function RealRoomCard({
             </Badge>
           ) : null}
         </div>
-        <span className="mt-5 inline-flex items-center justify-between rounded-xl border border-white/8 bg-black/18 px-3 py-2 text-xs font-semibold text-[#D6FFF6] transition group-hover:border-[#57F1DB]/35">
+        <span className="mt-5 inline-flex items-center gap-1.5 self-start rounded-xl border border-white/8 bg-black/18 px-3 py-1.5 text-xs font-semibold text-[#D6FFF6] transition group-hover:border-[#57F1DB]/35">
           Open room
           <ArrowRight size={13} aria-hidden="true" />
         </span>
@@ -294,10 +314,15 @@ function RealRoomCard({
 export function DashboardPage() {
   const navigate = useNavigate()
   const { logout, user } = useAuth()
-  const { createRoom, isLoadingRooms, roomError, rooms } = useRooms()
+  const { createRoom, isLoadingRooms, joinRoom, roomError, rooms } = useRooms()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [isJoinModalOpen, setIsJoinModalOpen] = useState(false)
   const [useMemberLimit, setUseMemberLimit] = useState(false)
+  const [creationStage, setCreationStage] = useState<'idle' | 'creating' | 'success'>('idle')
   const [formError, setFormError] = useState<string | null>(null)
+  const [joinRoomCode, setJoinRoomCode] = useState('')
+  const [joinRoomError, setJoinRoomError] = useState<string | null>(null)
+  const [isJoiningRoom, setIsJoiningRoom] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [staticRoomSearchQuery, setStaticRoomSearchQuery] = useState('')
   const [activeTab, setActiveTab] = useState<'home' | 'rooms'>('home')
@@ -314,6 +339,7 @@ export function DashboardPage() {
   const closeModal = () => {
     setIsCreateModalOpen(false)
     setUseMemberLimit(false)
+    setCreationStage('idle')
     setFormError(null)
     setDefaultRoomName('')
     setCreateRoomPurpose('COLLABORATIVE')
@@ -321,6 +347,18 @@ export function DashboardPage() {
     setSelectedDuration(15)
     setSelectedTopics(['Array'])
     setTopicSearchQuery('')
+  }
+
+  const closeJoinModal = () => {
+    setIsJoinModalOpen(false)
+    setJoinRoomCode('')
+    setJoinRoomError(null)
+    setIsJoiningRoom(false)
+  }
+
+  const openJoinModal = () => {
+    setJoinRoomError(null)
+    setIsJoinModalOpen(true)
   }
 
   const toggleTopic = (topic: string) => {
@@ -346,28 +384,61 @@ export function DashboardPage() {
     setIsCreateModalOpen(true)
   }
 
+  const handleJoinRoomSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setJoinRoomError(null)
+
+    const trimmedRoomCode = joinRoomCode.trim()
+
+    if (!trimmedRoomCode) {
+      setJoinRoomError('Enter a room code first.')
+      return
+    }
+
+    try {
+      setIsJoiningRoom(true)
+      const room = await joinRoom(trimmedRoomCode)
+      closeJoinModal()
+      navigate(`/rooms/${room.id}`, { state: { purpose: room.purpose } })
+    } catch (error) {
+      setJoinRoomError(error instanceof Error ? error.message : 'Could not join room. Please try again.')
+    } finally {
+      setIsJoiningRoom(false)
+    }
+  }
+
   const handleRoomSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setFormError(null)
+    setCreationStage('creating')
 
     const formData = new FormData(event.currentTarget)
 
     try {
       const roomName = String(formData.get('roomName') ?? '')
       const maxMembersValue = Number(formData.get('maxMembers') ?? 0)
-      const room = await createRoom({
-        name: roomName,
-        unlimitedMembers: !useMemberLimit,
-        maxMembers: useMemberLimit ? maxMembersValue : null,
-        purpose: createRoomPurpose,
-        difficulty: createRoomPurpose === 'COMPETING' ? selectedDifficulty : undefined,
-        topics: createRoomPurpose === 'COMPETING' ? selectedTopics : undefined,
-        durationMinutes: createRoomPurpose === 'COMPETING' ? selectedDuration : undefined,
-      })
+
+      const [room] = await Promise.all([
+        createRoom({
+          name: roomName,
+          unlimitedMembers: !useMemberLimit,
+          maxMembers: useMemberLimit ? maxMembersValue : null,
+          purpose: createRoomPurpose,
+          difficulty: createRoomPurpose === 'COMPETING' ? selectedDifficulty : undefined,
+          topics: createRoomPurpose === 'COMPETING' ? selectedTopics : undefined,
+          durationMinutes: createRoomPurpose === 'COMPETING' ? selectedDuration : undefined,
+        }),
+        new Promise((resolve) => setTimeout(resolve, 850)),
+      ])
+
+      setCreationStage('success')
+
+      await new Promise((resolve) => setTimeout(resolve, 1600))
 
       closeModal()
-      navigate(`/rooms/${room.id}`)
+      navigate(`/rooms/${room.id}`, { state: { purpose: room.purpose } })
     } catch (error) {
+      setCreationStage('idle')
       setFormError(error instanceof Error ? error.message : 'Something went wrong. Please try again.')
     }
   }
@@ -453,26 +524,26 @@ export function DashboardPage() {
 
     return (
       <>
-        <div
-          className={[
-            'flex items-center border-b border-white/8 pb-6',
-            isCollapsed ? 'justify-center' : 'justify-between',
-          ].join(' ')}
-        >
-          <div className={['flex min-w-0 items-center', isCollapsed ? 'justify-center' : 'gap-3'].join(' ')}>
+        <div className="flex items-center justify-between border-b border-white/8 pb-6 w-full">
+          <div className="flex min-w-0 items-center gap-0">
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/10 bg-white/[0.03] shadow-lg shadow-black/30">
               <img src="/starsync-logo.png" alt="StarSync logo" className="h-9 w-9 rounded-full object-cover" />
             </span>
-            {!isCollapsed ? (
-              <p className="truncate text-sm font-bold uppercase tracking-wider text-[#F7F7F8]">StarSync</p>
-            ) : null}
+            <span
+              className={[
+                'transition-all duration-300 ease-in-out overflow-hidden whitespace-nowrap',
+                isCollapsed ? 'w-0 opacity-0 ml-0' : 'w-24 opacity-100 ml-3',
+              ].join(' ')}
+            >
+              <p className="text-sm font-bold uppercase tracking-wider text-[#F7F7F8]">StarSync</p>
+            </span>
           </div>
 
           {isMobileSidebar ? (
             <button
               type="button"
               onClick={() => setIsSidebarOpen(false)}
-              className="grid size-8 place-items-center rounded-lg text-[#8D9B97] transition hover:bg-white/5 hover:text-white lg:hidden"
+              className="grid size-8 place-items-center rounded-lg text-[#8D9B97] transition hover:bg-white/5 hover:text-white lg:hidden cursor-pointer"
               aria-label="Close sidebar"
             >
               <X size={16} aria-hidden="true" />
@@ -491,15 +562,21 @@ export function DashboardPage() {
                 onClick={() => changeDashboardTab(item.id)}
                 title={isCollapsed ? item.label : undefined}
                 className={[
-                  'flex w-full items-center rounded-xl border text-sm font-medium transition duration-150',
-                  isCollapsed ? 'mx-auto h-11 w-11 justify-center px-0 py-0' : 'gap-3 px-4 py-3',
+                  'flex w-full items-center rounded-xl border text-sm font-medium transition-all duration-300 cursor-pointer px-3.5 py-3 gap-0',
                   isActive
                     ? 'border-r-2 border-[#57F1DB] border-y-white/8 border-l-white/8 bg-white/[0.055] text-[#D6FFF6]'
                     : 'border-transparent text-[#95A5A0] hover:border-white/8 hover:bg-white/[0.035] hover:text-white',
                 ].join(' ')}
               >
-                {item.icon}
-                {!isCollapsed ? <span className="truncate">{item.label}</span> : null}
+                <span className="shrink-0">{item.icon}</span>
+                <span
+                  className={[
+                    'transition-all duration-300 ease-in-out overflow-hidden whitespace-nowrap',
+                    isCollapsed ? 'w-0 opacity-0 ml-0' : 'w-24 opacity-100 ml-3',
+                  ].join(' ')}
+                >
+                  {item.label}
+                </span>
               </button>
             )
           })}
@@ -510,14 +587,20 @@ export function DashboardPage() {
             type="button"
             variant="ghost"
             onClick={logout}
-            className={[
-              'py-2.5 text-xs',
-              isCollapsed ? 'mx-auto h-11 w-11 justify-center px-0' : 'w-full justify-center',
-            ].join(' ')}
+            className="w-full px-3.5 py-2.5 text-xs cursor-pointer transition-all duration-300 ease-in-out !justify-start gap-0"
             title={isCollapsed ? 'Logout' : undefined}
           >
-            <LogOut size={14} aria-hidden="true" />
-            {!isCollapsed ? 'Logout' : null}
+            <span className="shrink-0">
+              <LogOut size={14} aria-hidden="true" />
+            </span>
+            <span
+              className={[
+                'transition-all duration-300 ease-in-out overflow-hidden whitespace-nowrap',
+                isCollapsed ? 'w-0 opacity-0 ml-0' : 'w-12 opacity-100 ml-2',
+              ].join(' ')}
+            >
+              Logout
+            </span>
           </Button>
         </div>
 
@@ -525,7 +608,7 @@ export function DashboardPage() {
           <button
             type="button"
             onClick={toggleDesktopSidebar}
-            className="absolute right-0 top-1/2 z-[80] grid size-9 translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/12 bg-[#141820] text-[#D6FFF6] shadow-xl shadow-black/45 transition hover:border-[#57F1DB]/45 hover:bg-[#1C232A]"
+            className="absolute right-0 top-1/2 z-[80] grid size-9 translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/12 bg-[#141820] text-[#D6FFF6] shadow-xl shadow-black/45 transition hover:border-[#57F1DB]/45 hover:bg-[#1C232A] cursor-pointer"
             aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
             {isCollapsed ? <ChevronRight size={16} aria-hidden="true" /> : <ChevronLeft size={16} aria-hidden="true" />}
@@ -544,7 +627,7 @@ export function DashboardPage() {
               <button
                 type="button"
                 onClick={() => setIsSidebarOpen(true)}
-                className="grid size-9 place-items-center rounded-lg border border-white/10 bg-white/[0.02] text-[#95A5A0] transition hover:text-white lg:hidden"
+                className="grid size-9 place-items-center rounded-lg border border-white/10 bg-white/[0.02] text-[#95A5A0] transition hover:text-white lg:hidden cursor-pointer"
                 aria-label="Open sidebar"
               >
                 <Menu size={18} aria-hidden="true" />
@@ -560,7 +643,7 @@ export function DashboardPage() {
           <div className="flex items-center gap-3">
             <button
               type="button"
-              className="grid size-10 place-items-center rounded-xl border border-white/10 bg-white/[0.03] text-[#BACAC5] transition hover:border-[#57F1DB]/35 hover:text-white"
+              className="grid size-10 place-items-center rounded-xl border border-white/10 bg-white/[0.03] text-[#BACAC5] transition hover:border-[#57F1DB]/35 hover:text-white cursor-pointer"
               aria-label="Notifications"
             >
               <Bell size={17} aria-hidden="true" />
@@ -581,19 +664,29 @@ export function DashboardPage() {
                   </h2>
                 </section>
 
-                <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <section className="grid gap-4 md:grid-cols-3">
+                  <WorkspaceActionCard
+                    title="Join Room"
+                    description="Enter a room code to open an existing workspace."
+                    icon={<Hash size={16} aria-hidden="true" />}
+                    actionLabel="Enter Code"
+                    onClick={openJoinModal}
+                  />
+
                   {workspaceTemplates.map((template) => (
                     <WorkspaceActionCard
                       key={template.title}
                       title={template.title}
                       description={template.description}
                       icon={template.icon}
-                      onClick={() => openCreateModal(template.defaultRoomName)}
+                      onClick={() => openCreateModal(template.defaultRoomName, template.purpose)}
                     />
                   ))}
                 </section>
-
-                <section className="mt-8 space-y-5">
+<section className="mt-8 space-y-5">
+                  <div className="text-center">
+                    <h3 className="text-xl font-semibold text-[#F7F7F8]">Room Examples</h3>
+                  </div>
                   <div className="grid gap-5 text-center">
                     <div className="relative mx-auto w-full max-w-md">
                       <Search
@@ -616,9 +709,22 @@ export function DashboardPage() {
 
                   {visibleStaticRoomPreviews.length ? (
                     <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-                      {visibleStaticRoomPreviews.map((room) => (
-                        <StaticRoomCard key={room.title} room={room} />
-                      ))}
+                      {visibleStaticRoomPreviews.map((room) => {
+                        const isCompetingTemplate = room.roomType === 'Competitive Room'
+
+                        return (
+                          <StaticRoomCard
+                            key={room.title}
+                            room={room}
+                            onUseTemplate={() =>
+                              openCreateModal(
+                                room.title,
+                                isCompetingTemplate ? 'COMPETING' : 'COLLABORATIVE',
+                              )
+                            }
+                          />
+                        )
+                      })}
                     </div>
                   ) : (
                     <Card className="mx-auto max-w-xl rounded-2xl border border-white/10 bg-[#060A12]/76 p-6 text-center text-sm text-[#BACAC5]">
@@ -632,7 +738,7 @@ export function DashboardPage() {
                       type="button"
                       onClick={goToPreviousRoomPreviewPage}
                       disabled={roomPreviewPage === 1}
-                      className="inline-flex h-10 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-[#8D9B97] transition hover:text-[#F7F7F8] disabled:cursor-not-allowed disabled:opacity-45"
+                      className="inline-flex h-10 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-[#8D9B97] transition hover:text-[#F7F7F8] cursor-pointer disabled:cursor-not-allowed disabled:opacity-45"
                     >
                       <ChevronLeft size={15} aria-hidden="true" />
                       Previous
@@ -648,7 +754,7 @@ export function DashboardPage() {
                           type="button"
                           onClick={() => setRoomPreviewPage(pageNumber)}
                           className={[
-                            'grid h-10 w-10 place-items-center rounded-lg border text-sm font-semibold transition',
+                            'grid h-10 w-10 place-items-center rounded-lg border text-sm font-semibold transition cursor-pointer',
                             isCurrentPage
                               ? 'border-[#57F1DB]/35 bg-white/[0.055] text-[#D6FFF6]'
                               : 'border-transparent text-[#F7F7F8] hover:border-white/10 hover:bg-white/[0.035]',
@@ -663,7 +769,7 @@ export function DashboardPage() {
                       type="button"
                       onClick={goToNextRoomPreviewPage}
                       disabled={roomPreviewPage === totalRoomPreviewPages}
-                      className="inline-flex h-10 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-[#F7F7F8] transition hover:text-[#D6FFF6] disabled:cursor-not-allowed disabled:opacity-45"
+                      className="inline-flex h-10 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-[#F7F7F8] transition hover:text-[#D6FFF6] cursor-pointer disabled:cursor-not-allowed disabled:opacity-45"
                     >
                       Next
                       <ChevronRight size={15} aria-hidden="true" />
@@ -675,7 +781,7 @@ export function DashboardPage() {
             ) : (
               <div className="space-y-8">
                 <section className="mx-auto max-w-3xl text-center">
-                  <h2 className="text-3xl font-semibold tracking-tight text-[#F7F7F8] sm:text-4xl">Rooms</h2>
+                  <h2 className="text-3xl font-semibold tracking-tight text-[#F7F7F8] sm:text-4xl">Your Rooms</h2>
                   <p className="mt-3 text-sm leading-6 text-[#BACAC5] sm:text-base">
                     Search, manage, and open your joined workspaces.
                   </p>
@@ -727,9 +833,10 @@ export function DashboardPage() {
                         <RealRoomCard
                           key={room.id}
                           roomName={room.name}
+                          purpose={room.purpose}
                           roomCode={room.joinCode}
                           membersCount={room._count?.members ?? 0}
-                          onClick={() => navigate(`/rooms/${room.id}`)}
+                          onClick={() => navigate(`/rooms/${room.id}`, { state: { purpose: room.purpose } })}
                         />
                       ))}
                     </div>
@@ -776,8 +883,8 @@ export function DashboardPage() {
       <div className="relative z-10 hidden min-w-0 flex-1 lg:flex">
         <aside
           className={[
-            'relative z-40 flex h-full shrink-0 flex-col overflow-visible border-r border-white/8 bg-[#07090A]/92 shadow-2xl shadow-black/35 backdrop-blur-2xl transition-[width,padding] duration-300',
-            isDesktopSidebarCollapsed ? 'w-[5rem] px-2 py-5' : 'w-48 p-4',
+            'relative z-40 flex h-full shrink-0 flex-col overflow-visible border-r border-white/8 bg-[#07090A]/92 shadow-2xl shadow-black/35 backdrop-blur-2xl transition-[width] duration-300 px-3.5 py-5',
+            isDesktopSidebarCollapsed ? 'w-[5rem]' : 'w-48',
           ].join(' ')}
         >
           {renderSidebarContent(isDesktopSidebarCollapsed, false)}
@@ -788,10 +895,33 @@ export function DashboardPage() {
 
       <div className="relative z-10 flex min-w-0 flex-1 flex-col lg:hidden">{renderMainContent(true)}</div>
 
+      <Modal isOpen={isJoinModalOpen} onClose={closeJoinModal} title="Join Room">
+        <form onSubmit={handleJoinRoomSubmit} className="grid gap-4">
+          <label className="grid gap-2 text-sm text-zinc-300">
+            Room code
+            <Input
+              value={joinRoomCode}
+              onChange={(event) => setJoinRoomCode(event.target.value.toUpperCase())}
+              placeholder="RM-ABC123"
+              autoFocus
+            />
+          </label>
+
+          {joinRoomError ? (
+            <p className="rounded-lg border border-red-300/20 bg-red-950/20 p-3 text-sm text-red-200">
+              {joinRoomError}
+            </p>
+          ) : null}
+
+          <Button type="submit" disabled={isJoiningRoom}>
+            {isJoiningRoom ? 'Joining...' : 'Enter Code'}
+          </Button>
+        </form>
+      </Modal>
       <Modal
         isOpen={isCreateModalOpen}
         onClose={closeModal}
-        title={createRoomPurpose === 'COMPETING' ? 'Create competing room' : 'Create room'}
+        title={createRoomPurpose === 'COMPETING' ? 'Create competing room' : 'Collaboration room'}
       >
         <form onSubmit={handleRoomSubmit} className="grid gap-4">
           <label className="grid gap-2 text-sm text-zinc-300">
@@ -804,21 +934,31 @@ export function DashboardPage() {
               <div className="grid gap-2">
                 <p className="text-sm font-medium text-white">Difficulty</p>
                 <div className="grid grid-cols-3 gap-2">
-                  {(['EASY', 'MEDIUM', 'HARD'] as const).map((difficulty) => (
-                    <button
-                      key={difficulty}
-                      type="button"
-                      onClick={() => setSelectedDifficulty(difficulty)}
-                      className={[
-                        'rounded-lg border px-3 py-2 text-sm font-semibold transition',
-                        selectedDifficulty === difficulty
-                          ? 'border-[#57F1DB]/40 bg-[#57F1DB]/12 text-[#D6FFF6]'
-                          : 'border-white/10 bg-black/20 text-zinc-400 hover:border-white/20 hover:text-white',
-                      ].join(' ')}
-                    >
-                      {difficulty[0] + difficulty.slice(1).toLowerCase()}
-                    </button>
-                  ))}
+                  {(['EASY', 'MEDIUM', 'HARD'] as const).map((difficulty) => {
+                    const isSelected = selectedDifficulty === difficulty
+                    const activeColorClass =
+                      difficulty === 'EASY'
+                        ? 'border-emerald-500/40 bg-emerald-500/12 text-emerald-300'
+                        : difficulty === 'MEDIUM'
+                        ? 'border-amber-500/40 bg-amber-500/12 text-amber-300'
+                        : 'border-rose-500/40 bg-rose-500/12 text-rose-300'
+
+                    return (
+                      <button
+                        key={difficulty}
+                        type="button"
+                        onClick={() => setSelectedDifficulty(difficulty)}
+                        className={[
+                          'rounded-lg border px-3 py-2 text-sm font-semibold transition cursor-pointer',
+                          isSelected
+                            ? activeColorClass
+                            : 'border-white/10 bg-black/20 text-zinc-400 hover:border-white/20 hover:text-white',
+                        ].join(' ')}
+                      >
+                        {difficulty[0] + difficulty.slice(1).toLowerCase()}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
 
@@ -826,9 +966,10 @@ export function DashboardPage() {
                 <p className="text-sm font-medium text-white">Topics</p>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button
-                      type="button"
-                      className="flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-left text-sm text-white outline-none transition hover:border-white/20 focus:border-[#57F1DB]/35"
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      className="flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-left text-sm text-white outline-none transition hover:border-white/20 focus:border-[#57F1DB]/35"
                     >
                       <span className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
                         {selectedTopics.length ? (
@@ -842,7 +983,16 @@ export function DashboardPage() {
                                 role="button"
                                 tabIndex={0}
                                 aria-label={`Remove ${topic}`}
-                                className="rounded-full text-[#A7B8B3] transition hover:text-white"
+                                className="rounded-full text-[#A7B8B3] transition hover:text-white cursor-pointer"
+                                onPointerDown={(event) => {
+                                  event.stopPropagation()
+                                }}
+                                onMouseDown={(event) => {
+                                  event.stopPropagation()
+                                }}
+                                onTouchStart={(event) => {
+                                  event.stopPropagation()
+                                }}
                                 onClick={(event) => {
                                   event.preventDefault()
                                   event.stopPropagation()
@@ -865,7 +1015,7 @@ export function DashboardPage() {
                         )}
                       </span>
                       <ChevronDown size={16} className="shrink-0 text-zinc-500" aria-hidden="true" />
-                    </button>
+                    </div>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
                     align="start"
@@ -910,45 +1060,31 @@ export function DashboardPage() {
                 </DropdownMenu>
               </div>
 
-              <label className="grid gap-2 text-sm text-zinc-300">
-                Duration
-                <select
-                  value={selectedDuration}
-                  onChange={(event) => setSelectedDuration(Number(event.target.value))}
-                  className="h-11 rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none transition focus:border-[#57F1DB]/35"
-                >
-                  {durationOptions.map((duration) => (
-                    <option key={duration} value={duration}>
-                      {duration} mins
-                    </option>
-                  ))}
-                </select>
-              </label>
             </div>
           ) : null}
 
           <div className="grid gap-3 rounded-lg border border-white/10 bg-white/[0.035] p-3">
             <p className="text-sm font-medium text-white">Member limit</p>
-            <label className="flex items-start gap-3 text-sm text-zinc-300">
+            <label className="flex items-start gap-3 text-sm text-zinc-300 cursor-pointer select-none">
               <input
                 type="radio"
                 name="memberLimitMode"
                 checked={!useMemberLimit}
                 onChange={() => setUseMemberLimit(false)}
-                className="mt-1"
+                className="mt-1 cursor-pointer"
               />
               <span>
                 Unlimited
                 <span className="block text-xs text-zinc-500">Anyone with the room code can join.</span>
               </span>
             </label>
-            <label className="flex items-start gap-3 text-sm text-zinc-300">
+            <label className="flex items-start gap-3 text-sm text-zinc-300 cursor-pointer select-none">
               <input
                 type="radio"
                 name="memberLimitMode"
                 checked={useMemberLimit}
                 onChange={() => setUseMemberLimit(true)}
-                className="mt-1"
+                className="mt-1 cursor-pointer"
               />
               <span className="grid flex-1 gap-2">
                 Limit members
@@ -964,10 +1100,32 @@ export function DashboardPage() {
             </p>
           ) : null}
 
-          <Button type="submit">Create room</Button>
+          <Button
+            type="submit"
+            disabled={creationStage !== 'idle'}
+            className={[
+              'w-full transition-all duration-300 cursor-pointer disabled:cursor-not-allowed',
+              creationStage === 'success'
+                ? 'bg-emerald-600 hover:bg-emerald-600 text-white border-emerald-500'
+                : '',
+            ].join(' ')}
+          >
+            {creationStage === 'creating' ? (
+              <span className="flex items-center justify-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin text-white" aria-hidden="true" />
+                Creating room...
+              </span>
+            ) : creationStage === 'success' ? (
+              <span className="flex items-center justify-center gap-2 animate-bounce">
+                <Check className="h-4 w-4 text-white" aria-hidden="true" />
+                Room created! {createRoomPurpose === 'COMPETING' ? "Let's compete!" : "Let's collab!"}
+              </span>
+            ) : (
+              'Create room'
+            )}
+          </Button>
         </form>
       </Modal>
     </section>
   )
 }
-

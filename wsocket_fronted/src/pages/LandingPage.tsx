@@ -90,7 +90,7 @@ function AppPreview() {
                   <span className="text-[#BDC2FF]">await</span> Flow.
                   <span className="text-[#DCDDDF]">connect</span>();
                 </p>
-                <p className="text-zinc-600">&nbsp;&nbsp;// Initializing realtime buffer...</p>
+                <p className="text-zinc-600">&nbsp;&nbsp;{'// Initializing realtime buffer...'}</p>
                 <p>
                   &nbsp;&nbsp;session.<span className="text-[#DCDDDF]">broadcast</span>({'{'}
                 </p>

@@ -142,9 +142,9 @@ const prepareCodeForRunner = (language: EditorLanguage, code: string): string =>
     return code;
   }
 
-  // Piston's TypeScript runtime can execute CommonJS code, but it does not
-  // include Node type declarations. This keeps beginner-friendly `require("fs")`
-  // examples working without changing the user's code in the editor.
+  
+  
+  
   return `declare const require: any;\n${code}`;
 };
 
@@ -203,9 +203,9 @@ export const verifyEditorRoomAccess = async (roomId: string, userId: string) => 
     return member.userId === userId && member.status === "ACTIVE";
   });
 
-  // Editor access is stricter than simply viewing a public group room.
-  // A user becomes a room member through the normal room join flow first.
-  // Removed members stay blocked because their membership status is no longer ACTIVE.
+  
+  
+  
   if (!userIsActiveRoomMember) {
     throw new HttpError(403, "You do not have access to this room editor");
   }
