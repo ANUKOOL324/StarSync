@@ -13,7 +13,6 @@ async function testFlow() {
 
   console.log('--- SIGNING UP USER A & USER B ---');
   
-  // 1. Sign up User A
   const signupARes = await fetch(`${backendUrl}/api/v1/auth/signup`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -26,7 +25,6 @@ async function testFlow() {
   console.log(`User A created: ${userA.user.username} (${userA.user.email})`);
   const tokenA = userA.token;
 
-  // 2. Sign up User B
   const signupBRes = await fetch(`${backendUrl}/api/v1/auth/signup`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -40,7 +38,6 @@ async function testFlow() {
   const tokenB = userB.token;
 
   console.log('\n--- CREATING COMPETING ROOM WITH USER A ---');
-  // 3. Create room with User A
   const roomPayload = {
     name: 'Run Code Test Room',
     purpose: 'COMPETING',
@@ -72,7 +69,6 @@ async function testFlow() {
   console.log(`Room Duration: ${room.durationMinutes} mins`);
 
   console.log('\n--- FETCHING PROBLEMS ASSIGNED TO THE ROOM ---');
-  // 4. Fetch problems
   const getProblemsRes = await fetch(`${backendUrl}/api/v1/rooms/${room.id}/problems`, {
     method: 'GET',
     headers: {
@@ -98,7 +94,6 @@ async function testFlow() {
   console.log(`\nSelected P1: ${p1.title}`);
   console.log(`P1 Description: ${p1.description}`);
 
-  // 5. Test correct code for P1 with User A
   console.log('\n--- TESTING CORRECT CODE FOR P1 ---');
   const correctJSCode = `
 const fs = require('fs');
@@ -154,7 +149,6 @@ console.log(merged.join(' '));
     `);
   });
 
-  // 6. Test wrong code for P1 with User A
   console.log('\n--- TESTING WRONG CODE FOR P1 ---');
   const wrongJSCode = `console.log("wrong answer");`;
   const runWrongRes = await fetch(`${backendUrl}/api/v1/rooms/${room.id}/problems/run`, {
@@ -187,16 +181,14 @@ console.log(merged.join(' '));
     `);
   });
 
-  // 7. Security Checks:
   console.log('\n--- SECURITY/API CHECKS ---');
   
-  // Check A: Non-member cannot run code for this room problem
   console.log('Check A: Non-member (User B) attempting to run code for User A\'s room...');
   const runNonMemberRes = await fetch(`${backendUrl}/api/v1/rooms/${room.id}/problems/run`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${tokenB}` // User B token
+      'Authorization': `Bearer ${tokenB}`
     },
     body: JSON.stringify({
       problemId: p1.id,
@@ -210,7 +202,6 @@ console.log(merged.join(' '));
   const nonMemberBlocked = runNonMemberRes.status === 403;
   console.log(`Non-member blocked as expected (403): ${nonMemberBlocked}`);
 
-  // Check B: Unassigned problem returns 404
   console.log('\nCheck B: User A attempting to run code for an unassigned problem...');
   const fakeProblemId = '00000000-0000-0000-0000-000000000000';
   const runUnassignedRes = await fetch(`${backendUrl}/api/v1/rooms/${room.id}/problems/run`, {
@@ -231,7 +222,6 @@ console.log(merged.join(' '));
   const unassignedBlocked = runUnassignedRes.status === 404;
   console.log(`Unassigned problem blocked as expected (404): ${unassignedBlocked}`);
 
-  // Check C: Hidden testcases are not executed/exposed in response
   console.log('\nCheck C: Inspecting run response structure to ensure no hidden testcases are leaked...');
   console.log(`Total results returned: ${runCorrectResult.results.length}`);
   const hasHidden = runCorrectResult.results.some(r => r.order === 2 || r.isHidden === true);
