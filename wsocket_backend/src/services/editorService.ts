@@ -257,10 +257,12 @@ export const updateEditorDocument = async (
   return document;
 };
 
-export const runCode = async (input: RunCodeInput, userId: string) => {
-  await verifyEditorRoomAccess(input.roomId, userId);
-
-  const runtime = languageRuntimeMap[input.language];
+export const executeCodeWithInput = async (
+  language: EditorLanguage,
+  code: string,
+  stdin: string,
+) => {
+  const runtime = languageRuntimeMap[language];
 
   if (!runtime) {
     throw new HttpError(400, "Unsupported language");
@@ -278,10 +280,10 @@ export const runCode = async (input: RunCodeInput, userId: string) => {
     files: [
       {
         name: runtime.fileName,
-        content: prepareCodeForRunner(input.language, input.code),
+        content: prepareCodeForRunner(language, code),
       },
     ],
-    stdin: input.stdin,
+    stdin,
   };
 
   try {
@@ -347,4 +349,8 @@ export const runCode = async (input: RunCodeInput, userId: string) => {
   }
 };
 
+export const runCode = async (input: RunCodeInput, userId: string) => {
+  await verifyEditorRoomAccess(input.roomId, userId);
 
+  return executeCodeWithInput(input.language, input.code, input.stdin);
+};
