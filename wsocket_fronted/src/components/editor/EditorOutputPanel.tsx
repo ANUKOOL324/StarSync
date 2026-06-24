@@ -1,6 +1,6 @@
 import { Terminal } from 'lucide-react'
 
-import type { CodeRunResult } from '../../types/editor'
+import type { CodeRunResult, RoomProblemRunResult } from '../../types/editor'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs'
 
 type EditorOutputPanelProps = {
@@ -8,6 +8,7 @@ type EditorOutputPanelProps = {
   fillAvailableHeight?: boolean
   isRunning: boolean
   result: CodeRunResult | null
+  testcaseResult?: RoomProblemRunResult | null
   stdin: string
   tabVariant?: 'default' | 'competing'
   onStdinChange: (value: string) => void
@@ -18,6 +19,7 @@ export function EditorOutputPanel({
   fillAvailableHeight = false,
   isRunning,
   result,
+  testcaseResult = null,
   stdin,
   tabVariant = 'default',
   onStdinChange,
@@ -42,7 +44,7 @@ export function EditorOutputPanel({
 
   return (
     <section className={containerClassName}>
-      <Tabs defaultValue="output" className="flex h-full min-h-0 flex-1 flex-col">
+      <Tabs defaultValue={tabVariant === 'competing' ? 'testcases' : 'output'} className="flex h-full min-h-0 flex-1 flex-col">
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-white/10 px-3 py-2 sm:px-4">
           <div className="flex min-w-0 items-center gap-2">
             <span className="grid size-8 place-items-center rounded-lg border border-white/10 bg-white/[0.045] text-[#7FFFE0]">
@@ -110,12 +112,67 @@ export function EditorOutputPanel({
         </TabsContent>
 
         <TabsContent value="testcases" className="m-0 min-h-0 flex-1 overflow-auto p-4 data-[state=active]:block">
-          <div className="rounded-lg border border-white/8 bg-white/[0.025] p-4">
-            <p className="text-sm font-medium text-slate-200">Testcases are UI-only for now.</p>
-            <p className="mt-2 text-sm leading-6 text-slate-500">
-              Real testcase execution will be connected with the judge milestone.
-            </p>
-          </div>
+          {isRunning ? (
+            <div className="rounded-lg border border-[#57F1DB]/20 bg-[#57F1DB]/[0.06] p-4 text-sm text-[#BFFCF0]">
+              Running visible testcases...
+            </div>
+          ) : error ? (
+            <pre className="whitespace-pre-wrap break-words rounded-lg border border-red-300/20 bg-red-400/[0.06] p-4 text-sm text-red-100">{error}</pre>
+          ) : testcaseResult ? (
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/8 bg-white/[0.025] p-3">
+                <p className="text-sm font-semibold text-slate-100">
+                  {testcaseResult.passedCount} / {testcaseResult.totalCount} passed
+                </p>
+                <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Visible testcases only</p>
+              </div>
+
+              {testcaseResult.results.map((testcase) => (
+                <div
+                  key={testcase.testcaseId}
+                  className={[
+                    'rounded-lg border p-3',
+                    testcase.passed
+                      ? 'border-emerald-300/20 bg-emerald-400/[0.06]'
+                      : 'border-red-300/20 bg-red-400/[0.06]',
+                  ].join(' ')}
+                >
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-slate-100">Testcase {testcase.order}</p>
+                    <span className={testcase.passed ? 'text-xs font-semibold text-emerald-200' : 'text-xs font-semibold text-red-200'}>
+                      {testcase.passed ? 'Passed' : 'Failed'}
+                    </span>
+                  </div>
+
+                  <div className="grid gap-3 text-xs md:grid-cols-3">
+                    <div className="min-w-0">
+                      <p className="mb-1 font-sans uppercase tracking-[0.14em] text-slate-500">Input</p>
+                      <pre className="min-h-16 whitespace-pre-wrap break-words rounded-md border border-white/8 bg-black/25 p-2 text-slate-200">{testcase.input}</pre>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="mb-1 font-sans uppercase tracking-[0.14em] text-slate-500">Expected</p>
+                      <pre className="min-h-16 whitespace-pre-wrap break-words rounded-md border border-white/8 bg-black/25 p-2 text-slate-200">{testcase.expectedOutput}</pre>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="mb-1 font-sans uppercase tracking-[0.14em] text-slate-500">Actual</p>
+                      <pre className="min-h-16 whitespace-pre-wrap break-words rounded-md border border-white/8 bg-black/25 p-2 text-slate-200">{testcase.actualOutput || '(no output)'}</pre>
+                    </div>
+                  </div>
+
+                  {testcase.error ? (
+                    <pre className="mt-3 whitespace-pre-wrap break-words rounded-md border border-red-300/20 bg-black/25 p-2 text-xs text-red-100">{testcase.error}</pre>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-lg border border-white/8 bg-white/[0.025] p-4">
+              <p className="text-sm font-medium text-slate-200">Run code to execute visible testcases.</p>
+              <p className="mt-2 text-sm leading-6 text-slate-500">
+                Hidden testcases are not run or shown here.
+              </p>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="console" className="m-0 min-h-0 flex-1 overflow-auto p-4 font-mono text-sm text-slate-500 data-[state=active]:block">

@@ -1,5 +1,5 @@
 import { apiClient } from './apiClient'
-import type { CodeDocument, CodeRunResult, EditorLanguage } from '../types/editor'
+import type { CodeDocument, CodeRunResult, EditorLanguage, RoomProblemRunResult } from '../types/editor'
 
 type DocumentResponse = {
   document: CodeDocument
@@ -8,6 +8,8 @@ type DocumentResponse = {
 type RunCodeResponse = {
   result: CodeRunResult
 }
+
+type RoomProblemRunResponse = RoomProblemRunResult
 
 const getSafeEditorErrorMessage = (error: unknown) => {
   if (typeof error !== 'object' || error === null) {
@@ -53,6 +55,20 @@ export const editorService = {
     return response.data.document
   },
 
+  async runProblemVisibleTestcases(roomId: string, problemId: string, language: EditorLanguage, code: string) {
+    try {
+      const response = await apiClient.post<RoomProblemRunResponse>(`/rooms/${roomId}/problems/run`, {
+        roomId,
+        problemId,
+        language,
+        code,
+      })
+
+      return response.data
+    } catch (error) {
+      throw new Error(getSafeEditorErrorMessage(error))
+    }
+  },
   async runCode(roomId: string, language: EditorLanguage, code: string, stdin: string) {
     try {
       const response = await apiClient.post<RunCodeResponse>('/editor/run', {

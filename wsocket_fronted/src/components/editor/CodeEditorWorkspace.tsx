@@ -9,7 +9,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { editorService } from '../../services/editorService'
 import { liveblocksService } from '../../services/liveblocksService'
 import type { ChatRoom } from '../../types/chat'
-import type { CodeRunResult, EditorLanguage, EditorPresenceUser, SaveStatus } from '../../types/editor'
+import type { CodeRunResult, EditorLanguage, EditorPresenceUser, RoomProblemRunResult, SaveStatus } from '../../types/editor'
 
 import { CollaborativeCodeEditor } from './CollaborativeCodeEditor'
 import { EditorOutputPanel } from './EditorOutputPanel'
@@ -27,6 +27,7 @@ type CodeEditorWorkspaceProps = {
   connectionStatus: 'connecting' | 'online' | 'offline'
   room: ChatRoom
   toolbarMode?: 'collaborative' | 'competing'
+  competingProblemId?: string | null
 }
 
 type CodeEditorWorkspaceContentProps = CodeEditorWorkspaceProps
@@ -95,6 +96,7 @@ function CodeEditorWorkspaceContent({
   connectionStatus,
   room,
   toolbarMode = 'collaborative',
+  competingProblemId = null,
 }: CodeEditorWorkspaceContentProps) {
   const liveblocksRoom = useRoom()
   const { user } = useAuth()
@@ -107,6 +109,7 @@ function CodeEditorWorkspaceContent({
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null)
   const [runError, setRunError] = useState<string | null>(null)
   const [runResult, setRunResult] = useState<CodeRunResult | null>(null)
+  const [testcaseRunResult, setTestcaseRunResult] = useState<RoomProblemRunResult | null>(null)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const [stdin, setStdin] = useState('')
   const [submitFeedback, setSubmitFeedback] = useState(false)
@@ -417,6 +420,7 @@ function CodeEditorWorkspaceContent({
     setCode(starterCode)
     setRunError(null)
     setRunResult(null)
+    setTestcaseRunResult(null)
     setSaveStatus('unsaved')
 
     const sharedText = yTextRef.current
@@ -444,8 +448,19 @@ function CodeEditorWorkspaceContent({
     setIsRunning(true)
     setRunError(null)
     setRunResult(null)
+    setTestcaseRunResult(null)
 
     try {
+      if (toolbarMode === 'competing') {
+        if (!competingProblemId) {
+          throw new Error('Select a problem before running code')
+        }
+
+        const result = await editorService.runProblemVisibleTestcases(room.id, competingProblemId, language, code)
+        setTestcaseRunResult(result)
+        return
+      }
+
       const result = await editorService.runCode(room.id, language, code, stdin)
       setRunResult(result)
     } catch (error) {
@@ -455,7 +470,11 @@ function CodeEditorWorkspaceContent({
       setIsRunning(false)
     }
   }
-
+  useEffect(() => {
+    setRunError(null)
+    setRunResult(null)
+    setTestcaseRunResult(null)
+  }, [competingProblemId])
   useEffect(() => {
     return () => {
       if (submitFeedbackTimerRef.current) {
@@ -504,6 +523,7 @@ function CodeEditorWorkspaceContent({
         onClearOutput={() => {
           setRunError(null)
           setRunResult(null)
+          setTestcaseRunResult(null)
         }}
         onLanguageChange={handleLanguageChange}
         onReset={handleResetCode}
@@ -562,6 +582,7 @@ function CodeEditorWorkspaceContent({
                 fillAvailableHeight
                 isRunning={isRunning}
                 result={runResult}
+                testcaseResult={testcaseRunResult}
                 stdin={stdin}
                 tabVariant={toolbarMode === 'competing' ? 'competing' : 'default'}
                 onStdinChange={setStdin}

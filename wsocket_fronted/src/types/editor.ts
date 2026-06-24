@@ -35,3 +35,20 @@ export type EditorSyncEvent = {
 export type EditorPresenceUser = Pick<ChatUser, 'id' | 'username' | 'email'>
 
 export type SaveStatus = 'idle' | 'unsaved' | 'syncing' | 'saving' | 'saved' | 'error' | 'remote'
+export type ProblemTestcaseRunResult = {
+  testcaseId: string
+  order: number
+  input: string
+  expectedOutput: string
+  actualOutput: string
+  passed: boolean
+  error?: string
+}
+
+export type RoomProblemRunResult = {
+  problemId: string
+  language: EditorLanguage
+  passedCount: number
+  totalCount: number
+  results: ProblemTestcaseRunResult[]
+}
