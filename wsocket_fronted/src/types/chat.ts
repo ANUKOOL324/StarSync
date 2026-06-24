@@ -58,5 +58,38 @@ export type TypingUser = {
   id: string
   username: string
 }
+export type ProblemDifficulty = 'EASY' | 'MEDIUM' | 'HARD'
 
+export type ProblemExample = {
+  input: string
+  output: string
+  explanation?: string
+}
+
+export type VisibleTestCase = {
+  id: string
+  input: string
+  expectedOutput: string
+  order: number
+}
+
+export type AssignedRoomProblem = {
+  id: string
+  roomProblemId: string
+  slug: string
+  order: number
+  shortLabel: string
+  points: number
+  title: string
+  difficulty: ProblemDifficulty
+  topics: string[]
+  description: string
+  inputFormat: string | null
+  outputFormat: string | null
+  constraints: string[]
+  examples: ProblemExample[] | null
+  starterCode: Record<string, string> | null
+  editorial: string | null
+  visibleTestCases: VisibleTestCase[]
+}
 

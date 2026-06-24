@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 import { apiClient } from './apiClient'
-import type { ChatRoom } from '../types/chat'
+import type { AssignedRoomProblem, ChatRoom } from '../types/chat'
 
 export type CreateRoomPayload = {
   name: string
@@ -11,6 +11,7 @@ export type CreateRoomPayload = {
   difficulty?: 'EASY' | 'MEDIUM' | 'HARD'
   topics?: string[]
   durationMinutes?: number
+  problemCount?: number
 }
 
 export type UpdateRoomPayload = {
@@ -69,6 +70,7 @@ export const roomService = {
       difficulty: payload.difficulty,
       topics: payload.topics,
       durationMinutes: payload.durationMinutes,
+      problemCount: payload.problemCount,
     })
 
     return normalizeRoom(response.data.room)
@@ -99,6 +101,10 @@ export const roomService = {
   },
   delete: async (roomId: string) => {
     await apiClient.delete(`/rooms/${roomId}`)
+  },
+  getProblems: async (roomId: string) => {
+    const response = await apiClient.get<{ problems: AssignedRoomProblem[] }>(`/rooms/${roomId}/problems`)
+    return response.data.problems
   },
   get: async (roomId: string) => {
     const response = await apiClient.get<{ room: ChatRoom }>(`/rooms/${roomId}`)

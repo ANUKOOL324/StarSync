@@ -22,7 +22,8 @@ import type { PanelImperativeHandle } from 'react-resizable-panels'
 import { useAuth } from '../../hooks/useAuth'
 import { useChatSocket } from '../../hooks/useChatSocket'
 import { roomMemberService } from '../../services/roomMemberService'
-import type { ChatRoom, RoomMember } from '../../types/chat'
+import { roomService } from '../../services/roomService'
+import type { AssignedRoomProblem, ChatRoom, RoomMember } from '../../types/chat'
 import { getRoomDisplayInfo } from '../../utils/roomDisplay'
 import { MessageInput } from '../chat/MessageInput'
 import { MessageList } from '../chat/MessageList'
@@ -247,6 +248,51 @@ const splitDurationMinutes = (totalMinutes: number) => {
   }
 }
 
+
+const getFirstVisibleExample = (problem: AssignedRoomProblem) => {
+  if (problem.examples && problem.examples.length > 0) {
+    const firstExample = problem.examples[0]
+
+    return {
+      input: firstExample.input,
+      output: firstExample.output,
+    }
+  }
+
+  const firstVisibleTestCase = problem.visibleTestCases[0]
+
+  if (firstVisibleTestCase) {
+    return {
+      input: firstVisibleTestCase.input,
+      output: firstVisibleTestCase.expectedOutput,
+    }
+  }
+
+  return {
+    input: 'No visible sample input available yet.',
+    output: 'No visible sample output available yet.',
+  }
+}
+
+const mapAssignedProblemToPanelProblem = (problem: AssignedRoomProblem): MockProblem => {
+  const firstExample = getFirstVisibleExample(problem)
+
+  return {
+    id: problem.id,
+    shortLabel: problem.shortLabel || 'P' + problem.order,
+    title: problem.title,
+    difficulty: problem.difficulty,
+    topics: problem.topics,
+    description: problem.description,
+    inputExplanation: problem.inputFormat || 'Read input from standard input.',
+    outputExplanation: problem.outputFormat || 'Print the expected answer to standard output.',
+    constraints: problem.constraints.length > 0 ? problem.constraints : ['No constraints provided yet.'],
+    sampleInput: firstExample.input,
+    sampleOutput: firstExample.output,
+    hints: problem.visibleTestCases.map((testCase) => 'Visible test ' + testCase.order + ': ' + testCase.input),
+  }
+}
+
 const toSessionSeconds = (hours: number, minutes: number) => {
   return Math.max(0, hours) * 3600 + Math.max(0, minutes) * 60
 }
@@ -433,94 +479,6 @@ function CompetingSessionTimer({
   )
 }
 
-const mockProblems: MockProblem[] = [
-  {
-    id: 'p1',
-    shortLabel: 'P1',
-    title: 'Merging Two Sorted Arrays',
-    difficulty: 'MEDIUM',
-    topics: ['Array', 'Two Pointers'],
-    description: 'Given two sorted arrays, merge them into one sorted array in non-decreasing order.',
-    inputExplanation: 'The first line contains both array lengths. The following lines contain the sorted values.',
-    outputExplanation: 'Print every value from the merged sorted array on one line.',
-    constraints: [
-      '1 <= test cases <= 100',
-      '1 <= first array length, second array length <= 50',
-      'Both input arrays are sorted in non-decreasing order',
-    ],
-    sampleInput: '5 2\n1 2 3 4 6\n7 8',
-    sampleOutput: '1 2 3 4 6 7 8',
-    hints: [
-      'Keep one pointer for each array.',
-      'Move the pointer that currently has the smaller value.',
-      'Append the remaining values after one array ends.',
-    ],
-  },
-  {
-    id: 'p2',
-    shortLabel: 'P2',
-    title: 'Two Sum Sorted',
-    difficulty: 'MEDIUM',
-    topics: ['Array', 'Two Pointers'],
-    description: 'Find two positions in a sorted array whose values add up to the requested target.',
-    inputExplanation: 'The first line contains the target. The second line contains the sorted array.',
-    outputExplanation: 'Print the one-based positions of the matching pair.',
-    constraints: [
-      '2 <= array length <= 100000',
-      '-1000000000 <= value, target <= 1000000000',
-      'Exactly one valid pair exists',
-    ],
-    sampleInput: '9\n2 4 5 7 11',
-    sampleOutput: '1 4',
-    hints: [
-      'Start with one pointer at each end.',
-      'Move the left pointer when the sum is too small.',
-    ],
-  },
-  {
-    id: 'p3',
-    shortLabel: 'P3',
-    title: 'Remove Duplicates',
-    difficulty: 'EASY',
-    topics: ['Array'],
-    description: 'Remove duplicate values from a sorted array in place and return the number of unique values.',
-    inputExplanation: 'The input contains the array length followed by the sorted values.',
-    outputExplanation: 'Print the unique count and the unique prefix of the array.',
-    constraints: [
-      '1 <= array length <= 30000',
-      '-100 <= value <= 100',
-      'The array is sorted in non-decreasing order',
-    ],
-    sampleInput: '7\n1 1 2 2 3 3 4',
-    sampleOutput: '4\n1 2 3 4',
-    hints: [
-      'Use one pointer for the next unique position.',
-      'Only write a value when it differs from the previous unique value.',
-    ],
-  },
-  {
-    id: 'p4',
-    shortLabel: 'P4',
-    title: 'Container With Most Water',
-    difficulty: 'MEDIUM',
-    topics: ['Array', 'Two Pointers'],
-    description: 'Choose two vertical lines that hold the greatest possible amount of water between them.',
-    inputExplanation: 'The input contains the number of lines followed by their heights.',
-    outputExplanation: 'Print the maximum container area.',
-    constraints: [
-      '2 <= height count <= 100000',
-      '0 <= height <= 10000',
-      'Use 64-bit arithmetic when calculating area',
-    ],
-    sampleInput: '9\n1 8 6 2 5 4 8 3 7',
-    sampleOutput: '49',
-    hints: [
-      'Start with the widest possible container.',
-      'Move the pointer at the shorter line.',
-    ],
-  },
-]
-
 const sampleSubmissions: SampleSubmission[] = [
   {
     id: '1042',
@@ -613,21 +571,31 @@ const getOnlineMemberIds = (onlineUsers: Array<{ id: string }>) => {
 
 function ProblemPanel({
   sessionStatus,
+  problems,
+  isLoadingProblems = false,
+  problemLoadError = null,
   activeTab: controlledActiveTab,
   onActiveTabChange,
   isCollapsed = false,
   onExpandRequest,
+  selectedProblemId,
+  onSelectedProblemIdChange,
 }: {
   sessionStatus: SessionStatus
+  problems: MockProblem[]
+  isLoadingProblems?: boolean
+  problemLoadError?: string | null
   activeTab?: ProblemPanelTab
   onActiveTabChange?: (tab: ProblemPanelTab) => void
   isCollapsed?: boolean
   onExpandRequest?: (tab: ProblemPanelTab) => void
+  selectedProblemId: string | null
+  onSelectedProblemIdChange: (problemId: string) => void
 }) {
-  const [selectedProblemId, setSelectedProblemId] = useState(mockProblems[0].id)
   const [selectedSubmission, setSelectedSubmission] = useState<SampleSubmission | null>(null)
   const [internalActiveTab, setInternalActiveTab] = useState<ProblemPanelTab>('problem')
   const activeTab = controlledActiveTab ?? internalActiveTab
+
 
   const setActiveTab = (nextTab: ProblemPanelTab) => {
     if (onActiveTabChange) {
@@ -638,16 +606,18 @@ function ProblemPanel({
     setInternalActiveTab(nextTab)
   }
 
-  const selectedProblemIndex = mockProblems.findIndex((problem) => problem.id === selectedProblemId)
-  const selectedProblem = mockProblems[selectedProblemIndex] ?? mockProblems[0]
+  const storedSelectedProblemIndex = problems.findIndex((problem) => problem.id === selectedProblemId)
+  const selectedProblemIndex = storedSelectedProblemIndex >= 0 ? storedSelectedProblemIndex : problems.length > 0 ? 0 : -1
+  const selectedProblem = selectedProblemIndex >= 0 ? problems[selectedProblemIndex] : null
+  const currentProblemNumber = selectedProblemIndex >= 0 ? selectedProblemIndex + 1 : 0
   const isSubmissionCodeBlocked =
     sessionStatus === 'running' && selectedSubmission && !selectedSubmission.isOwnSubmission
 
   const selectProblemAtIndex = (nextIndex: number) => {
-    const nextProblem = mockProblems[nextIndex]
+    const nextProblem = problems[nextIndex]
 
     if (nextProblem) {
-      setSelectedProblemId(nextProblem.id)
+      onSelectedProblemIdChange(nextProblem.id)
     }
   }
 
@@ -697,21 +667,21 @@ function ProblemPanel({
             <section className="overflow-hidden border-b border-white/10 pb-3">
               <div
                 className="flex max-w-full items-center justify-center gap-1 overflow-hidden sm:gap-1.5"
-                aria-label={`Problem ${selectedProblemIndex + 1} of ${mockProblems.length}`}
+                aria-label={`Problem ${currentProblemNumber} of ${problems.length}`}
               >
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon-sm"
-                  disabled={selectedProblemIndex === 0}
+                  disabled={!selectedProblem || selectedProblemIndex <= 0}
                   onClick={() => selectProblemAtIndex(selectedProblemIndex - 1)}
                   aria-label="Previous problem"
                   className="size-8 shrink-0 border border-white/10 text-slate-300 bg-transparent hover:!border-blue-500/40 hover:!bg-transparent hover:!text-white hover:shadow-[0_0_12px_rgba(59,130,246,0.25)] active:!border-blue-500/50 active:shadow-[0_0_14px_rgba(59,130,246,0.35)] transition-all duration-200 cursor-pointer"
                 >
                   <ChevronLeft size={14} aria-hidden="true" />
                 </Button>
-                {mockProblems.map((problem) => {
-                  const isSelected = problem.id === selectedProblem.id
+                {problems.map((problem) => {
+                  const isSelected = selectedProblem ? problem.id === selectedProblem.id : false
                   
                   
                   let difficultyStyles = ''
@@ -745,7 +715,7 @@ function ProblemPanel({
                         'h-8 min-w-9 shrink-0 px-2.5 text-xs border transition-all duration-200',
                         difficultyStyles,
                       ].join(' ')}
-                      onClick={() => setSelectedProblemId(problem.id)}
+                      onClick={() => onSelectedProblemIdChange(problem.id)}
                       aria-pressed={isSelected}
                       aria-label={`Problem ${problem.shortLabel}`}
                     >
@@ -757,7 +727,7 @@ function ProblemPanel({
                   type="button"
                   variant="ghost"
                   size="icon-sm"
-                  disabled={selectedProblemIndex === mockProblems.length - 1}
+                  disabled={!selectedProblem || selectedProblemIndex >= problems.length - 1}
                   onClick={() => selectProblemAtIndex(selectedProblemIndex + 1)}
                   aria-label="Next problem"
                   className="size-8 shrink-0 border border-white/10 text-slate-300 bg-transparent hover:!border-blue-500/40 hover:!bg-transparent hover:!text-white hover:shadow-[0_0_12px_rgba(59,130,246,0.25)] active:!border-blue-500/50 active:shadow-[0_0_14px_rgba(59,130,246,0.35)] transition-all duration-200 cursor-pointer"
@@ -767,6 +737,26 @@ function ProblemPanel({
               </div>
             </section>
 
+            {isLoadingProblems ? (
+              <Card className="border-white/10 bg-white/[0.035] py-8 text-center shadow-none">
+                <CardContent className="px-5 text-sm text-slate-400">
+                  Loading assigned problems...
+                </CardContent>
+              </Card>
+            ) : problemLoadError ? (
+              <Card className="border-red-300/20 bg-red-400/[0.06] py-8 text-center shadow-none">
+                <CardContent className="px-5 text-sm text-red-100">
+                  {problemLoadError}
+                </CardContent>
+              </Card>
+            ) : !selectedProblem ? (
+              <Card className="border-white/10 bg-white/[0.035] py-8 text-center shadow-none">
+                <CardContent className="px-5 text-sm text-slate-400">
+                  No problems are assigned to this room yet.
+                </CardContent>
+              </Card>
+            ) : (
+              <>
               <section className="space-y-4 overflow-hidden">
                 <div className="flex flex-wrap items-center gap-2 overflow-hidden">
                   <Badge className={difficultyClassName[selectedProblem.difficulty]}>
@@ -860,6 +850,8 @@ function ProblemPanel({
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
+              </>
+            )}
             </div>
           </TabsContent>
 
@@ -1230,9 +1222,11 @@ function MembersAndChatPanel({
 }
 
 function EditorPanel({
+  competingProblemId,
   connectionStatus,
   room,
 }: {
+  competingProblemId?: string | null
   connectionStatus: 'connecting' | 'online' | 'offline'
   room: ChatRoom
 }) {
@@ -1244,6 +1238,7 @@ function EditorPanel({
           connectionStatus={connectionStatus}
           room={room}
           toolbarMode="competing"
+          competingProblemId={competingProblemId}
         />
       </Suspense>
     </main>
@@ -1266,6 +1261,10 @@ export function CompetingRoomWorkspace({ room }: CompetingRoomWorkspaceProps) {
   const [sessionStatus, setSessionStatus] = useState<SessionStatus>('waiting')
   const [remainingSeconds, setRemainingSeconds] = useState(toSessionSeconds(initialDraft.hours, initialDraft.minutes))
   const [problemPanelTab, setProblemPanelTab] = useState<ProblemPanelTab>('problem')
+  const [assignedProblems, setAssignedProblems] = useState<MockProblem[]>([])
+  const [selectedProblemId, setSelectedProblemId] = useState<string | null>(null)
+  const [isLoadingProblems, setIsLoadingProblems] = useState(true)
+  const [problemLoadError, setProblemLoadError] = useState<string | null>(null)
   const [isProblemPanelCollapsed, setIsProblemPanelCollapsed] = useState(false)
   const problemPanelRef = useRef<PanelImperativeHandle | null>(null)
   const [sessionPanelTab, setSessionPanelTab] = useState<SessionPanelTab>('chat')
@@ -1335,6 +1334,59 @@ export function CompetingRoomWorkspace({ room }: CompetingRoomWorkspaceProps) {
   const currentMember = members.find((member) => member.id === user?.id)
   const canManageTimer =
     room.adminId === user?.id || currentMember?.role === 'ADMIN' || (!room.adminId && members.length === 0)
+
+  const selectedProblem = assignedProblems.find((problem) => problem.id === selectedProblemId) ?? assignedProblems[0] ?? null
+  const selectedProblemRunId = selectedProblem?.id ?? null
+
+  useEffect(() => {
+    let isCurrentRequest = true
+
+    const loadAssignedProblems = async () => {
+      setIsLoadingProblems(true)
+      setProblemLoadError(null)
+
+      try {
+        const roomProblems = await roomService.getProblems(room.id)
+
+        if (!isCurrentRequest) {
+          return
+        }
+
+        const mappedProblems = roomProblems.map(mapAssignedProblemToPanelProblem)
+        setAssignedProblems(mappedProblems)
+      } catch {
+        if (!isCurrentRequest) {
+          return
+        }
+
+        setAssignedProblems([])
+        setProblemLoadError('Could not load assigned problems for this room.')
+      } finally {
+        if (isCurrentRequest) {
+          setIsLoadingProblems(false)
+        }
+      }
+    }
+
+    void loadAssignedProblems()
+
+    return () => {
+      isCurrentRequest = false
+    }
+  }, [room.id])
+
+  useEffect(() => {
+    if (assignedProblems.length === 0) {
+      setSelectedProblemId(null)
+      return
+    }
+
+    const selectedProblemStillExists = assignedProblems.some((problem) => problem.id === selectedProblemId)
+
+    if (!selectedProblemStillExists) {
+      setSelectedProblemId(assignedProblems[0].id)
+    }
+  }, [assignedProblems, selectedProblemId])
 
   const handleCopyRoomCode = async () => {
     if (!room.joinCode || !navigator.clipboard) {
@@ -1519,10 +1571,15 @@ export function CompetingRoomWorkspace({ room }: CompetingRoomWorkspaceProps) {
               <div className="h-full min-h-0 min-w-0 overflow-hidden">
                 <ProblemPanel
                   sessionStatus={sessionStatus}
+                  problems={assignedProblems}
+                  isLoadingProblems={isLoadingProblems}
+                  problemLoadError={problemLoadError}
                   activeTab={problemPanelTab}
                   onActiveTabChange={setProblemPanelTab}
                   isCollapsed={isProblemPanelCollapsed}
                   onExpandRequest={handleProblemPanelExpand}
+                  selectedProblemId={selectedProblem?.id ?? null}
+                  onSelectedProblemIdChange={setSelectedProblemId}
                 />
               </div>
             </ResizablePanel>
@@ -1533,7 +1590,7 @@ export function CompetingRoomWorkspace({ room }: CompetingRoomWorkspaceProps) {
               minSize="30%"
               className="min-h-0 min-w-0 overflow-hidden"
             >
-              <EditorPanel connectionStatus={connectionStatus} room={room} />
+              <EditorPanel competingProblemId={selectedProblemRunId} connectionStatus={connectionStatus} room={room} />
             </ResizablePanel>
             <ResizableHandle withHandle className="z-20 w-1.5 border-x border-white/5 bg-white/[0.025] transition hover:bg-[#57F1DB]/12" />
             <ResizablePanel
@@ -1582,11 +1639,18 @@ export function CompetingRoomWorkspace({ room }: CompetingRoomWorkspaceProps) {
           </TabsList>
 
           <TabsContent value="problem" className="m-0 h-full min-h-0 min-w-0 overflow-hidden rounded-2xl border border-white/10">
-            <ProblemPanel sessionStatus={sessionStatus} />
+            <ProblemPanel
+              sessionStatus={sessionStatus}
+              problems={assignedProblems}
+              isLoadingProblems={isLoadingProblems}
+              problemLoadError={problemLoadError}
+              selectedProblemId={selectedProblem?.id ?? null}
+              onSelectedProblemIdChange={setSelectedProblemId}
+            />
           </TabsContent>
 
           <TabsContent value="editor" className="m-0 h-full min-h-0 min-w-0 overflow-hidden rounded-2xl border border-white/10">
-            <EditorPanel connectionStatus={connectionStatus} room={room} />
+            <EditorPanel competingProblemId={selectedProblemRunId} connectionStatus={connectionStatus} room={room} />
           </TabsContent>
 
           <TabsContent value="chat" className="m-0 h-full min-h-0 min-w-0 overflow-hidden rounded-2xl border border-white/10">
@@ -1656,4 +1720,3 @@ export function CompetingRoomWorkspace({ room }: CompetingRoomWorkspaceProps) {
     </TooltipProvider>
   )
 }
-
