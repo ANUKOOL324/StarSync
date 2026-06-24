@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { editorLanguageSchema } from "./editorValidation";
+
 const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 const optionalMaxMembersSchema = z
@@ -29,6 +31,12 @@ export const createRoomSchema = z
     purpose: roomPurposeSchema.optional(),
     difficulty: problemDifficultySchema.optional(),
     topics: z.array(z.string().trim().min(1).max(40)).max(10, "Too many topics selected").optional(),
+    problemCount: z
+      .number({ message: "Problem count must be a number" })
+      .int("Problem count must be a whole number")
+      .min(1, "Choose at least 1 problem")
+      .max(10, "Choose 10 problems or fewer")
+      .optional(),
     durationMinutes: z
       .number({ message: "Duration must be a number" })
       .int("Duration must be a whole number")
@@ -75,11 +83,19 @@ export const roomParamsSchema = z.object({
   roomId: z.string().trim().min(1, "Room id is required"),
 });
 
+export const runRoomProblemCodeSchema = z.object({
+  roomId: z.string().trim().min(1, "Room id is required"),
+  problemId: z.string().trim().min(1, "Problem id is required"),
+  language: editorLanguageSchema,
+  code: z.string().min(1, "Code is required").max(100_000, "Code must be 100,000 characters or less"),
+});
+
 export const roomMemberParamsSchema = z.object({
   roomId: z.string().trim().min(1, "Room id is required"),
   userId: z.string().trim().min(1, "User id is required"),
 });
 
+export type RunRoomProblemCodeInput = z.infer<typeof runRoomProblemCodeSchema>;
 export type CreateRoomInput = z.infer<typeof createRoomSchema>;
 export type JoinRoomInput = z.infer<typeof joinRoomSchema>;
 export type UpdateRoomInput = z.infer<typeof updateRoomSchema>;

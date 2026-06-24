@@ -5,9 +5,12 @@ import {
   deleteRoomController,
   getRoomController,
   getRoomMembersController,
+  getRoomProblemsController,
   getRoomsController,
   joinRoomController,
   removeRoomMemberController,
+  runRoomProblemCodeController,
+
   updateRoomController,
 } from "../controllers/roomController";
 import { requireAuth } from "../middleware/authMiddleware";
@@ -20,6 +23,9 @@ roomRoutes.post("/", asyncHandler(createRoomController));
 roomRoutes.post("/join", asyncHandler(joinRoomController));
 roomRoutes.get("/", asyncHandler(getRoomsController));
 roomRoutes.get("/:roomId/members", asyncHandler(getRoomMembersController));
+roomRoutes.get("/:roomId/problems", asyncHandler(getRoomProblemsController));
+roomRoutes.post("/:roomId/problems/run", asyncHandler(runRoomProblemCodeController));
+
 roomRoutes.get("/:roomId", asyncHandler(getRoomController));
 roomRoutes.patch("/:roomId", asyncHandler(updateRoomController));
 roomRoutes.delete("/:roomId/members/:userId", asyncHandler(removeRoomMemberController));

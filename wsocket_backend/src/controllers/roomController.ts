@@ -5,9 +5,12 @@ import {
   deleteRoom,
   getRoomByIdOrSlug,
   getRoomMembers,
+  getRoomProblems,
   getRooms,
   joinRoomByCode,
   removeRoomMember,
+  runRoomProblemVisibleTestcases,
+
   updateRoom,
 } from "../services/roomService";
 import { HttpError } from "../utils/HttpError";
@@ -16,6 +19,8 @@ import {
   joinRoomSchema,
   roomMemberParamsSchema,
   roomParamsSchema,
+  runRoomProblemCodeSchema,
+
   updateRoomSchema,
 } from "../validations/roomValidation";
 
@@ -70,6 +75,32 @@ export const getRoomMembersController = async (request: Request, response: Respo
   const members = await getRoomMembers(roomId, request.user.userId);
 
   response.status(200).json({ members });
+};
+
+export const getRoomProblemsController = async (request: Request, response: Response) => {
+  if (!request.user) {
+    throw new HttpError(401, "Unauthorized");
+  }
+
+  const { roomId } = roomParamsSchema.parse(request.params);
+  const problems = await getRoomProblems(roomId, request.user.userId);
+
+  response.status(200).json({ problems });
+};
+
+export const runRoomProblemCodeController = async (request: Request, response: Response) => {
+  if (!request.user) {
+    throw new HttpError(401, "Unauthorized");
+  }
+
+  const { roomId } = roomParamsSchema.parse(request.params);
+  const input = runRoomProblemCodeSchema.parse({
+    ...request.body,
+    roomId,
+  });
+  const result = await runRoomProblemVisibleTestcases(input, request.user.userId);
+
+  response.status(200).json(result);
 };
 
 export const updateRoomController = async (request: Request, response: Response) => {

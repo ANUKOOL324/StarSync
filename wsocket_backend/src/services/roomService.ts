@@ -1,10 +1,18 @@
 import { prisma } from "../prisma/client";
+import { executeCodeWithInput } from "./editorService";
 import { HttpError } from "../utils/HttpError";
-import type { CreateRoomInput, JoinRoomInput, UpdateRoomInput } from "../validations/roomValidation";
-import { ensureActiveRoomAdmin, ensureGroupRoom, findRoomForAccess, getActiveRoomMember } from "./roomAccessService";
+import type { CreateRoomInput, JoinRoomInput, RunRoomProblemCodeInput, UpdateRoomInput } from "../validations/roomValidation";
+import {
+  ensureActiveRoomAdmin,
+  ensureActiveRoomMember,
+  ensureGroupRoom,
+  findRoomForAccess,
+  getActiveRoomMember,
+} from "./roomAccessService";
 
 const JOIN_CODE_PREFIX = "RM";
 const JOIN_CODE_CHARACTERS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const DEFAULT_COMPETING_PROBLEM_COUNT = 4;
 
 const createSlug = (roomName: string): string => {
   const lowercaseName = roomName.toLowerCase().trim();
@@ -165,6 +173,99 @@ const getCompetingRoomDuration = (input: CreateRoomInput) => {
   return input.durationMinutes ?? null;
 };
 
+type ProblemForAssignment = {
+  id: string;
+};
+
+const addUniqueProblems = (
+  selectedProblems: ProblemForAssignment[],
+  candidateProblems: ProblemForAssignment[],
+  selectedProblemIds: Set<string>,
+  problemCount: number,
+) => {
+  for (const problem of candidateProblems) {
+    if (selectedProblems.length >= problemCount) {
+      return;
+    }
+
+    if (selectedProblemIds.has(problem.id)) {
+      continue;
+    }
+
+    selectedProblems.push(problem);
+    selectedProblemIds.add(problem.id);
+  }
+};
+
+const assignProblemsToCompetingRoom = async (roomId: string, input: CreateRoomInput) => {
+  if (getRoomPurpose(input) !== "COMPETING") {
+    return;
+  }
+
+  const problemCount = input.problemCount ?? DEFAULT_COMPETING_PROBLEM_COUNT;
+  const difficulty = getCompetingRoomDifficulty(input);
+  const topics = getCompetingRoomTopics(input);
+  const selectedProblems: ProblemForAssignment[] = [];
+  const selectedProblemIds = new Set<string>();
+
+  if (difficulty && topics.length > 0) {
+    const matchingTopicProblems = await prisma.problem.findMany({
+      where: {
+        isActive: true,
+        difficulty,
+        topics: { hasSome: topics },
+      },
+      orderBy: { createdAt: "asc" },
+      take: problemCount,
+      select: { id: true },
+    });
+
+    addUniqueProblems(selectedProblems, matchingTopicProblems, selectedProblemIds, problemCount);
+  }
+
+  if (difficulty && selectedProblems.length < problemCount) {
+    const sameDifficultyProblems = await prisma.problem.findMany({
+      where: {
+        isActive: true,
+        difficulty,
+        id: { notIn: Array.from(selectedProblemIds) },
+      },
+      orderBy: { createdAt: "asc" },
+      take: problemCount - selectedProblems.length,
+      select: { id: true },
+    });
+
+    addUniqueProblems(selectedProblems, sameDifficultyProblems, selectedProblemIds, problemCount);
+  }
+
+  if (selectedProblems.length < problemCount) {
+    const fallbackProblems = await prisma.problem.findMany({
+      where: {
+        isActive: true,
+        id: { notIn: Array.from(selectedProblemIds) },
+      },
+      orderBy: { createdAt: "asc" },
+      take: problemCount - selectedProblems.length,
+      select: { id: true },
+    });
+
+    addUniqueProblems(selectedProblems, fallbackProblems, selectedProblemIds, problemCount);
+  }
+
+  if (selectedProblems.length === 0) {
+    return;
+  }
+
+  await prisma.roomProblem.createMany({
+    data: selectedProblems.map((problem, index) => ({
+      roomId,
+      problemId: problem.id,
+      order: index + 1,
+    })),
+    skipDuplicates: true,
+  });
+};
+
 const countActiveRoomMembers = async (roomId: string): Promise<number> => {
   return prisma.roomMember.count({
     where: {
@@ -219,6 +320,8 @@ export const createRoom = async (input: CreateRoomInput, adminId: string) => {
     },
     select: roomSelect,
   });
+
+  await assignProblemsToCompetingRoom(createdRoom.id, input);
 
   return createdRoom;
 };
@@ -338,6 +441,145 @@ export const getRoomByIdOrSlug = async (roomId: string, userId: string) => {
   return safeRoom;
 };
 
+
+export const getRoomProblems = async (roomId: string, userId: string) => {
+  const { room } = await ensureActiveRoomMember(roomId, userId);
+
+  const assignedProblems = await prisma.roomProblem.findMany({
+    where: { roomId: room.id },
+    orderBy: { order: "asc" },
+    select: {
+      id: true,
+      order: true,
+      points: true,
+      problem: {
+        select: {
+          id: true,
+          slug: true,
+          title: true,
+          difficulty: true,
+          topics: true,
+          description: true,
+          inputFormat: true,
+          outputFormat: true,
+          constraints: true,
+          examples: true,
+          starterCode: true,
+          editorial: true,
+          testCases: {
+            where: { isHidden: false },
+            orderBy: { order: "asc" },
+            select: {
+              id: true,
+              input: true,
+              expectedOutput: true,
+              order: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  return assignedProblems.map((roomProblem) => ({
+    roomProblemId: roomProblem.id,
+    id: roomProblem.problem.id,
+    slug: roomProblem.problem.slug,
+    order: roomProblem.order,
+    shortLabel: `P${roomProblem.order}`,
+    points: roomProblem.points,
+    title: roomProblem.problem.title,
+    difficulty: roomProblem.problem.difficulty,
+    topics: roomProblem.problem.topics,
+    description: roomProblem.problem.description,
+    inputFormat: roomProblem.problem.inputFormat,
+    outputFormat: roomProblem.problem.outputFormat,
+    constraints: roomProblem.problem.constraints,
+    examples: roomProblem.problem.examples,
+    starterCode: roomProblem.problem.starterCode,
+    editorial: roomProblem.problem.editorial,
+    visibleTestCases: roomProblem.problem.testCases,
+  }));
+};
+const normalizeOutputForComparison = (value: string): string => {
+  return value.replace(/\r\n/g, "\n").trim();
+};
+
+const getRunErrorMessage = (result: Awaited<ReturnType<typeof executeCodeWithInput>>): string | undefined => {
+  if (result.status === "success") {
+    return undefined;
+  }
+
+  const readableError = [result.compileOutput, result.stderr, result.output]
+    .find((value) => value.trim().length > 0);
+
+  return readableError || "Code execution failed";
+};
+
+export const runRoomProblemVisibleTestcases = async (
+  input: RunRoomProblemCodeInput,
+  userId: string,
+) => {
+  const { room } = await ensureActiveRoomMember(input.roomId, userId);
+
+  const roomProblem = await prisma.roomProblem.findFirst({
+    where: {
+      roomId: room.id,
+      problemId: input.problemId,
+    },
+    select: {
+      problem: {
+        select: {
+          id: true,
+          testCases: {
+            where: { isHidden: false },
+            orderBy: { order: "asc" },
+            select: {
+              id: true,
+              input: true,
+              expectedOutput: true,
+              order: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!roomProblem) {
+    throw new HttpError(404, "Problem is not assigned to this room");
+  }
+
+  const results = [];
+
+  for (const testCase of roomProblem.problem.testCases) {
+    const runResult = await executeCodeWithInput(input.language, input.code, testCase.input);
+    const actualOutput = runResult.stdout || runResult.output;
+    const passed =
+      runResult.status === "success" &&
+      normalizeOutputForComparison(actualOutput) === normalizeOutputForComparison(testCase.expectedOutput);
+
+    results.push({
+      testcaseId: testCase.id,
+      order: testCase.order,
+      input: testCase.input,
+      expectedOutput: testCase.expectedOutput,
+      actualOutput,
+      passed,
+      error: getRunErrorMessage(runResult),
+    });
+  }
+
+  const passedCount = results.filter((result) => result.passed).length;
+
+  return {
+    problemId: roomProblem.problem.id,
+    language: input.language,
+    passedCount,
+    totalCount: results.length,
+    results,
+  };
+};
 export const addGroupRoomMember = async (roomId: string, userId: string) => {
   const room = await findRoomForAccess(roomId);
 
