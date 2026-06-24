@@ -1,8 +1,3 @@
-
-
-
-
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -37,6 +32,17 @@ enum RoomMemberStatus {
   REMOVED
 }
 
+enum SubmissionStatus {
+  PENDING
+  RUNNING
+  ACCEPTED
+  WRONG_ANSWER
+  COMPILATION_ERROR
+  RUNTIME_ERROR
+  TIME_LIMIT_EXCEEDED
+  INTERNAL_ERROR
+}
+
 model User {
   id          String       @id @default(cuid())
   username    String
@@ -46,53 +52,139 @@ model User {
   rooms       Room[]       @relation("RoomAdmin")
   messages    Message[]
   memberships RoomMember[]
+  submissions Submission[]
 }
 
 model Room {
-  id           String        @id @default(cuid())
-  name         String        @default("")
-  slug         String        @unique
-  joinCode     String        @unique
-  maxMembers   Int?
-  type         RoomType      @default(GROUP)
-  purpose      RoomPurpose   @default(COLLABORATIVE)
-  difficulty   ProblemDifficulty?
-  topics       String[]      @default([])
+  id              String        @id @default(cuid())
+  name            String        @default("")
+  slug            String        @unique
+  joinCode        String        @unique
+  maxMembers      Int?
+  type            RoomType      @default(GROUP)
+  purpose         RoomPurpose   @default(COLLABORATIVE)
+  difficulty      ProblemDifficulty?
+  topics          String[]      @default([])
   durationMinutes Int?
-  createdAt    DateTime      @default(now())
-  adminId      String?
-  admin        User?         @relation("RoomAdmin", fields: [adminId], references: [id], onDelete: Cascade)
-  messages     Message[]
-  members      RoomMember[]
-  codeDocument CodeDocument?
+  createdAt       DateTime      @default(now())
+  adminId         String?
+  admin           User?         @relation("RoomAdmin", fields: [adminId], references: [id], onDelete: Cascade)
+  messages        Message[]
+  members         RoomMember[]
+  codeDocument    CodeDocument?
+  roomProblems    RoomProblem[]
+  submissions     Submission[]
 
   @@index([type])
+  @@index([purpose])
+}
+
+model Problem {
+  id           String            @id @default(cuid())
+  slug         String            @unique
+  title        String
+  difficulty   ProblemDifficulty
+  topics       String[]          @default([])
+  description  String
+  inputFormat  String?
+  outputFormat String?
+  constraints  String[]          @default([])
+  examples     Json?
+  starterCode  Json?
+  editorial    String?
+  isActive     Boolean           @default(true)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  testCases    TestCase[]
+  roomProblems RoomProblem[]
+  submissions  Submission[]
+
+  @@index([difficulty])
+  @@index([isActive])
+}
+
+model TestCase {
+  id             String   @id @default(cuid())
+  input          String
+  expectedOutput String
+  isHidden       Boolean  @default(false)
+  order          Int      @default(1)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  problemId      String
+  problem        Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@index([problemId])
+  @@index([problemId, isHidden])
+}
+
+model RoomProblem {
+  id        String   @id @default(cuid())
+  roomId    String
+  problemId String
+  order     Int
+  points    Int      @default(100)
+  createdAt DateTime @default(now())
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  problem   Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, problemId])
+  @@unique([roomId, order])
+  @@index([roomId])
+  @@index([problemId])
+}
+
+model Submission {
+  id          String           @id @default(cuid())
+  code        String
+  language    String
+  status      SubmissionStatus @default(PENDING)
+  runtimeMs   Int?
+  memoryKb    Int?
+  passedCount Int?
+  totalCount  Int?
+  isLate      Boolean          @default(false)
+  submittedAt DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  userId      String
+  roomId      String
+  problemId   String
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room        Room             @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  problem     Problem          @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([roomId])
+  @@index([problemId])
+  @@index([roomId, problemId])
+  @@index([roomId, userId])
 }
 
 model CodeDocument {
   id        String   @id @default(cuid())
   roomId    String   @unique
   title     String   @default("main")
-  language  String   @default("javascript")
   content   String   @default("")
+  language  String   @default("javascript")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
 }
 
 model RoomMember {
   id       String           @id @default(cuid())
-  userId   String
   roomId   String
+  userId   String
   role     RoomRole         @default(MEMBER)
   status   RoomMemberStatus @default(ACTIVE)
   joinedAt DateTime         @default(now())
-  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   room     Room             @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, roomId])
+  @@index([userId])
   @@index([roomId])
+  @@index([roomId, status])
 }
 
 model Message {
