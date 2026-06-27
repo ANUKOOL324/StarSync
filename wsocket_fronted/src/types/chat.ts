@@ -29,6 +29,8 @@ export type ChatRoom = {
   difficulty?: 'EASY' | 'MEDIUM' | 'HARD' | null
   topics?: string[]
   durationMinutes?: number | null
+  sessionStatus?: 'WAITING' | 'RUNNING' | 'ENDED'
+  sessionStartedAt?: string | null
   createdAt?: string
   adminId?: string
   admin?: ChatUser
@@ -93,3 +95,29 @@ export type AssignedRoomProblem = {
   visibleTestCases: VisibleTestCase[]
 }
 
+export type RoomTimerUpdateEvent = {
+  type: 'ROOM_TIMER_UPDATED'
+  payload: {
+    roomId: string
+    sessionStatus: 'WAITING' | 'RUNNING' | 'ENDED'
+    sessionStartedAt: string | null
+    durationMinutes: number | null
+  }
+}
+
+export type RoomSubmissionCreatedEvent = {
+  type: 'ROOM_SUBMISSION_CREATED'
+  payload: {
+    roomId: string
+    problemId: string
+    submissionId: string
+    userId: string
+    username: string
+    status: string
+    language: string
+    passedCount: number
+    totalCount: number
+    runtimeMs?: number
+    submittedAt: string
+  }
+}

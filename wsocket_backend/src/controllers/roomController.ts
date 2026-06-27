@@ -10,9 +10,11 @@ import {
   joinRoomByCode,
   removeRoomMember,
   runRoomProblemVisibleTestcases,
-
+  submitRoomProblemCode,
+  getRoomProblemSubmissions,
   updateRoom,
 } from "../services/roomService";
+import { broadcastRoomUpdate, broadcastRoomSubmissionCreated } from "../websocket/socketManager";
 import { HttpError } from "../utils/HttpError";
 import {
   createRoomSchema,
@@ -20,7 +22,8 @@ import {
   roomMemberParamsSchema,
   roomParamsSchema,
   runRoomProblemCodeSchema,
-
+  submitRoomProblemCodeSchema,
+  roomProblemParamsSchema,
   updateRoomSchema,
 } from "../validations/roomValidation";
 
@@ -112,6 +115,18 @@ export const updateRoomController = async (request: Request, response: Response)
   const input = updateRoomSchema.parse(request.body);
   const room = await updateRoom(roomId, input, request.user.userId);
 
+  if (input.sessionStatus || input.sessionStartedAt !== undefined) {
+    broadcastRoomUpdate(roomId, {
+      type: "ROOM_TIMER_UPDATED",
+      payload: {
+        roomId: room.id,
+        sessionStatus: room.sessionStatus,
+        sessionStartedAt: room.sessionStartedAt,
+        durationMinutes: room.durationMinutes,
+      },
+    });
+  }
+
   response.status(200).json({ room });
 };
 
@@ -135,4 +150,44 @@ export const removeRoomMemberController = async (request: Request, response: Res
   const removedMember = await removeRoomMember(roomId, userId, request.user.userId);
 
   response.status(200).json({ removedMember });
+};
+
+export const submitRoomProblemCodeController = async (request: Request, response: Response) => {
+  if (!request.user) {
+    throw new HttpError(401, "Unauthorized");
+  }
+
+  const { roomId } = roomParamsSchema.parse(request.params);
+  const input = submitRoomProblemCodeSchema.parse({
+    ...request.body,
+    roomId,
+  });
+  const result = await submitRoomProblemCode(input, request.user.userId);
+
+  broadcastRoomSubmissionCreated(roomId, {
+    roomId,
+    problemId: result.problemId,
+    submissionId: result.submissionId,
+    userId: request.user.userId,
+    username: result.username,
+    status: result.status,
+    language: result.language,
+    passedCount: result.passedCount,
+    totalCount: result.totalCount,
+    runtimeMs: result.runtimeMs,
+    submittedAt: result.submittedAt,
+  });
+
+  response.status(200).json(result);
+};
+
+export const getRoomProblemSubmissionsController = async (request: Request, response: Response) => {
+  if (!request.user) {
+    throw new HttpError(401, "Unauthorized");
+  }
+
+  const { roomId, problemId } = roomProblemParamsSchema.parse(request.params);
+  const submissions = await getRoomProblemSubmissions(roomId, problemId, request.user.userId);
+
+  response.status(200).json({ submissions });
 };

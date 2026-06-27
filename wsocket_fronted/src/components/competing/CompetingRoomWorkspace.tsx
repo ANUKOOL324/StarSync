@@ -6,15 +6,19 @@ import {
   Clock3,
   Copy,
   FileText,
+  LogOut,
   MoreVertical,
   MessageSquare,
   Play,
   RotateCcw,
   ScrollText,
+  StopCircle,
+  Trash2,
   Trophy,
   Users,
+  X,
 } from 'lucide-react'
-import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import type { PanelImperativeHandle } from 'react-resizable-panels'
@@ -23,7 +27,9 @@ import { useAuth } from '../../hooks/useAuth'
 import { useChatSocket } from '../../hooks/useChatSocket'
 import { roomMemberService } from '../../services/roomMemberService'
 import { roomService } from '../../services/roomService'
+import { editorService } from '../../services/editorService'
 import type { AssignedRoomProblem, ChatRoom, RoomMember } from '../../types/chat'
+import type { SubmissionHistoryItem } from '../../types/editor'
 import { getRoomDisplayInfo } from '../../utils/roomDisplay'
 import { MessageInput } from '../chat/MessageInput'
 import { MessageList } from '../chat/MessageList'
@@ -38,6 +44,8 @@ import {
 import { Avatar } from '../ui/Avatar'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/Button'
+import { Modal } from '../ui/Modal'
+import { toast } from 'sonner'
 import {
   Card,
   CardContent,
@@ -54,8 +62,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '../ui/dialog'
@@ -201,19 +207,6 @@ function SessionPanelRail({
   )
 }
 
-type SampleSubmission = {
-  id: string
-  submittedAt: string
-  username: string
-  problem: string
-  language: string
-  verdict: 'Accepted' | 'Wrong Answer' | 'Compilation Error'
-  runtime: string
-  memory: string
-  code: string
-  isOwnSubmission: boolean
-}
-
 type MockProblem = {
   id: string
   shortLabel: string
@@ -313,6 +306,7 @@ function CompetingSessionTimer({
   onDraftMinutesChange,
   onReset,
   onStart,
+  onEnd,
   remainingSeconds,
   sessionStatus,
 }: {
@@ -323,6 +317,7 @@ function CompetingSessionTimer({
   onDraftMinutesChange: (minutes: number) => void
   onReset: () => void
   onStart: () => void
+  onEnd?: () => void
   remainingSeconds: number
   sessionStatus: SessionStatus
 }) {
@@ -350,7 +345,7 @@ function CompetingSessionTimer({
     return (
       <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.035] px-2.5 py-1.5">
         <Clock3 size={14} className="shrink-0 text-slate-400" aria-hidden="true" />
-        <span className="font-mono text-sm tabular-nums text-white font-semibold">{clockLabel}</span>
+        <span className="font-mono text-sm font-semibold tabular-nums text-white">{clockLabel}</span>
         {sessionStatus === 'waiting' ? (
           <span className="text-xs text-slate-500">Waiting</span>
         ) : null}
@@ -360,16 +355,14 @@ function CompetingSessionTimer({
   }
 
   return (
-    <div
-      className={[
-        'flex items-center gap-0.5 rounded-lg border bg-white/[0.035] p-0.5',
-        isRunning
-          ? 'border-emerald-300/25'
-          : isEnded
-            ? 'border-amber-300/25'
-            : 'border-white/10',
-      ].join(' ')}
-    >
+    <div className={[
+      'flex items-center gap-0.5 rounded-lg border bg-white/[0.035] p-0.5',
+      isRunning
+        ? 'border-emerald-300/25'
+        : isEnded
+          ? 'border-amber-300/25'
+          : 'border-white/10',
+    ].join(' ')}>
       <Button
         type="button"
         variant="ghost"
@@ -468,7 +461,19 @@ function CompetingSessionTimer({
         type="button"
         variant="ghost"
         size="icon-sm"
-        className="size-8 shrink-0"
+        className="size-8 shrink-0 text-red-400 hover:text-red-300 hover:bg-red-500/10"
+        onClick={onEnd}
+        disabled={!isRunning}
+        aria-label="End session timer"
+      >
+        <StopCircle size={14} aria-hidden="true" />
+      </Button>
+
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        className="size-8 shrink-0 border-white/10 hover:border-[#3B82F6]/40 hover:bg-transparent hover:text-white"
         onClick={onReset}
         disabled={!isRunning && !isEnded}
         aria-label="Reset session timer"
@@ -479,70 +484,7 @@ function CompetingSessionTimer({
   )
 }
 
-const sampleSubmissions: SampleSubmission[] = [
-  {
-    id: '1042',
-    submittedAt: '03:21 AM',
-    username: 'You',
-    problem: 'A',
-    language: 'JavaScript',
-    verdict: 'Accepted',
-    runtime: '52 ms',
-    memory: '41.8 MB',
-    code: `function mergeSortedArrays(firstArray, secondArray) {
-  const merged = []
-  let firstIndex = 0
-  let secondIndex = 0
 
-  while (firstIndex < firstArray.length && secondIndex < secondArray.length) {
-    if (firstArray[firstIndex] <= secondArray[secondIndex]) {
-      merged.push(firstArray[firstIndex])
-      firstIndex += 1
-    } else {
-      merged.push(secondArray[secondIndex])
-      secondIndex += 1
-    }
-  }
-
-  return merged
-    .concat(firstArray.slice(firstIndex))
-    .concat(secondArray.slice(secondIndex))
-}`,
-    isOwnSubmission: true,
-  },
-  {
-    id: '1039',
-    submittedAt: '03:18 AM',
-    username: 'Maya',
-    problem: 'A',
-    language: 'Python',
-    verdict: 'Wrong Answer',
-    runtime: '-',
-    memory: '-',
-    code: `def merge_sorted_arrays(first_array, second_array):
-    return sorted(first_array + second_array)`,
-    isOwnSubmission: false,
-  },
-  {
-    id: '1035',
-    submittedAt: '03:12 AM',
-    username: 'Rahul',
-    problem: 'A',
-    language: 'C++',
-    verdict: 'Compilation Error',
-    runtime: '-',
-    memory: '-',
-    code: `#include <iostream>
-#include <vector>
-using namespace std;
-
-int main() {
-    vector<int> result;
-    return 0;
-}`,
-    isOwnSubmission: false,
-  },
-]
 
 const difficultyClassName: Record<string, string> = {
   EASY: 'border-emerald-300/25 bg-emerald-400/10 text-emerald-200',
@@ -550,10 +492,28 @@ const difficultyClassName: Record<string, string> = {
   HARD: 'border-red-300/25 bg-red-400/10 text-red-200',
 }
 
-const submissionStatusClassName: Record<SampleSubmission['verdict'], string> = {
+const submissionStatusClassName: Record<string, string> = {
+  ACCEPTED: 'border-emerald-300/25 bg-emerald-400/10 text-emerald-200',
+  WRONG_ANSWER: 'border-red-300/25 bg-red-400/10 text-red-200',
+  COMPILATION_ERROR: 'border-amber-300/25 bg-amber-400/10 text-amber-200',
+  RUNTIME_ERROR: 'border-red-300/25 bg-red-400/10 text-red-200',
+  TIME_LIMIT_EXCEEDED: 'border-amber-300/25 bg-amber-400/10 text-amber-200',
+  INTERNAL_ERROR: 'border-slate-300/25 bg-slate-400/10 text-slate-200',
   Accepted: 'border-emerald-300/25 bg-emerald-400/10 text-emerald-200',
   'Wrong Answer': 'border-red-300/25 bg-red-400/10 text-red-200',
   'Compilation Error': 'border-amber-300/25 bg-amber-400/10 text-amber-200',
+}
+
+const formatSubmissionStatus = (status: string) => {
+  return status
+    .toLowerCase()
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
+const getSubmissionStatusClassName = (status: string) => {
+  return submissionStatusClassName[status] ?? 'border-slate-300/25 bg-slate-400/10 text-slate-200'
 }
 
 const formatDifficulty = (difficulty?: ChatRoom['difficulty']) => {
@@ -570,7 +530,6 @@ const getOnlineMemberIds = (onlineUsers: Array<{ id: string }>) => {
 
 
 function ProblemPanel({
-  sessionStatus,
   problems,
   isLoadingProblems = false,
   problemLoadError = null,
@@ -580,8 +539,8 @@ function ProblemPanel({
   onExpandRequest,
   selectedProblemId,
   onSelectedProblemIdChange,
+  submissions,
 }: {
-  sessionStatus: SessionStatus
   problems: MockProblem[]
   isLoadingProblems?: boolean
   problemLoadError?: string | null
@@ -591,8 +550,9 @@ function ProblemPanel({
   onExpandRequest?: (tab: ProblemPanelTab) => void
   selectedProblemId: string | null
   onSelectedProblemIdChange: (problemId: string) => void
+  submissions: SubmissionHistoryItem[]
 }) {
-  const [selectedSubmission, setSelectedSubmission] = useState<SampleSubmission | null>(null)
+  const [selectedSubmission, setSelectedSubmission] = useState<SubmissionHistoryItem | null>(null)
   const [internalActiveTab, setInternalActiveTab] = useState<ProblemPanelTab>('problem')
   const activeTab = controlledActiveTab ?? internalActiveTab
 
@@ -610,8 +570,20 @@ function ProblemPanel({
   const selectedProblemIndex = storedSelectedProblemIndex >= 0 ? storedSelectedProblemIndex : problems.length > 0 ? 0 : -1
   const selectedProblem = selectedProblemIndex >= 0 ? problems[selectedProblemIndex] : null
   const currentProblemNumber = selectedProblemIndex >= 0 ? selectedProblemIndex + 1 : 0
-  const isSubmissionCodeBlocked =
-    sessionStatus === 'running' && selectedSubmission && !selectedSubmission.isOwnSubmission
+  const isSubmissionCodeBlocked = Boolean(selectedSubmission && !selectedSubmission.canViewCode)
+  const problemLabelById = useMemo(() => {
+    const map = new Map<string, string>()
+    problems.forEach((problem, index) => {
+      map.set(problem.id, problem.shortLabel || `P${index + 1}`)
+    })
+    return map
+  }, [problems])
+  const getSubmissionProblemLabel = (submission: SubmissionHistoryItem) => (
+    problemLabelById.get(submission.problemId) ?? submission.problemLabel ?? 'Problem'
+  )
+  const getSubmissionDisplayId = (submission: SubmissionHistoryItem) => submission.id.slice(-4).toUpperCase()
+  const selectedSubmissionDisplayId = selectedSubmission ? getSubmissionDisplayId(selectedSubmission) : ''
+  const selectedSubmissionProblemLabel = selectedSubmission ? getSubmissionProblemLabel(selectedSubmission) : 'Problem'
 
   const selectProblemAtIndex = (nextIndex: number) => {
     const nextProblem = problems[nextIndex]
@@ -738,11 +710,33 @@ function ProblemPanel({
             </section>
 
             {isLoadingProblems ? (
-              <Card className="border-white/10 bg-white/[0.035] py-8 text-center shadow-none">
-                <CardContent className="px-5 text-sm text-slate-400">
-                  Loading assigned problems...
-                </CardContent>
-              </Card>
+              <div className="space-y-5 overflow-hidden" aria-label="Loading assigned problems">
+                <section className="space-y-4 overflow-hidden">
+                  <div className="flex flex-wrap items-center gap-2 overflow-hidden">
+                    <div className="h-6 w-20 animate-pulse rounded-full bg-white/[0.08]" />
+                    <div className="h-6 w-32 animate-pulse rounded-full bg-white/[0.06]" />
+                    <div className="h-6 w-24 animate-pulse rounded-full bg-white/[0.06]" />
+                  </div>
+                  <div className="space-y-3 overflow-hidden">
+                    <div className="h-7 w-3/5 animate-pulse rounded-md bg-white/[0.08]" />
+                    <div className="h-4 w-full animate-pulse rounded bg-white/[0.06]" />
+                    <div className="h-4 w-4/5 animate-pulse rounded bg-white/[0.06]" />
+                  </div>
+                </section>
+
+                <section className="grid gap-3 overflow-hidden">
+                  <div className="h-28 animate-pulse rounded-xl border border-white/8 bg-white/[0.035]" />
+                  <div className="h-28 animate-pulse rounded-xl border border-white/8 bg-white/[0.035]" />
+                </section>
+
+                <section className="space-y-3 overflow-hidden">
+                  <div className="h-5 w-24 animate-pulse rounded bg-white/[0.08]" />
+                  <div className="grid gap-2 overflow-hidden">
+                    <div className="h-10 animate-pulse rounded-lg border border-white/8 bg-black/25" />
+                    <div className="h-10 animate-pulse rounded-lg border border-white/8 bg-black/25" />
+                  </div>
+                </section>
+              </div>
             ) : problemLoadError ? (
               <Card className="border-red-300/20 bg-red-400/[0.06] py-8 text-center shadow-none">
                 <CardContent className="px-5 text-sm text-red-100">
@@ -859,7 +853,7 @@ function ProblemPanel({
             <div className="min-w-0 w-full max-w-full overflow-hidden rounded-xl border border-white/10 bg-white/[0.035]">
               <div className="border-b border-white/10 px-4 py-4 sm:px-5">
                 <h2 className="text-lg font-semibold text-white">Submissions</h2>
-                <p className="mt-1 text-sm text-slate-400">Shared mock verdicts for this practice session.</p>
+                <p className="mt-1 text-sm text-slate-400">Shared submission history for this problem.</p>
               </div>
               <div className="w-0 min-w-full overflow-x-auto overscroll-x-contain [scrollbar-color:rgba(255,255,255,0.25)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/25 [&::-webkit-scrollbar-track]:bg-white/[0.04]">
                 <table className="w-max min-w-full caption-bottom text-sm">
@@ -876,30 +870,36 @@ function ProblemPanel({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sampleSubmissions.map((submission) => (
+                    {submissions.map((submission) => (
                       <TableRow key={submission.id} className="border-white/8 hover:bg-white/[0.035]">
                         <TableCell className="px-3">
-                          <button
-                            type="button"
-                            className="font-mono text-sm font-semibold text-[#7FFFE0] underline-offset-4 hover:underline cursor-pointer"
-                            onClick={() => setSelectedSubmission(submission)}
-                          >
-                            {submission.id}
-                          </button>
+                          {submission.canViewCode ? (
+                            <button
+                              type="button"
+                              className="font-mono text-sm font-semibold text-[#7FFFE0] underline-offset-4 hover:underline cursor-pointer"
+                              onClick={() => setSelectedSubmission(submission)}
+                            >
+                              {getSubmissionDisplayId(submission)}
+                            </button>
+                          ) : (
+                            <span className="font-mono text-sm font-semibold text-slate-500" title="Available after contest ends">
+                              {getSubmissionDisplayId(submission)}
+                            </span>
+                          )}
                         </TableCell>
                         <TableCell className="whitespace-nowrap px-3 text-slate-400">
-                          {submission.submittedAt}
+                          {new Date(submission.submittedAt).toLocaleTimeString()}
                         </TableCell>
                         <TableCell className="px-3 text-slate-200">{submission.username}</TableCell>
-                        <TableCell className="px-3 text-slate-200">{submission.problem}</TableCell>
+                        <TableCell className="px-3 text-slate-200">{getSubmissionProblemLabel(submission)}</TableCell>
                         <TableCell className="px-3 text-slate-300">{submission.language}</TableCell>
                         <TableCell className="px-3">
-                          <Badge className={submissionStatusClassName[submission.verdict]}>
-                            {submission.verdict}
+                          <Badge className={getSubmissionStatusClassName(submission.status)}>
+                            {formatSubmissionStatus(submission.status)}
                           </Badge>
                         </TableCell>
-                        <TableCell className="whitespace-nowrap px-3 text-slate-400">{submission.runtime}</TableCell>
-                        <TableCell className="whitespace-nowrap px-3 text-slate-400">{submission.memory}</TableCell>
+                        <TableCell className="whitespace-nowrap px-3 text-slate-400">{submission.runtimeMs ? `${submission.runtimeMs} ms` : '-'}</TableCell>
+                        <TableCell className="whitespace-nowrap px-3 text-slate-400">{submission.memoryKb ? `${Math.round(submission.memoryKb / 1024)} MB` : '-'}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -936,7 +936,7 @@ function ProblemPanel({
       >
         <DialogContent className="max-h-[80dvh] max-w-lg overflow-hidden border-white/10 bg-[#0B0D0F]/98 text-white" overlayClassName="backdrop-blur-sm">
           <DialogHeader>
-            <DialogTitle>Submission #{selectedSubmission?.id}</DialogTitle>
+            <DialogTitle>{selectedSubmissionDisplayId ? `Submission #${selectedSubmissionDisplayId}` : 'Submission Details'}</DialogTitle>
           </DialogHeader>
 
           {selectedSubmission ? (
@@ -950,19 +950,19 @@ function ProblemPanel({
               <div className="min-h-0 space-y-3 overflow-y-auto pr-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-sm text-slate-400">{selectedSubmission.language}</span>
-                  <span className="text-white/20">·</span>
-                  <Badge className={submissionStatusClassName[selectedSubmission.verdict]}>
-                    {selectedSubmission.verdict}
+                  <span className="text-white/20">Â·</span>
+                  <Badge className={getSubmissionStatusClassName(selectedSubmission.status)}>
+                    {formatSubmissionStatus(selectedSubmission.status)}
                   </Badge>
-                  <span className="text-white/20">·</span>
-                  <span className="text-sm text-slate-400">{selectedSubmission.runtime}</span>
-                  <span className="text-white/20">·</span>
-                  <span className="text-sm text-slate-400">{selectedSubmission.memory}</span>
+                  <span className="text-white/20">Â·</span>
+                  <span className="text-sm text-slate-400">{selectedSubmission.runtimeMs ? `${selectedSubmission.runtimeMs} ms` : '-'}</span>
+                  <span className="text-white/20">Â·</span>
+                  <span className="text-sm text-slate-400">{selectedSubmission.memoryKb ? `${Math.round(selectedSubmission.memoryKb / 1024)} MB` : '-'}</span>
                 </div>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {[
                     ['User', selectedSubmission.username],
-                    ['Problem', selectedSubmission.problem],
+                    ['Problem', selectedSubmissionProblemLabel],
                   ].map(([label, value]) => (
                     <div key={label} className="rounded-lg border border-white/8 bg-white/[0.035] p-2.5">
                       <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{label}</p>
@@ -977,7 +977,7 @@ function ProblemPanel({
                       type="button"
                       className="flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-xs text-slate-400 transition hover:bg-white/[0.06] hover:text-slate-200"
                       onClick={(e) => {
-                        navigator.clipboard.writeText(selectedSubmission.code)
+                        void navigator.clipboard.writeText(selectedSubmission.code ?? '')
                         const btn = e.currentTarget
                         const original = btn.innerHTML
                         btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-emerald-400"><path d="M20 6 9 17l-5-5"/></svg><span class="text-emerald-400">Copied!</span>`
@@ -1103,7 +1103,7 @@ function MembersAndChatPanel({
               Players
             </TabsTrigger>
           </TabsList>
-          <Badge className="shrink-0 border !border-blue-500/30 bg-blue-500/10 text-blue-200 shadow-[0_0_8px_rgba(59,130,246,0.2)]">
+          <Badge className="shrink-0 border !border-blue-500/30 bg-blue-500/10 !text-white shadow-[0_0_8px_rgba(59,130,246,0.2)]">
             <Users size={13} aria-hidden="true" />
             {onlineCount} online
           </Badge>
@@ -1147,7 +1147,7 @@ function MembersAndChatPanel({
           <div className="shrink-0 overflow-hidden border-b border-white/10 px-4 py-4">
             <p className="truncate text-sm font-semibold text-white">Session players</p>
             <p className="mt-1 truncate text-xs text-slate-500">
-              {onlineCount} online · {members.length || 1} total
+              {onlineCount} online Â· {members.length || 1} total
             </p>
           </div>
 
@@ -1225,10 +1225,12 @@ function EditorPanel({
   competingProblemId,
   connectionStatus,
   room,
+  onSubmitSuccess,
 }: {
   competingProblemId?: string | null
   connectionStatus: 'connecting' | 'online' | 'offline'
   room: ChatRoom
+  onSubmitSuccess?: () => void
 }) {
   return (
     <main className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-[#050911]">
@@ -1239,6 +1241,7 @@ function EditorPanel({
           room={room}
           toolbarMode="competing"
           competingProblemId={competingProblemId}
+          onSubmitSuccess={onSubmitSuccess}
         />
       </Suspense>
     </main>
@@ -1258,8 +1261,38 @@ export function CompetingRoomWorkspace({ room }: CompetingRoomWorkspaceProps) {
   const initialDraft = splitDurationMinutes(initialDurationMinutes)
   const [draftHours, setDraftHours] = useState(initialDraft.hours)
   const [draftMinutes, setDraftMinutes] = useState(initialDraft.minutes)
-  const [sessionStatus, setSessionStatus] = useState<SessionStatus>('waiting')
-  const [remainingSeconds, setRemainingSeconds] = useState(toSessionSeconds(initialDraft.hours, initialDraft.minutes))
+  const getInitialSessionStatus = (): SessionStatus => {
+    const backendStatus = (room.sessionStatus?.toLowerCase() as SessionStatus | undefined) ?? 'waiting'
+    const totalSeconds = toSessionSeconds(initialDraft.hours, initialDraft.minutes)
+
+    if (backendStatus === 'running' && room.sessionStartedAt) {
+      const elapsed = Math.floor((Date.now() - new Date(room.sessionStartedAt).getTime()) / 1000)
+      return elapsed >= totalSeconds ? 'ended' : 'running'
+    }
+
+    return backendStatus
+  }
+  const initialSessionStatus = getInitialSessionStatus()
+  const [sessionStatus, setSessionStatus] = useState<SessionStatus>(initialSessionStatus)
+  const [submissions, setSubmissions] = useState<SubmissionHistoryItem[]>([])
+  const [showEndedModal, setShowEndedModal] = useState(false)
+  const previousSessionStatusRef = useRef<SessionStatus | null>(initialSessionStatus)
+  const hasShownEndedPopupRef = useRef(false)
+  const getInitialRemainingSeconds = () => {
+    const totalSeconds = toSessionSeconds(initialDraft.hours, initialDraft.minutes)
+
+    if (initialSessionStatus === 'ended') {
+      return 0
+    }
+
+    if (initialSessionStatus === 'running' && room.sessionStartedAt) {
+      const elapsed = Math.floor((Date.now() - new Date(room.sessionStartedAt).getTime()) / 1000)
+      return Math.max(0, totalSeconds - elapsed)
+    }
+
+    return totalSeconds
+  }
+  const [remainingSeconds, setRemainingSeconds] = useState(getInitialRemainingSeconds)
   const [problemPanelTab, setProblemPanelTab] = useState<ProblemPanelTab>('problem')
   const [assignedProblems, setAssignedProblems] = useState<MockProblem[]>([])
   const [selectedProblemId, setSelectedProblemId] = useState<string | null>(null)
@@ -1325,6 +1358,8 @@ export function CompetingRoomWorkspace({ room }: CompetingRoomWorkspaceProps) {
     messages,
     onlineUsers,
     retryMessage,
+    newSubmissionEvent,
+    roomTimerEvent,
     sendMessage,
     sendStopTyping,
     sendTyping,
@@ -1332,6 +1367,91 @@ export function CompetingRoomWorkspace({ room }: CompetingRoomWorkspaceProps) {
   } = useChatSocket(room.id, user?.id)
 
   const currentMember = members.find((member) => member.id === user?.id)
+  const isAdmin = Boolean(user?.id && (room.adminId === user.id || currentMember?.role === 'ADMIN'))
+
+  const fetchSubmissions = useCallback(async () => {
+    if (!selectedProblemId) return
+    try {
+      const data = await editorService.getProblemSubmissions(room.id, selectedProblemId)
+      setSubmissions(data)
+    } catch (error) {
+      console.error(error)
+    }
+  }, [room.id, selectedProblemId])
+
+  const handleDeleteRoom = async () => {
+    try {
+      await roomService.delete(room.id)
+      navigate('/dashboard', { replace: true })
+    } catch (error) {
+      console.error(error)
+      toast.error('Room could not be deleted. Only the room admin can delete it.')
+    }
+  }
+
+  const handleLeaveRoom = () => {
+    navigate('/dashboard', { replace: true })
+  }
+
+  useEffect(() => {
+    void fetchSubmissions()
+  }, [fetchSubmissions, sessionStatus])
+
+  useEffect(() => {
+    if (
+      newSubmissionEvent &&
+      newSubmissionEvent.roomId === room.id &&
+      newSubmissionEvent.problemId === selectedProblemId
+    ) {
+      void fetchSubmissions()
+    }
+  }, [newSubmissionEvent, fetchSubmissions, room.id, selectedProblemId])
+
+  useEffect(() => {
+    const previousStatus = previousSessionStatusRef.current
+
+    if (
+      previousStatus &&
+      previousStatus !== 'ended' &&
+      sessionStatus === 'ended' &&
+      !hasShownEndedPopupRef.current
+    ) {
+      hasShownEndedPopupRef.current = true
+      toast('Contest ended. Code review is now open.')
+      setShowEndedModal(true)
+      void fetchSubmissions()
+    }
+
+    if (sessionStatus !== 'ended') {
+      hasShownEndedPopupRef.current = false
+      setShowEndedModal(false)
+    }
+
+    previousSessionStatusRef.current = sessionStatus
+  }, [fetchSubmissions, sessionStatus])
+
+  useEffect(() => {
+    if (!roomTimerEvent) return
+
+    const status = roomTimerEvent.sessionStatus.toLowerCase() as SessionStatus
+    const nextDurationMinutes = roomTimerEvent.durationMinutes ?? initialDurationMinutes
+    const nextDraft = splitDurationMinutes(nextDurationMinutes)
+    const totalSeconds = toSessionSeconds(nextDraft.hours, nextDraft.minutes)
+
+    setDraftHours(nextDraft.hours)
+    setDraftMinutes(nextDraft.minutes)
+    setSessionStatus(status)
+
+    if (status === 'running' && roomTimerEvent.sessionStartedAt) {
+      const elapsed = Math.floor((Date.now() - new Date(roomTimerEvent.sessionStartedAt).getTime()) / 1000)
+      setRemainingSeconds(Math.max(0, totalSeconds - elapsed))
+    } else if (status === 'ended') {
+      setRemainingSeconds(0)
+    } else {
+      setRemainingSeconds(totalSeconds)
+    }
+  }, [initialDurationMinutes, roomTimerEvent])
+
   const canManageTimer =
     room.adminId === user?.id || currentMember?.role === 'ADMIN' || (!room.adminId && members.length === 0)
 
@@ -1412,6 +1532,11 @@ export function CompetingRoomWorkspace({ room }: CompetingRoomWorkspaceProps) {
         if (currentSeconds <= 1) {
           window.clearInterval(countdownInterval)
           setSessionStatus('ended')
+
+          if (canManageTimer) {
+            void roomService.update(room.id, { sessionStatus: 'ENDED' }).catch(() => undefined)
+          }
+
           return 0
         }
 
@@ -1422,22 +1547,48 @@ export function CompetingRoomWorkspace({ room }: CompetingRoomWorkspaceProps) {
     return () => {
       window.clearInterval(countdownInterval)
     }
-  }, [sessionStatus])
+  }, [canManageTimer, room.id, sessionStatus])
 
-  const handleStartTimer = () => {
+  const handleStartTimer = async () => {
     const nextSeconds = toSessionSeconds(draftHours, draftMinutes)
+    if (nextSeconds <= 0) return
 
-    if (nextSeconds <= 0) {
-      return
-    }
-
-    setRemainingSeconds(nextSeconds)
-    setSessionStatus('running')
+    const selectedDurationMinutes = draftHours * 60 + draftMinutes
+    try {
+      await roomService.update(room.id, {
+        sessionStatus: 'RUNNING',
+        sessionStartedAt: new Date().toISOString(),
+        durationMinutes: selectedDurationMinutes,
+      })
+      setRemainingSeconds(nextSeconds)
+      setSessionStatus('running')
+    } catch (error) { console.error(error) }
   }
 
-  const handleResetTimer = () => {
-    setSessionStatus('waiting')
-    setRemainingSeconds(toSessionSeconds(draftHours, draftMinutes))
+  const handleResetTimer = async () => {
+    try {
+      await roomService.update(room.id, {
+        sessionStatus: 'WAITING',
+        sessionStartedAt: null,
+      })
+      hasShownEndedPopupRef.current = false
+      previousSessionStatusRef.current = 'waiting'
+      setShowEndedModal(false)
+      setSessionStatus('waiting')
+      setRemainingSeconds(toSessionSeconds(draftHours, draftMinutes))
+    } catch (error) { console.error(error) }
+  }
+
+  const handleEndTimer = async () => {
+    if (!canManageTimer) return
+
+    try {
+      await roomService.update(room.id, {
+        sessionStatus: 'ENDED',
+      })
+      setRemainingSeconds(0)
+      setSessionStatus('ended')
+    } catch (error) { console.error(error) }
   }
 
   useEffect(() => {
@@ -1474,8 +1625,8 @@ export function CompetingRoomWorkspace({ room }: CompetingRoomWorkspaceProps) {
           <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
             <button
               type="button"
-              onClick={() => navigate('/dashboard')}
-              className="grid size-8 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.035] text-slate-400 transition-all duration-200 hover:!border-[#18D6A3]/40 hover:shadow-[0_0_12px_rgba(24,214,163,0.25)] active:!border-[#18D6A3]/60 active:shadow-[0_0_14px_rgba(24,214,163,0.35)] cursor-pointer"
+              disabled
+              className="grid size-8 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.035] text-slate-400 transition-all duration-200 cursor-default disabled:opacity-100 disabled:pointer-events-none disabled:border-white/10 disabled:bg-white/[0.035] disabled:shadow-none"
               aria-label="Back to dashboard"
             >
               <img src="/starsync-logo.png" alt="StarSync" className="size-5 rounded-full object-cover" />
@@ -1507,6 +1658,7 @@ export function CompetingRoomWorkspace({ room }: CompetingRoomWorkspaceProps) {
               }}
               onStart={handleStartTimer}
               onReset={handleResetTimer}
+              onEnd={handleEndTimer}
               remainingSeconds={remainingSeconds}
               sessionStatus={sessionStatus}
             />
@@ -1514,7 +1666,7 @@ export function CompetingRoomWorkspace({ room }: CompetingRoomWorkspaceProps) {
               type="button"
               variant="ghost"
               size="sm"
-              className="hidden lg:inline-flex"
+              className="hidden h-10 px-3.5 rounded-xl lg:inline-flex border-white/12 bg-white/[0.05] shadow-[0_10px_30px_rgba(0,0,0,0.18)]"
               onClick={() => {
                 setCopyStatus('idle')
                 setIsInviteDialogOpen(true)
@@ -1524,24 +1676,39 @@ export function CompetingRoomWorkspace({ room }: CompetingRoomWorkspaceProps) {
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button type="button" variant="ghost" size="icon-sm" aria-label="Open room menu">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Open room menu"
+                  className="rounded-full border-white/10 bg-white/[0.035] text-slate-300 shadow-none hover:border-[#18D6A3]/40 hover:shadow-[0_0_12px_rgba(24,214,163,0.25)] active:border-[#18D6A3]/60 active:shadow-[0_0_14px_rgba(24,214,163,0.35)] focus-visible:border-white/10 focus-visible:ring-0 data-[state=open]:border-white/10 data-[state=open]:bg-white/[0.035]"
+                >
                   <MoreVertical size={15} aria-hidden="true" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="border-white/10 bg-[#111113] text-slate-200">
                 <DropdownMenuItem
-                  onSelect={() => {
-                    setCopyStatus('idle')
-                    setIsInviteDialogOpen(true)
-                  }}
+                  onSelect={handleLeaveRoom}
+                  className="flex items-center gap-2 cursor-pointer px-2 py-1 rounded hover:bg-white/5 hover:text-white active:scale-95 transition transform duration-100 focus:outline-none focus:ring-2 focus:ring-[#18D6A3]/30"
                 >
-                  Copy room code
+                  <LogOut size={14} aria-hidden="true" />
+                  Leave room
                 </DropdownMenuItem>
-                <DropdownMenuItem>View session details</DropdownMenuItem>
+                {isAdmin ? (
+                  <DropdownMenuItem
+                    onSelect={handleDeleteRoom}
+                    className="flex items-center gap-2 cursor-pointer px-2 py-1 rounded text-red-400 hover:bg-red-900/30 hover:text-red-200 active:scale-95 transition transform duration-100 focus:outline-none focus:ring-2 focus:ring-red-500/20"
+                  >
+                    <Trash2 size={14} aria-hidden="true" />
+                    Delete room
+                  </DropdownMenuItem>
+                ) : null}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </header>
+
+
 
         {membersError ? (
           <div className="shrink-0 border-b border-amber-300/20 bg-amber-950/20 px-4 py-2 text-xs text-amber-100">
@@ -1570,7 +1737,6 @@ export function CompetingRoomWorkspace({ room }: CompetingRoomWorkspaceProps) {
             >
               <div className="h-full min-h-0 min-w-0 overflow-hidden">
                 <ProblemPanel
-                  sessionStatus={sessionStatus}
                   problems={assignedProblems}
                   isLoadingProblems={isLoadingProblems}
                   problemLoadError={problemLoadError}
@@ -1580,6 +1746,7 @@ export function CompetingRoomWorkspace({ room }: CompetingRoomWorkspaceProps) {
                   onExpandRequest={handleProblemPanelExpand}
                   selectedProblemId={selectedProblem?.id ?? null}
                   onSelectedProblemIdChange={setSelectedProblemId}
+                  submissions={submissions}
                 />
               </div>
             </ResizablePanel>
@@ -1631,6 +1798,46 @@ export function CompetingRoomWorkspace({ room }: CompetingRoomWorkspaceProps) {
           </ResizablePanelGroup>
         </div>
 
+        <Modal
+          isOpen={showEndedModal}
+          onClose={() => setShowEndedModal(false)}
+          title=""
+          hideHeader
+          size="sm"
+          className="rounded-3xl p-0 bg-transparent"
+        >
+          <div className="relative w-full overflow-hidden rounded-2xl bg-gradient-to-b from-[#5A5A5C]/80 via-white/15 to-[#28282A]/85 p-[2px] shadow-[0_18px_60px_rgba(0,0,0,0.22)]">
+            <div className="relative rounded-[14px] bg-[#18181B]/78 p-0 backdrop-blur-2xl text-center overflow-hidden">
+              <div className="flex items-center justify-between gap-3 bg-gradient-to-b from-white/6 to-transparent px-4 py-3">
+                <h3 className="text-lg font-bold text-[#F7F7F8]">Contest Ended<span className="ml-2 text-white">!</span></h3>
+                <button
+                  type="button"
+                  onClick={() => setShowEndedModal(false)}
+                  aria-label="Close"
+                  className="grid size-9 place-items-center rounded-lg text-zinc-300 transition hover:bg-white/10 hover:text-white"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="p-6">
+                <div className="mb-4 grid h-14 w-14 place-items-center rounded-lg border border-white/15 bg-gradient-to-b from-[#5A5A5C]/35 to-[#28282A]/35 text-[#D6FFF6] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] mx-auto">
+                <Trophy size={26} />
+                </div>
+                <h3 className="mb-2 text-lg font-semibold tracking-tight text-[#F7F7F8]">The contest has ended</h3>
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setShowEndedModal(false)}
+                    className="inline-flex h-10 min-w-32 cursor-pointer items-center justify-center rounded-full border-2 border-emerald-300/45 bg-[#18D6A3] px-6 text-sm font-bold text-black shadow-[0_0_20px_rgba(24,214,163,0.28)] transition-all duration-150 hover:-translate-y-0.5 hover:border-emerald-200/70 hover:bg-[#20E6B0] hover:shadow-[0_0_28px_rgba(24,214,163,0.42)] active:translate-y-0 active:bg-[#16C796]"
+                  >
+                    Review
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Modal>
+
         <Tabs defaultValue="problem" className="grid min-h-0 min-w-0 flex-1 grid-rows-[auto_minmax(0,1fr)] gap-3 overflow-x-hidden overflow-y-hidden p-3 xl:hidden">
           <TabsList variant="competing" className="grid h-9 w-full grid-cols-3">
             <TabsTrigger value="problem" className="border border-transparent data-[state=active]:!border-blue-500/40 data-[state=active]:!bg-blue-500/12 data-[state=active]:!text-white data-[state=active]:shadow-[0_0_10px_rgba(59,130,246,0.2)] transition-all duration-150">Problem</TabsTrigger>
@@ -1640,17 +1847,17 @@ export function CompetingRoomWorkspace({ room }: CompetingRoomWorkspaceProps) {
 
           <TabsContent value="problem" className="m-0 h-full min-h-0 min-w-0 overflow-hidden rounded-2xl border border-white/10">
             <ProblemPanel
-              sessionStatus={sessionStatus}
               problems={assignedProblems}
               isLoadingProblems={isLoadingProblems}
               problemLoadError={problemLoadError}
               selectedProblemId={selectedProblem?.id ?? null}
               onSelectedProblemIdChange={setSelectedProblemId}
+              submissions={submissions}
             />
           </TabsContent>
 
           <TabsContent value="editor" className="m-0 h-full min-h-0 min-w-0 overflow-hidden rounded-2xl border border-white/10">
-            <EditorPanel competingProblemId={selectedProblemRunId} connectionStatus={connectionStatus} room={room} />
+            <EditorPanel competingProblemId={selectedProblemRunId} connectionStatus={connectionStatus} room={room} onSubmitSuccess={fetchSubmissions} />
           </TabsContent>
 
           <TabsContent value="chat" className="m-0 h-full min-h-0 min-w-0 overflow-hidden rounded-2xl border border-white/10">
@@ -1684,36 +1891,59 @@ export function CompetingRoomWorkspace({ room }: CompetingRoomWorkspaceProps) {
         >
           <DialogContent
             overlayClassName="bg-black/35 backdrop-blur-md data-[state=open]:backdrop-blur-md"
-            className="border-white/10 bg-black/70 text-white shadow-2xl shadow-black/50 backdrop-blur-xl"
+            className="!border-none !bg-transparent !shadow-none !p-0 max-w-sm"
+            showCloseButton={false}
           >
-            <DialogHeader>
-              <DialogTitle>Invite teammates</DialogTitle>
-              <DialogDescription className="text-slate-400">
-                Share this code with teammates so they can join this competing room.
-              </DialogDescription>
-            </DialogHeader>
+            <div className="w-full rounded-3xl border border-white/10 bg-zinc-950/90 p-5 shadow-2xl shadow-black/50">
+              <div className="relative w-full overflow-hidden rounded-2xl bg-gradient-to-b from-[#5A5A5C]/80 via-white/15 to-[#28282A]/85 p-[2px] shadow-[0_18px_60px_rgba(0,0,0,0.22)]">
+                <div className="relative rounded-[14px] bg-[#18181B]/78 p-0 backdrop-blur-2xl text-center overflow-hidden">
+                  <div className="flex items-center justify-between gap-3 bg-gradient-to-b from-white/6 to-transparent px-4 py-3">
+                    <h3 className="text-lg font-bold text-[#F7F7F8]">Invite Teammates</h3>
+                    <button
+                      type="button"
+                      onClick={() => setIsInviteDialogOpen(false)}
+                      aria-label="Close"
+                      className="grid size-9 place-items-center rounded-lg text-zinc-300 transition hover:bg-white/10 hover:text-white"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
 
-            <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-sm">
-              <p className="text-xs uppercase tracking-[0.28em] text-slate-500">Room code</p>
-              <p className="mt-2 break-all font-mono text-lg font-semibold text-[#D6FFF6]">
-                {room.joinCode ?? 'Room code unavailable'}
-              </p>
+                  <div className="p-6 text-center space-y-4">
+                    <p className="text-xs text-slate-400">
+                      Share this code with teammates
+                    </p>
+
+                    <div className="mx-auto w-48 h-16 flex flex-col items-center justify-center rounded-lg border border-white/15 bg-gradient-to-b from-[#5A5A5C]/35 to-[#28282A]/35 text-[#D6FFF6] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
+                      <p className="text-[9px] uppercase tracking-[0.28em] text-slate-400">Room code</p>
+                      <p className="mt-0.5 break-all font-mono text-base font-bold tracking-widest text-[#D6FFF6]">
+                        {room.joinCode ?? 'Room code unavailable'}
+                      </p>
+                    </div>
+
+                    {copyStatus === 'unavailable' ? (
+                      <p className="text-sm text-amber-200">Room code could not be copied automatically.</p>
+                    ) : null}
+
+                    <div className="flex justify-center pt-2">
+                      <button
+                        type="button"
+                        onClick={handleCopyRoomCode}
+                        disabled={!room.joinCode}
+                        className="inline-flex items-center justify-center gap-2 cursor-pointer rounded-full border-2 border-white/10 bg-[#18181B]/90 px-5 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors duration-150 hover:border-white/20 active:bg-[#0A0A0A] disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {copyStatus === 'copied' ? (
+                          <Check size={14} aria-hidden="true" />
+                        ) : (
+                          <Copy size={14} aria-hidden="true" />
+                        )}
+                        {copyStatus === 'copied' ? 'Copied' : 'Copy code'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-
-            {copyStatus === 'unavailable' ? (
-              <p className="text-sm text-amber-200">Room code could not be copied automatically.</p>
-            ) : null}
-
-            <DialogFooter>
-              <Button type="button" variant="secondary" onClick={handleCopyRoomCode} disabled={!room.joinCode}>
-                {copyStatus === 'copied' ? (
-                  <Check size={16} aria-hidden="true" />
-                ) : (
-                  <Copy size={16} aria-hidden="true" />
-                )}
-                {copyStatus === 'copied' ? 'Copied' : 'Copy code'}
-              </Button>
-            </DialogFooter>
           </DialogContent>
         </Dialog>
       </section>

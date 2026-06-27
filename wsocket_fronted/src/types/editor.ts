@@ -52,3 +52,45 @@ export type RoomProblemRunResult = {
   totalCount: number
   results: ProblemTestcaseRunResult[]
 }
+
+export type ProblemTestcaseSubmitResult = {
+  testcaseId: string
+  order: number
+  isHidden: boolean
+  passed: boolean
+  input?: string
+  expectedOutput?: string
+  actualOutput?: string
+  error?: string
+}
+
+export type RoomProblemSubmitResult = {
+  submissionId: string
+  problemId: string
+  language: EditorLanguage
+  status: 'ACCEPTED' | 'WRONG_ANSWER' | 'COMPILATION_ERROR' | 'RUNTIME_ERROR' | 'TIME_LIMIT_EXCEEDED' | 'INTERNAL_ERROR'
+  passedCount: number
+  totalCount: number
+  runtimeMs?: number
+  memoryKb?: number
+  isLate: boolean
+  results: ProblemTestcaseSubmitResult[]
+}
+
+export type SubmissionHistoryItem = {
+  id: string
+  problemId: string
+  problemLabel?: string
+  userId: string
+  username: string
+  code: string | null
+  language: string
+  status: string
+  runtimeMs?: number
+  memoryKb?: number
+  passedCount: number
+  totalCount: number
+  isLate: boolean
+  submittedAt: string
+  canViewCode: boolean
+}

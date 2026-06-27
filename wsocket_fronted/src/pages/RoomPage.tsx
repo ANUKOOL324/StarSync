@@ -17,7 +17,6 @@ export function RoomPage() {
   const [isLoadingRoom, setIsLoadingRoom] = useState(true)
   const [roomError, setRoomError] = useState<string | null>(null)
 
-  
   const statePurpose = location.state?.purpose as 'COLLABORATIVE' | 'COMPETING' | undefined
   const cachedRoom = rooms.find((r) => r.id === roomId)
   const roomPurpose = statePurpose ?? cachedRoom?.purpose ?? room?.purpose
@@ -61,10 +60,10 @@ export function RoomPage() {
   }, [roomId])
 
   if (isLoadingRoom) {
-    if (roomPurpose === 'COMPETING') {
-      return <WorkspaceSkeleton />
+    if (roomPurpose === 'COLLABORATIVE') {
+      return <ChatWorkspaceSkeleton />
     }
-    return <ChatWorkspaceSkeleton />
+    return <WorkspaceSkeleton />
   }
 
   if (roomError || !room) {

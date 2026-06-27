@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { messageService } from '../services/messageService'
 import { createChatSocket } from '../services/websocketService'
-import type { ChatMessage, OnlineUser, TypingUser } from '../types/chat'
+import type { ChatMessage, OnlineUser, TypingUser, RoomTimerUpdateEvent, RoomSubmissionCreatedEvent } from '../types/chat'
 import type { EditorLanguage, EditorPresenceUser, EditorSyncEvent } from '../types/editor'
 import { tokenStorage } from '../utils/tokenStorage'
 
@@ -51,6 +51,8 @@ type ServerEvent =
         message: string
       }
     }
+  | RoomTimerUpdateEvent
+  | RoomSubmissionCreatedEvent
 
 const createClientMessageId = () => crypto.randomUUID()
 
@@ -67,6 +69,8 @@ export function useChatSocket(roomId: string, userId: string | undefined) {
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([])
   const [editorPresenceUsers, setEditorPresenceUsers] = useState<EditorPresenceUser[]>([])
   const [lastEditorSync, setLastEditorSync] = useState<EditorSyncEvent | null>(null)
+  const [roomTimerEvent, setRoomTimerEvent] = useState<RoomTimerUpdateEvent['payload'] | null>(null)
+  const [newSubmissionEvent, setNewSubmissionEvent] = useState<RoomSubmissionCreatedEvent['payload'] | null>(null)
   const socketRef = useRef<WebSocket | null>(null)
   const typingTimersRef = useRef<Map<string, number>>(new Map())
   const lastTypingSentRef = useRef(0)
@@ -217,6 +221,18 @@ export function useChatSocket(roomId: string, userId: string | undefined) {
             ),
           )
         }
+        return
+      }
+
+      if ('type' in serverEvent && serverEvent.type === 'ROOM_TIMER_UPDATED') {
+        if (serverEvent.payload.roomId !== roomId) return
+        setRoomTimerEvent(serverEvent.payload)
+        return
+      }
+
+      if ('type' in serverEvent && serverEvent.type === 'ROOM_SUBMISSION_CREATED') {
+        if (serverEvent.payload.roomId !== roomId) return
+        setNewSubmissionEvent(serverEvent.payload)
         return
       }
 
@@ -426,8 +442,10 @@ export function useChatSocket(roomId: string, userId: string | undefined) {
     loadOlderMessages,
     lastEditorSync,
     messages,
+    newSubmissionEvent,
     onlineUsers,
     retryMessage,
+    roomTimerEvent,
     sendEditorChange,
     sendEditorPresence,
     sendMessage,
@@ -437,5 +455,4 @@ export function useChatSocket(roomId: string, userId: string | undefined) {
     typingUsers,
   }
 }
-
 

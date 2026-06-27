@@ -9,7 +9,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { editorService } from '../../services/editorService'
 import { liveblocksService } from '../../services/liveblocksService'
 import type { ChatRoom } from '../../types/chat'
-import type { CodeRunResult, EditorLanguage, EditorPresenceUser, RoomProblemRunResult, SaveStatus } from '../../types/editor'
+import type { CodeRunResult, EditorLanguage, EditorPresenceUser, RoomProblemRunResult, RoomProblemSubmitResult, SaveStatus } from '../../types/editor'
 
 import { CollaborativeCodeEditor } from './CollaborativeCodeEditor'
 import { EditorOutputPanel } from './EditorOutputPanel'
@@ -28,6 +28,7 @@ type CodeEditorWorkspaceProps = {
   room: ChatRoom
   toolbarMode?: 'collaborative' | 'competing'
   competingProblemId?: string | null
+  onSubmitSuccess?: () => void
 }
 
 type CodeEditorWorkspaceContentProps = CodeEditorWorkspaceProps
@@ -97,6 +98,7 @@ function CodeEditorWorkspaceContent({
   room,
   toolbarMode = 'collaborative',
   competingProblemId = null,
+  onSubmitSuccess,
 }: CodeEditorWorkspaceContentProps) {
   const liveblocksRoom = useRoom()
   const { user } = useAuth()
@@ -105,19 +107,19 @@ function CodeEditorWorkspaceContent({
   const [editorError, setEditorError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isRunning, setIsRunning] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [language, setLanguage] = useState<EditorLanguage>('javascript')
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null)
   const [runError, setRunError] = useState<string | null>(null)
   const [runResult, setRunResult] = useState<CodeRunResult | null>(null)
   const [testcaseRunResult, setTestcaseRunResult] = useState<RoomProblemRunResult | null>(null)
+  const [testcaseSubmitResult, setTestcaseSubmitResult] = useState<RoomProblemSubmitResult | null>(null)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const [stdin, setStdin] = useState('')
-  const [submitFeedback, setSubmitFeedback] = useState(false)
   const [loadRetryCount, setLoadRetryCount] = useState(0)
   const [monacoEditor, setMonacoEditor] = useState<MonacoEditorInstance | null>(null)
 
   const loadedDocumentContentRef = useRef('')
-  const submitFeedbackTimerRef = useRef<number | null>(null)
   const yTextRef = useRef<SharedEditorText | null>(null)
   
   const cursorDecorationsRef = useRef<string[]>([])
@@ -130,8 +132,22 @@ function CodeEditorWorkspaceContent({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const others = useOthers() as ReadonlyArray<any>
 
+  const documentKey = `competing_draft_${room.id}_${competingProblemId || 'default'}`
+
   const saveDocument = useCallback(async () => {
     setSaveStatus('saving')
+
+    if (toolbarMode === 'competing') {
+      try {
+        localStorage.setItem(documentKey, JSON.stringify({ code, language, updatedAt: new Date().toISOString() }))
+        setLastSavedAt(new Date())
+        setSaveStatus('saved')
+      } catch {
+        setSaveStatus('error')
+        setEditorError('Editor document could not be saved locally.')
+      }
+      return
+    }
 
     try {
       const document = await editorService.saveDocument(room.id, code, language)
@@ -142,11 +158,41 @@ function CodeEditorWorkspaceContent({
       setSaveStatus('error')
       setEditorError('Editor document could not be saved.')
     }
-  }, [code, language, room.id])
+  }, [code, language, room.id, toolbarMode, documentKey])
 
   const loadDocument = useCallback(async (isCurrentRequest: () => boolean) => {
     setIsLoading(true)
     setEditorError(null)
+
+    if (toolbarMode === 'competing') {
+      if (!isCurrentRequest()) return
+      try {
+        const saved = localStorage.getItem(documentKey)
+        if (saved) {
+          const parsed = JSON.parse(saved)
+          const docLanguage = isSupportedEditorLanguage(parsed.language) ? parsed.language as EditorLanguage : 'javascript'
+          const docContent = parsed.code || starterCodeByLanguage[docLanguage]
+          loadedDocumentContentRef.current = docContent
+          setLanguage(docLanguage)
+          setCode(docContent)
+          setLastSavedAt(new Date(parsed.updatedAt))
+          setSaveStatus('saved')
+        } else {
+          const docLanguage = 'javascript'
+          const docContent = starterCodeByLanguage[docLanguage]
+          loadedDocumentContentRef.current = docContent
+          setLanguage(docLanguage)
+          setCode(docContent)
+          setSaveStatus('saved')
+        }
+      } catch {
+        setEditorError('Could not load editor document')
+        setSaveStatus('error')
+      } finally {
+        setIsLoading(false)
+      }
+      return
+    }
 
     try {
       const document = await editorService.getDocument(room.id)
@@ -174,7 +220,7 @@ function CodeEditorWorkspaceContent({
         setIsLoading(false)
       }
     }
-  }, [room.id])
+  }, [room.id, toolbarMode, documentKey])
 
   useEffect(() => {
     let isCurrentRequest = true
@@ -187,7 +233,7 @@ function CodeEditorWorkspaceContent({
   }, [loadDocument, loadRetryCount])
 
   useEffect(() => {
-    if (isLoading) return
+    if (isLoading || toolbarMode === 'competing') return
 
     const editor = monacoEditor
     const model = editor?.getModel()
@@ -261,12 +307,12 @@ function CodeEditorWorkspaceContent({
         yTextRef.current = null
       }
     }
-  }, [isLoading, liveblocksRoom, monacoEditor, room.id])
+  }, [isLoading, liveblocksRoom, monacoEditor, room.id, toolbarMode])
 
   
   useEffect(() => {
     const editor = monacoEditor
-    if (!editor || !user) return
+    if (!editor || !user || toolbarMode === 'competing') return
 
     
     updateMyPresence({
@@ -291,13 +337,13 @@ function CodeEditorWorkspaceContent({
     })
 
     return () => disposable.dispose()
-  }, [monacoEditor, updateMyPresence, user])
+  }, [monacoEditor, updateMyPresence, user, toolbarMode])
 
   
   useEffect(() => {
     const editor = monacoEditor
     const model = editor?.getModel()
-    if (!editor || !model) return
+    if (!editor || !model || toolbarMode === 'competing') return
 
     
     if (!cursorStyleTagRef.current) {
@@ -369,7 +415,7 @@ function CodeEditorWorkspaceContent({
     return () => {
       
     }
-  }, [monacoEditor, others])
+  }, [monacoEditor, others, toolbarMode])
 
   
   useEffect(() => {
@@ -407,6 +453,10 @@ function CodeEditorWorkspaceContent({
     setCode(nextCode)
     setSaveStatus('unsaved')
 
+    if (toolbarMode === 'competing') {
+      return
+    }
+
     const sharedText = yTextRef.current
 
     if (sharedText) {
@@ -417,11 +467,17 @@ function CodeEditorWorkspaceContent({
   const handleResetCode = () => {
     const starterCode = starterCodeByLanguage[language]
 
+    monacoEditor?.setValue(starterCode)
     setCode(starterCode)
     setRunError(null)
     setRunResult(null)
     setTestcaseRunResult(null)
+    setTestcaseSubmitResult(null)
     setSaveStatus('unsaved')
+
+    if (toolbarMode === 'competing') {
+      return
+    }
 
     const sharedText = yTextRef.current
 
@@ -430,17 +486,32 @@ function CodeEditorWorkspaceContent({
     }
   }
 
-  const handleSubmit = () => {
-    setSubmitFeedback(true)
+  const handleSubmit = async () => {
+    if (codeIsEmpty || isSubmitting) return
 
-    if (submitFeedbackTimerRef.current) {
-      window.clearTimeout(submitFeedbackTimerRef.current)
+    setIsSubmitting(true)
+    setRunError(null)
+    setRunResult(null)
+    setTestcaseRunResult(null)
+    setTestcaseSubmitResult(null)
+
+    try {
+      if (!competingProblemId) {
+        throw new Error('Select a problem before submitting code')
+      }
+
+      const result = await editorService.submitProblemCode(room.id, competingProblemId, language, code)
+      setTestcaseSubmitResult(result)
+
+      if (onSubmitSuccess) {
+        onSubmitSuccess()
+      }
+    } catch (error) {
+      const safeMessage = error instanceof Error ? error.message : 'Could not submit code'
+      setRunError(safeMessage)
+    } finally {
+      setIsSubmitting(false)
     }
-
-    submitFeedbackTimerRef.current = window.setTimeout(() => {
-      setSubmitFeedback(false)
-      submitFeedbackTimerRef.current = null
-    }, 2500)
   }
   const handleRunCode = async () => {
     if (codeIsEmpty || isRunning) return
@@ -449,6 +520,7 @@ function CodeEditorWorkspaceContent({
     setRunError(null)
     setRunResult(null)
     setTestcaseRunResult(null)
+    setTestcaseSubmitResult(null)
 
     try {
       if (toolbarMode === 'competing') {
@@ -474,14 +546,9 @@ function CodeEditorWorkspaceContent({
     setRunError(null)
     setRunResult(null)
     setTestcaseRunResult(null)
+    setTestcaseSubmitResult(null)
   }, [competingProblemId])
-  useEffect(() => {
-    return () => {
-      if (submitFeedbackTimerRef.current) {
-        window.clearTimeout(submitFeedbackTimerRef.current)
-      }
-    }
-  }, [])
+
   if (isLoading) {
     return <EditorSkeleton />
   }
@@ -516,7 +583,7 @@ function CodeEditorWorkspaceContent({
 
       <EditorToolbar
         disabled={connectionStatus === 'offline'}
-        isRunning={isRunning}
+        isRunning={isRunning || isSubmitting}
         canRun={!codeIsEmpty}
         language={language}
         lastSavedAt={lastSavedAt}
@@ -534,11 +601,7 @@ function CodeEditorWorkspaceContent({
         toolbarMode={toolbarMode}
       />
 
-      {toolbarMode === 'competing' && submitFeedback ? (
-        <div className="shrink-0 border-b border-[#57F1DB]/15 bg-[#57F1DB]/[0.06] px-4 py-2 text-sm text-[#BFFCF0]">
-          Real submissions will be added in the next milestone.
-        </div>
-      ) : null}
+
 
       <div className="min-h-0 flex-1 overflow-hidden">
         <ResizablePanelGroup
@@ -580,9 +643,10 @@ function CodeEditorWorkspaceContent({
               <EditorOutputPanel
                 error={runError}
                 fillAvailableHeight
-                isRunning={isRunning}
+                isRunning={isRunning || isSubmitting}
                 result={runResult}
                 testcaseResult={testcaseRunResult}
+                submitResult={testcaseSubmitResult}
                 stdin={stdin}
                 tabVariant={toolbarMode === 'competing' ? 'competing' : 'default'}
                 onStdinChange={setStdin}

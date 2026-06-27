@@ -1,7 +1,7 @@
 import { prisma } from "../prisma/client";
 import { executeCodeWithInput } from "./editorService";
 import { HttpError } from "../utils/HttpError";
-import type { CreateRoomInput, JoinRoomInput, RunRoomProblemCodeInput, UpdateRoomInput } from "../validations/roomValidation";
+import type { CreateRoomInput, JoinRoomInput, RunRoomProblemCodeInput, UpdateRoomInput, SubmitRoomProblemCodeInput } from "../validations/roomValidation";
 import {
   ensureActiveRoomAdmin,
   ensureActiveRoomMember,
@@ -64,6 +64,8 @@ const roomSelect = {
   difficulty: true,
   topics: true,
   durationMinutes: true,
+  sessionStatus: true,
+  sessionStartedAt: true,
   createdAt: true,
   adminId: true,
   admin: {
@@ -431,6 +433,17 @@ export const getRoomByIdOrSlug = async (roomId: string, userId: string) => {
   const otherMember = room.members.find((member) => member.userId !== userId);
   const { members: _members, ...safeRoom } = room;
 
+  if (
+    safeRoom.sessionStatus === "RUNNING" &&
+    safeRoom.sessionStartedAt &&
+    safeRoom.durationMinutes
+  ) {
+    const endsAt = safeRoom.sessionStartedAt.getTime() + safeRoom.durationMinutes * 60 * 1000;
+    if (Date.now() >= endsAt) {
+      safeRoom.sessionStatus = "ENDED";
+    }
+  }
+
   if (safeRoom.type === "DM") {
     return {
       ...safeRoom,
@@ -638,6 +651,9 @@ export const updateRoom = async (roomId: string, input: UpdateRoomInput, userId:
     name?: string;
     slug?: string;
     maxMembers?: number | null;
+    sessionStatus?: "WAITING" | "RUNNING" | "ENDED";
+    sessionStartedAt?: Date | null;
+    durationMinutes?: number;
   } = {};
 
   if (input.name) {
@@ -665,6 +681,18 @@ export const updateRoom = async (roomId: string, input: UpdateRoomInput, userId:
     }
 
     updateData.maxMembers = requestedMaxMembers;
+  }
+
+  if (input.sessionStatus) {
+    updateData.sessionStatus = input.sessionStatus;
+  }
+
+  if (input.sessionStartedAt !== undefined) {
+    updateData.sessionStartedAt = input.sessionStartedAt ? new Date(input.sessionStartedAt) : null;
+  }
+
+  if (input.durationMinutes !== undefined) {
+    updateData.durationMinutes = input.durationMinutes;
   }
 
   if (Object.keys(updateData).length === 0) {
@@ -735,4 +763,240 @@ export const removeRoomMember = async (roomId: string, targetUserId: string, adm
   });
 
   return { roomId: room.id, userId: targetUserId };
+};
+
+export const submitRoomProblemCode = async (
+  input: SubmitRoomProblemCodeInput,
+  userId: string,
+) => {
+  const { room } = await ensureActiveRoomMember(input.roomId, userId);
+
+  const roomProblem = await prisma.roomProblem.findFirst({
+    where: {
+      roomId: room.id,
+      problemId: input.problemId,
+    },
+    select: {
+      problem: {
+        select: {
+          id: true,
+          testCases: {
+            orderBy: { order: "asc" },
+            select: {
+              id: true,
+              input: true,
+              expectedOutput: true,
+              isHidden: true,
+              order: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!roomProblem) {
+    throw new HttpError(404, "Problem is not assigned to this room");
+  }
+
+  const roomDetails = await prisma.room.findUnique({
+    where: { id: room.id },
+    select: {
+      createdAt: true,
+      durationMinutes: true,
+    },
+  });
+
+  let isLate = false;
+  if (roomDetails?.durationMinutes) {
+    const contestEndTime = roomDetails.createdAt.getTime() + roomDetails.durationMinutes * 60 * 1000;
+    isLate = Date.now() > contestEndTime;
+  }
+
+  let overallStatus: "ACCEPTED" | "WRONG_ANSWER" | "COMPILATION_ERROR" | "RUNTIME_ERROR" | "TIME_LIMIT_EXCEEDED" | "INTERNAL_ERROR" = "ACCEPTED";
+  let maxExecutionTimeMs = 0;
+  const results = [];
+
+  for (const testCase of roomProblem.problem.testCases) {
+    const runResult = await executeCodeWithInput(input.language, input.code, testCase.input);
+    const actualOutput = runResult.stdout || runResult.output;
+
+    if (runResult.executionTimeMs > maxExecutionTimeMs) {
+      maxExecutionTimeMs = runResult.executionTimeMs;
+    }
+
+    let testcaseStatus: "ACCEPTED" | "WRONG_ANSWER" | "COMPILATION_ERROR" | "RUNTIME_ERROR" | "TIME_LIMIT_EXCEEDED" | "INTERNAL_ERROR" = "ACCEPTED";
+    const error = getRunErrorMessage(runResult);
+
+    if (runResult.status === "error") {
+      if (runResult.compileOutput.trim() !== "") {
+        testcaseStatus = "COMPILATION_ERROR";
+      } else {
+        testcaseStatus = "RUNTIME_ERROR";
+      }
+    } else {
+      const passed = normalizeOutputForComparison(actualOutput) === normalizeOutputForComparison(testCase.expectedOutput);
+      if (!passed) {
+        testcaseStatus = "WRONG_ANSWER";
+      }
+    }
+
+    if (testcaseStatus === "COMPILATION_ERROR") {
+      overallStatus = "COMPILATION_ERROR";
+    } else if ((testcaseStatus as string) === "INTERNAL_ERROR" && overallStatus !== "COMPILATION_ERROR") {
+      overallStatus = "INTERNAL_ERROR";
+    } else if ((testcaseStatus as string) === "TIME_LIMIT_EXCEEDED" && !["COMPILATION_ERROR", "INTERNAL_ERROR"].includes(overallStatus)) {
+      overallStatus = "TIME_LIMIT_EXCEEDED";
+    } else if (testcaseStatus === "RUNTIME_ERROR" && !["COMPILATION_ERROR", "INTERNAL_ERROR", "TIME_LIMIT_EXCEEDED"].includes(overallStatus)) {
+      overallStatus = "RUNTIME_ERROR";
+    } else if (testcaseStatus === "WRONG_ANSWER" && overallStatus === "ACCEPTED") {
+      overallStatus = "WRONG_ANSWER";
+    }
+
+    if (testCase.isHidden) {
+      results.push({
+        testcaseId: testCase.id,
+        order: testCase.order,
+        isHidden: true,
+        passed: testcaseStatus === "ACCEPTED",
+      });
+    } else {
+      results.push({
+        testcaseId: testCase.id,
+        order: testCase.order,
+        isHidden: false,
+        passed: testcaseStatus === "ACCEPTED",
+        input: testCase.input,
+        expectedOutput: testCase.expectedOutput,
+        actualOutput,
+        error,
+      });
+    }
+
+    if (testcaseStatus === "COMPILATION_ERROR") {
+      break;
+    }
+  }
+
+  const passedCount = results.filter((r) => r.passed).length;
+
+  const submission = await prisma.submission.create({
+    data: {
+      roomId: room.id,
+      problemId: roomProblem.problem.id,
+      userId: userId,
+      code: input.code,
+      language: input.language,
+      status: overallStatus,
+      runtimeMs: maxExecutionTimeMs,
+      memoryKb: null,
+      passedCount,
+      totalCount: roomProblem.problem.testCases.length,
+      isLate,
+    },
+    include: {
+      user: {
+        select: {
+          username: true,
+        },
+      },
+    },
+  });
+
+  return {
+    submissionId: submission.id,
+    problemId: roomProblem.problem.id,
+    language: input.language,
+    status: overallStatus,
+    passedCount,
+    totalCount: roomProblem.problem.testCases.length,
+    runtimeMs: maxExecutionTimeMs,
+    memoryKb: undefined,
+    isLate,
+    submittedAt: submission.submittedAt,
+    username: submission.user.username,
+    results,
+  };
+};
+
+export const getRoomProblemSubmissions = async (
+  roomId: string,
+  problemId: string,
+  userId: string,
+) => {
+  const { room } = await ensureActiveRoomMember(roomId, userId);
+
+  const roomDetails = await prisma.room.findUnique({
+    where: { id: room.id },
+    select: { sessionStatus: true, sessionStartedAt: true, durationMinutes: true },
+  });
+
+  let isContestEnded = false;
+
+  if (roomDetails?.sessionStatus === "ENDED") {
+    isContestEnded = true;
+  } else if (
+    roomDetails?.sessionStatus === "RUNNING" &&
+    roomDetails.sessionStartedAt &&
+    roomDetails.durationMinutes
+  ) {
+    const endsAt = roomDetails.sessionStartedAt.getTime() + roomDetails.durationMinutes * 60 * 1000;
+    isContestEnded = Date.now() >= endsAt;
+  }
+
+  const submissions = await prisma.submission.findMany({
+    where: {
+      roomId: room.id,
+      problemId: problemId,
+    },
+    orderBy: {
+      submittedAt: "desc",
+    },
+    select: {
+      id: true,
+      problemId: true,
+      code: true,
+      language: true,
+      status: true,
+      runtimeMs: true,
+      memoryKb: true,
+      passedCount: true,
+      totalCount: true,
+      isLate: true,
+      submittedAt: true,
+      userId: true,
+      user: {
+        select: {
+          username: true,
+        },
+      },
+      problem: {
+        select: {
+          title: true,
+        },
+      },
+    },
+  });
+
+  return submissions.map((sub) => {
+    const canViewCode = sub.userId === userId || isContestEnded;
+
+    return {
+      id: sub.id,
+      problemId: sub.problemId,
+      problemLabel: sub.problem.title,
+      userId: sub.userId,
+      username: sub.user.username,
+      code: canViewCode ? sub.code : null,
+      language: sub.language,
+      status: sub.status,
+      runtimeMs: sub.runtimeMs ?? undefined,
+      memoryKb: sub.memoryKb ?? undefined,
+      passedCount: sub.passedCount ?? 0,
+      totalCount: sub.totalCount ?? 0,
+      isLate: sub.isLate,
+      submittedAt: sub.submittedAt.toISOString(),
+      canViewCode,
+    };
+  });
 };

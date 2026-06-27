@@ -16,7 +16,7 @@ import {
   Trophy,
   X,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 
@@ -41,7 +41,7 @@ import {
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu'
 import { ScrollArea } from '../components/ui/scroll-area'
-import { Skeleton } from '../components/ui/skeleton'
+import { PulseLoader } from '../components/ui/PulseLoader'
 import { useAuth } from '../hooks/useAuth'
 import { useRooms } from '../hooks/useRooms'
 
@@ -68,6 +68,37 @@ type WorkspaceActionCardProps = {
   title: string
 }
 
+type FloatingErrorNotificationProps = {
+  message: string | null
+}
+
+function FloatingErrorNotification({ message }: FloatingErrorNotificationProps) {
+  if (!message) return null
+
+  return (
+    <div
+      role="alert"
+      className="fixed right-4 top-4 z-[70] w-[min(14rem,calc(100vw-2rem))] overflow-hidden rounded-lg border border-white/10 bg-black/35 px-3 py-2.5 text-sm text-white/90 shadow-[0_12px_34px_rgba(0,0,0,0.28)] backdrop-blur-xl"
+    >
+      <div className="flex items-center gap-2.5">
+        <span className="size-1.5 shrink-0 rounded-full bg-white/70" />
+        <p className="min-w-0 truncate font-medium leading-5">{message}</p>
+      </div>
+      <div className="mt-2 h-px overflow-hidden rounded-full bg-white/10">
+        <div
+          className="h-full rounded-full bg-white/55"
+          style={{ animation: 'dashboard-error-progress 3s linear forwards' }}
+        />
+      </div>
+      <style>{`
+        @keyframes dashboard-error-progress {
+          from { width: 100%; }
+          to { width: 0%; }
+        }
+      `}</style>
+    </div>
+  )
+}
 const topicOptions = [
   'Array',
   'String',
@@ -192,7 +223,7 @@ const iconBoxClassName =
   'grid h-8 w-8 place-items-center rounded-lg border border-white/15 bg-gradient-to-b from-[#5A5A5C]/35 to-[#28282A]/35 text-[#D6FFF6] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]'
 
 function WorkspaceActionCard({
-  actionLabel = 'Create room',
+  actionLabel = 'Create Room',
   description,
   icon,
   onClick,
@@ -361,6 +392,26 @@ export function DashboardPage() {
     setIsJoinModalOpen(true)
   }
 
+  useEffect(() => {
+    if (!joinRoomError) return undefined
+
+    const timeoutId = window.setTimeout(() => {
+      setJoinRoomError(null)
+    }, 3000)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [joinRoomError])
+
+  useEffect(() => {
+    if (!formError) return undefined
+
+    const timeoutId = window.setTimeout(() => {
+      setFormError(null)
+    }, 3000)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [formError])
+
   const toggleTopic = (topic: string) => {
     setSelectedTopics((currentTopics) => {
       const topicAlreadySelected = currentTopics.includes(topic)
@@ -400,8 +451,8 @@ export function DashboardPage() {
       const room = await joinRoom(trimmedRoomCode)
       closeJoinModal()
       navigate(`/rooms/${room.id}`, { state: { purpose: room.purpose } })
-    } catch (error) {
-      setJoinRoomError(error instanceof Error ? error.message : 'Could not join room. Please try again.')
+    } catch {
+      setJoinRoomError('Check the room code and try again.')
     } finally {
       setIsJoiningRoom(false)
     }
@@ -415,8 +466,26 @@ export function DashboardPage() {
     const formData = new FormData(event.currentTarget)
 
     try {
-      const roomName = String(formData.get('roomName') ?? '')
+      const roomName = String(formData.get('roomName') ?? '').trim()
       const maxMembersValue = Number(formData.get('maxMembers') ?? 0)
+
+      if (!roomName) {
+        setCreationStage('idle')
+        setFormError('Add a room name.')
+        return
+      }
+
+      if (useMemberLimit && (!Number.isFinite(maxMembersValue) || maxMembersValue < 2)) {
+        setCreationStage('idle')
+        setFormError('Use at least 2 members.')
+        return
+      }
+
+      if (createRoomPurpose === 'COMPETING' && selectedTopics.length === 0) {
+        setCreationStage('idle')
+        setFormError('Select at least one topic.')
+        return
+      }
 
       const [room] = await Promise.all([
         createRoom({
@@ -437,9 +506,9 @@ export function DashboardPage() {
 
       closeModal()
       navigate(`/rooms/${room.id}`, { state: { purpose: room.purpose } })
-    } catch (error) {
+    } catch {
       setCreationStage('idle')
-      setFormError(error instanceof Error ? error.message : 'Something went wrong. Please try again.')
+      setFormError('Check the room details and try again.')
     }
   }
 
@@ -785,15 +854,23 @@ export function DashboardPage() {
                   <p className="mt-3 text-sm leading-6 text-[#BACAC5] sm:text-base">
                     Search, manage, and open your joined workspaces.
                   </p>
-                  <div className="mt-5 flex justify-center gap-2">
-                    <Badge className="gap-2 font-mono text-xs">
-                      <span className="text-[#859490]">Created</span>
-                      <span className="font-bold text-[#D6FFF6]">{createdRoomsCount}</span>
-                    </Badge>
-                    <Badge className="gap-2 font-mono text-xs">
-                      <span className="text-[#859490]">Joined</span>
-                      <span className="font-bold text-[#D6FFF6]">{joinedRoomsCount}</span>
-                    </Badge>
+                  <div className="mt-5 flex justify-center gap-3">
+                    <div className="min-w-24 rounded-xl border border-white/10 bg-white/[0.035] px-4 py-2 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-xl">
+                      <span className="block text-[10px] font-semibold uppercase tracking-[0.18em] text-[#859490]">
+                        Created
+                      </span>
+                      <span className="mt-1 block font-mono text-lg font-bold leading-none text-[#D6FFF6]">
+                        {createdRoomsCount}
+                      </span>
+                    </div>
+                    <div className="min-w-24 rounded-xl border border-white/10 bg-white/[0.035] px-4 py-2 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-xl">
+                      <span className="block text-[10px] font-semibold uppercase tracking-[0.18em] text-[#859490]">
+                        Joined
+                      </span>
+                      <span className="mt-1 block font-mono text-lg font-bold leading-none text-[#D6FFF6]">
+                        {joinedRoomsCount}
+                      </span>
+                    </div>
                   </div>
                 </section>
 
@@ -818,11 +895,7 @@ export function DashboardPage() {
 
                 <section className="space-y-4">
                   {isLoadingRooms ? (
-                    <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-                      {[0, 1, 2, 3, 4, 5].map((item) => (
-                        <Skeleton key={item} className="h-36 rounded-2xl border border-white/5 bg-white/[0.05]" />
-                      ))}
-                    </div>
+                    <PulseLoader className="bg-white/[0.03]" />
                   ) : roomError ? (
                     <Card className="border border-red-300/20 bg-red-950/20 p-4 text-sm text-red-200">
                       {roomError}
@@ -895,42 +968,92 @@ export function DashboardPage() {
 
       <div className="relative z-10 flex min-w-0 flex-1 flex-col lg:hidden">{renderMainContent(true)}</div>
 
-      <Modal isOpen={isJoinModalOpen} onClose={closeJoinModal} title="Join Room">
-        <form onSubmit={handleJoinRoomSubmit} className="grid gap-4">
-          <label className="grid gap-2 text-sm text-zinc-300">
-            Room code
-            <Input
-              value={joinRoomCode}
-              onChange={(event) => setJoinRoomCode(event.target.value.toUpperCase())}
-              placeholder="RM-ABC123"
-              autoFocus
-            />
-          </label>
+      <Modal
+        isOpen={isJoinModalOpen}
+        onClose={closeJoinModal}
+        title="Join Room"
+        size="lg"
+        hideHeader
+        className="relative overflow-visible rounded-[28px] border border-white/10 bg-black/50 p-5 shadow-[0_26px_80px_rgba(0,0,0,0.58)]"
+      >
+        <FloatingErrorNotification message={joinRoomError} />
 
-          {joinRoomError ? (
-            <p className="rounded-lg border border-red-300/20 bg-red-950/20 p-3 text-sm text-red-200">
-              {joinRoomError}
-            </p>
-          ) : null}
+        <div className="rounded-[20px] border border-white/16 bg-gradient-to-b from-[#303033]/95 via-[#242426]/95 to-[#202022]/95 px-6 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_18px_55px_rgba(0,0,0,0.32)]">
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <h2 className="text-xl font-bold tracking-tight text-[#F4F4F5]">Join Room</h2>
+            <button
+              type="button"
+              onClick={closeJoinModal}
+              className="grid size-9 cursor-pointer place-items-center rounded-full text-zinc-300 transition hover:bg-white/10 hover:text-white"
+              aria-label="Close modal"
+            >
+              <X size={20} aria-hidden="true" />
+            </button>
+          </div>
 
-          <Button type="submit" disabled={isJoiningRoom}>
-            {isJoiningRoom ? 'Joining...' : 'Enter Code'}
-          </Button>
-        </form>
+          <form onSubmit={handleJoinRoomSubmit} className="mx-auto grid max-w-[21rem] justify-items-center gap-4 text-center">
+            <label className="grid w-full justify-items-center text-sm text-zinc-400">
+              <div className="w-full rounded-xl border border-white/18 bg-[#2B2B2E]/80 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-400">
+                  Room Code
+                </span>
+                <Input
+                  value={joinRoomCode}
+                  onChange={(event) => {
+                    setJoinRoomCode(event.target.value.toUpperCase())
+                    setJoinRoomError(null)
+                  }}
+                  placeholder="RM-ABC123"
+                  autoFocus
+                  className="mt-2 h-8 border-0 bg-transparent p-0 text-center text-lg font-bold tracking-[0.12em] text-[#D6FFF6] shadow-none placeholder:text-zinc-500 focus-visible:border-0 focus-visible:ring-0"
+                />
+              </div>
+            </label>
+
+            <Button
+              type="submit"
+              disabled={isJoiningRoom}
+              variant="ghost"
+              className="h-11 rounded-full border-2 border-white/10 bg-transparent px-7 text-base font-semibold text-white shadow-[0_10px_28px_rgba(0,0,0,0.22)] hover:border-white/22 hover:bg-white/8 hover:text-white"
+            >
+              {isJoiningRoom ? 'Joining...' : 'Enter Code'}
+            </Button>
+          </form>
+        </div>
       </Modal>
       <Modal
         isOpen={isCreateModalOpen}
         onClose={closeModal}
-        title={createRoomPurpose === 'COMPETING' ? 'Create competing room' : 'Collaboration room'}
+        title={createRoomPurpose === 'COMPETING' ? 'Create Competing Room' : 'Collaboration Room'}
+        size="lg"
+        hideHeader
+        className="rounded-[28px] border border-white/10 bg-black/50 p-5 shadow-[0_26px_80px_rgba(0,0,0,0.58)]"
       >
-        <form onSubmit={handleRoomSubmit} className="grid gap-4">
+        <FloatingErrorNotification message={formError} />
+
+        <div className="rounded-[20px] border border-white/16 bg-gradient-to-b from-[#303033]/95 via-[#242426]/95 to-[#202022]/95 px-6 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_18px_55px_rgba(0,0,0,0.32)]">
+          <div className="mb-5 flex items-center justify-between gap-4">
+            <h2 className="text-xl font-bold tracking-tight text-[#F4F4F5]">
+              {createRoomPurpose === 'COMPETING' ? 'Create Competing Room' : 'Collaboration Room'}
+            </h2>
+            <button
+              type="button"
+              onClick={closeModal}
+              className="grid size-9 cursor-pointer place-items-center rounded-full text-zinc-300 transition hover:bg-white/10 hover:text-white"
+              aria-label="Close modal"
+            >
+              <X size={20} aria-hidden="true" />
+            </button>
+          </div>
+
+          <form onSubmit={handleRoomSubmit} className="grid gap-4">
           <label className="grid gap-2 text-sm text-zinc-300">
             Room name
-            <Input name="roomName" placeholder="DSA Study Group" defaultValue={defaultRoomName} autoFocus />
+            <Input name="roomName" placeholder="DSA Study Group" defaultValue={defaultRoomName} autoFocus className="h-11 rounded-xl border-white/18 bg-[#161618]/70 px-4 text-zinc-100 placeholder:text-zinc-500 focus-visible:border-white/45 focus-visible:ring-white/12" />
           </label>
 
           {createRoomPurpose === 'COMPETING' ? (
-            <div className="grid gap-4 rounded-lg border border-white/10 bg-white/[0.035] p-3">
+            <div className="grid gap-4 rounded-2xl border border-white/14 bg-[#171719]/58 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
               <div className="grid gap-2">
                 <p className="text-sm font-medium text-white">Difficulty</p>
                 <div className="grid grid-cols-3 gap-2">
@@ -969,9 +1092,9 @@ export function DashboardPage() {
                     <div
                       role="button"
                       tabIndex={0}
-                      className="flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-left text-sm text-white outline-none transition hover:border-white/20 focus:border-[#57F1DB]/35"
+                      className="flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-xl border border-white/14 bg-[#111113]/70 px-3 py-2 text-left text-sm text-white outline-none transition hover:border-white/24 focus:border-[#57F1DB]/35"
                     >
-                      <span className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                      <span className="flex max-h-9 min-w-0 flex-1 flex-wrap items-center gap-2 overflow-y-auto pr-1">
                         {selectedTopics.length ? (
                           selectedTopics.map((topic) => (
                             <Badge
@@ -1019,7 +1142,7 @@ export function DashboardPage() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
                     align="start"
-                    className="w-[var(--radix-dropdown-menu-trigger-width)] border-white/10 bg-[#0B0D0F]/95 p-0 text-white shadow-2xl shadow-black/50 backdrop-blur-xl"
+                    className="z-[80] w-[min(var(--radix-dropdown-menu-trigger-width),28rem)] overflow-hidden rounded-xl border-white/14 bg-[#0D0E10]/98 p-0 text-white shadow-[0_18px_48px_rgba(0,0,0,0.45)] backdrop-blur-xl"
                   >
                     <div className="flex items-center gap-2 border-b border-white/10 px-3 py-2">
                       <Search size={15} className="text-zinc-500" aria-hidden="true" />
@@ -1031,7 +1154,7 @@ export function DashboardPage() {
                         className="h-8 min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-zinc-600"
                       />
                     </div>
-                    <ScrollArea className="max-h-56">
+                    <ScrollArea className="h-36">
                       <div className="p-1">
                         {filteredTopicOptions.length ? (
                           filteredTopicOptions.map((topic) => {
@@ -1063,7 +1186,7 @@ export function DashboardPage() {
             </div>
           ) : null}
 
-          <div className="grid gap-3 rounded-lg border border-white/10 bg-white/[0.035] p-3">
+          <div className="grid gap-2.5 rounded-2xl border border-white/14 bg-[#171719]/58 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
             <p className="text-sm font-medium text-white">Member limit</p>
             <label className="flex items-start gap-3 text-sm text-zinc-300 cursor-pointer select-none">
               <input
@@ -1075,7 +1198,7 @@ export function DashboardPage() {
               />
               <span>
                 Unlimited
-                <span className="block text-xs text-zinc-500">Anyone with the room code can join.</span>
+
               </span>
             </label>
             <label className="flex items-start gap-3 text-sm text-zinc-300 cursor-pointer select-none">
@@ -1086,45 +1209,37 @@ export function DashboardPage() {
                 onChange={() => setUseMemberLimit(true)}
                 className="mt-1 cursor-pointer"
               />
-              <span className="grid flex-1 gap-2">
+              <span className="grid flex-1 gap-1.5">
                 Limit members
-                <Input name="maxMembers" type="number" min="2" defaultValue="10" disabled={!useMemberLimit} />
-                <span className="text-xs text-zinc-500">Includes you as admin.</span>
+                <Input name="maxMembers" type="number" min="2" defaultValue="10" disabled={!useMemberLimit} className="h-10 rounded-xl border-white/18 bg-[#161618]/70 px-4 text-zinc-100 disabled:opacity-45" />
+
               </span>
             </label>
           </div>
-
-          {formError ? (
-            <p className="rounded-lg border border-red-300/20 bg-red-950/20 p-3 text-sm text-red-200">
-              {formError}
-            </p>
-          ) : null}
 
           <Button
             type="submit"
             disabled={creationStage !== 'idle'}
             className={[
-              'w-full transition-all duration-300 cursor-pointer disabled:cursor-not-allowed',
-              creationStage === 'success'
-                ? 'bg-emerald-600 hover:bg-emerald-600 text-white border-emerald-500'
-                : '',
+              'mx-auto h-11 min-w-36 rounded-full border-2 border-white/10 bg-transparent px-7 text-base font-semibold text-white shadow-none transition-all duration-300 hover:border-white/22 hover:bg-white/8 hover:text-white focus-visible:border-white/35 focus-visible:ring-white/12 cursor-pointer disabled:cursor-not-allowed',
             ].join(' ')}
           >
             {creationStage === 'creating' ? (
               <span className="flex items-center justify-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin text-white" aria-hidden="true" />
-                Creating room...
+                Creating Room...
               </span>
             ) : creationStage === 'success' ? (
               <span className="flex items-center justify-center gap-2 animate-bounce">
-                <Check className="h-4 w-4 text-white" aria-hidden="true" />
+                <Check className="h-4 w-4" aria-hidden="true" />
                 Room created! {createRoomPurpose === 'COMPETING' ? "Let's compete!" : "Let's collab!"}
               </span>
             ) : (
-              'Create room'
+              'Create Room'
             )}
           </Button>
-        </form>
+          </form>
+        </div>
       </Modal>
     </section>
   )

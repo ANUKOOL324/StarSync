@@ -212,6 +212,17 @@ const broadcastTypingUpdate = (client: ChatClient, roomId: string, isTyping: boo
   });
 };
 
+export const broadcastRoomUpdate = (roomId: string, payload: unknown) => {
+  broadcastToRoom(roomId, payload);
+};
+
+export const broadcastRoomSubmissionCreated = (roomId: string, payload: unknown) => {
+  broadcastToRoom(roomId, {
+    type: "ROOM_SUBMISSION_CREATED",
+    payload,
+  });
+};
+
 const clearTypingTimer = (clientId: string) => {
   const typingTimer = typingTimersByClientId.get(clientId);
 

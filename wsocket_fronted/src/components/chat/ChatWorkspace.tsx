@@ -1,4 +1,4 @@
-import { LogOut, Plus, Trash2 } from 'lucide-react'
+import { LogOut, Trash2, X } from 'lucide-react'
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
@@ -48,7 +48,6 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
   const { logout, user } = useAuth()
   const {
     createDm,
-    createRoom,
     deleteRoom,
     dmRooms,
     getRoom,
@@ -57,7 +56,7 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
     rooms,
     updateRoom,
   } = useRooms()
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+
   const [isInfoOpen, setIsInfoOpen] = useState(() => {
     if (typeof window === 'undefined') {
       return false
@@ -232,17 +231,7 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
     return <Navigate to="/dashboard" replace />
   }
 
-  const handleCreateRoom = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    const formData = new FormData(event.currentTarget)
-    const name = String(formData.get('name') ?? '')
-    const room = await createRoom({ name })
 
-    if (room) {
-      setIsCreateModalOpen(false)
-      navigate(`/rooms/${room.id}`)
-    }
-  }
 
   const handleRenameRoom = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -345,11 +334,10 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
                 onClose={() => setIsSidebarOpen(false)}
                 onlineUsers={onlineUsers}
                 onCreateDm={createDm}
-                onCreateRoom={() => setIsCreateModalOpen(true)}
                 onLogout={logout}
                 onSelectRoom={(nextRoomId) => navigate(`/rooms/${nextRoomId}`)}
                 onTabChange={setActiveTab}
-                rooms={rooms}
+                rooms={rooms.filter((room) => room.purpose === 'COLLABORATIVE')}
                 user={user}
               />
             </ResizablePanel>
@@ -478,76 +466,87 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
         )}
       </ResizablePanelGroup>
 
-      <Modal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        title="Create room"
-        size="sm"
-      >
-        <form onSubmit={handleCreateRoom} className="grid gap-4">
-          <Input name="name" placeholder="Room name" autoFocus />
-          <Button type="submit" className="w-fit px-5 justify-self-end cursor-pointer">
-            <Plus size={17} aria-hidden="true" />
-            Create room
-          </Button>
-        </form>
-      </Modal>
+
 
       <Modal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         title="Room settings"
+        size="lg"
+        hideHeader
+        className="relative overflow-visible rounded-[28px] border border-white/10 bg-black/50 p-5 shadow-[0_26px_80px_rgba(0,0,0,0.58)]"
       >
-        <div className="grid gap-5">
-          {isAdmin ? (
-            <div className="grid gap-4">
-              <form onSubmit={handleRenameRoom} className="grid gap-3">
-                <label className="grid gap-2 text-sm text-zinc-300">
-                  Rename room
-                  <Input name="name" defaultValue={activeRoom.name} placeholder="Room name" />
-                </label>
-                <Button type="submit" size="sm" className="w-fit justify-self-end cursor-pointer">
-                  Save name
-                </Button>
-              </form>
-            </div>
-          ) : (
-            <p className="rounded-lg border border-white/8 bg-white/4 p-3 text-sm text-zinc-400">
-              {activeRoom.type === 'DM'
-                ? 'Direct messages do not use group admin settings.'
-                : 'Only the active room admin can rename or delete this room.'}
-            </p>
-          )}
-
-          {roomActionError ? (
-            <p className="rounded-lg border border-red-300/20 bg-red-950/20 p-3 text-sm text-red-200">
-              {roomActionError}
-            </p>
-          ) : null}
-
-          <div className="flex gap-2 justify-end mt-2">
-            <Button
+        <div className="rounded-[20px] border border-white/16 bg-gradient-to-b from-[#303033]/95 via-[#242426]/95 to-[#202022]/95 px-6 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_18px_55px_rgba(0,0,0,0.32)]">
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <h2 className="text-xl font-bold tracking-tight text-[#F4F4F5]">Room settings</h2>
+            <button
               type="button"
-              variant="ghost"
-              size="sm"
-              onClick={handleLeaveRoom}
-              className="cursor-pointer"
+              onClick={() => setIsSettingsOpen(false)}
+              className="grid size-9 cursor-pointer place-items-center rounded-full text-zinc-300 transition hover:bg-white/10 hover:text-white"
+              aria-label="Close modal"
             >
-              <LogOut size={14} aria-hidden="true" />
-              Leave room
-            </Button>
+              <X size={20} aria-hidden="true" />
+            </button>
+          </div>
+
+          <div className="grid gap-5">
             {isAdmin ? (
+              <div className="grid gap-4">
+                <form onSubmit={handleRenameRoom} className="grid gap-3">
+                  <label className="grid gap-2 text-sm text-zinc-300">
+                    Rename room
+                    <Input name="name" defaultValue={activeRoom.name} placeholder="Room name" />
+                  </label>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    className="w-fit justify-self-end h-10 rounded-full border-2 border-white/10 bg-transparent px-5 text-sm font-semibold text-white shadow-none transition-all duration-300 hover:border-white/22 hover:bg-white/8 hover:text-white cursor-pointer"
+                  >
+                    Save name
+                  </Button>
+                </form>
+              </div>
+            ) : (
+              <p className="rounded-lg border border-white/8 bg-white/4 p-3 text-sm text-zinc-400">
+                {activeRoom.type === 'DM'
+                  ? 'Direct messages do not use group admin settings.'
+                  : 'Only the active room admin can rename or delete this room.'}
+              </p>
+            )}
+
+            {roomActionError ? (
+              <p className="rounded-lg border border-red-300/20 bg-red-950/20 p-3 text-sm text-red-200">
+                {roomActionError}
+              </p>
+            ) : null}
+
+            <div className="flex gap-2 justify-end mt-2">
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => setIsDeleteConfirmOpen(true)}
-                className="border-red-500/25 text-red-400 hover:bg-red-950/30 hover:text-red-300 hover:border-red-500/45 cursor-pointer"
+                onClick={handleLeaveRoom}
+                className="h-10 rounded-full border-2 border-white/10 bg-transparent px-5 text-sm font-semibold text-white shadow-none transition-all duration-300 hover:border-white/22 hover:bg-white/8 hover:text-white cursor-pointer"
               >
-                <Trash2 size={14} aria-hidden="true" />
-                Delete room
+                <LogOut size={14} aria-hidden="true" />
+                Leave room
               </Button>
-            ) : null}
+              {isAdmin ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setIsSettingsOpen(false)
+                    setIsDeleteConfirmOpen(true)
+                  }}
+                  className="h-10 rounded-full border-2 border-red-500/15 bg-transparent px-5 text-sm font-semibold text-red-400 shadow-none transition-all duration-300 hover:border-red-500/30 hover:bg-red-950/10 hover:text-red-300 cursor-pointer"
+                >
+                  <Trash2 size={14} aria-hidden="true" />
+                  Delete room
+                </Button>
+              ) : null}
+            </div>
           </div>
         </div>
       </Modal>
@@ -556,24 +555,49 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
         isOpen={isDeleteConfirmOpen}
         onClose={() => setIsDeleteConfirmOpen(false)}
         title="Delete room"
+        size="lg"
+        hideHeader
+        className="relative overflow-visible rounded-[28px] border border-white/10 bg-black/50 p-5 shadow-[0_26px_80px_rgba(0,0,0,0.58)]"
       >
-        <div className="grid gap-4">
-          <p className="text-sm leading-6 text-zinc-300">
-            Delete <span className="font-semibold text-white">{activeRoom.name}</span>? This removes the room and its messages for everyone.
-          </p>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <Button type="button" variant="ghost" onClick={() => setIsDeleteConfirmOpen(false)}>
-              Cancel
-            </Button>
-            <Button
+        <div className="rounded-[20px] border border-white/16 bg-gradient-to-b from-[#303033]/95 via-[#242426]/95 to-[#202022]/95 px-6 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_18px_55px_rgba(0,0,0,0.32)]">
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <h2 className="text-xl font-bold tracking-tight text-[#F4F4F5]">Delete room</h2>
+            <button
               type="button"
-              variant="ghost"
-              onClick={handleDeleteRoom}
-              className="border-red-300/20 text-red-200 hover:bg-red-950/30 hover:text-red-100"
+              onClick={() => setIsDeleteConfirmOpen(false)}
+              className="grid size-9 cursor-pointer place-items-center rounded-full text-zinc-300 transition hover:bg-white/10 hover:text-white"
+              aria-label="Close modal"
             >
-              <Trash2 size={16} aria-hidden="true" />
-              Delete room
-            </Button>
+              <X size={20} aria-hidden="true" />
+            </button>
+          </div>
+
+          <div className="grid gap-5">
+            <p className="text-sm leading-6 text-zinc-300 text-center">
+              Are you sure you want to delete this room?
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setIsDeleteConfirmOpen(false)
+                  setIsSettingsOpen(true)
+                }}
+                className="h-10 rounded-full border-2 border-white/10 bg-transparent px-5 text-sm font-semibold text-white shadow-none transition-all duration-300 hover:border-white/22 hover:bg-white/8 hover:text-white cursor-pointer"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={handleDeleteRoom}
+                className="h-10 rounded-full border-2 border-red-500/15 bg-transparent px-5 text-sm font-semibold text-red-400 shadow-none transition-all duration-300 hover:border-red-500/30 hover:bg-red-950/10 hover:text-red-300 cursor-pointer"
+              >
+                <Trash2 size={14} aria-hidden="true" />
+                Delete room
+              </Button>
+            </div>
           </div>
         </div>
       </Modal>

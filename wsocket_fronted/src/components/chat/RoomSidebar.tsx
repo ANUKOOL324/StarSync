@@ -17,7 +17,6 @@ type RoomSidebarProps = {
   onClose: () => void
   onlineUsers: OnlineUser[]
   onCreateDm: (userId: string, sourceRoomId?: string) => Promise<ChatRoom>
-  onCreateRoom: () => void
   onLogout: () => void
   onSelectRoom: (roomId: string) => void
   onTabChange: (tab: WorkspaceTab) => void
@@ -98,7 +97,6 @@ export function RoomSidebar({
   onClose,
   onlineUsers,
   onCreateDm,
-  onCreateRoom,
   onLogout,
   onSelectRoom,
   onTabChange,
@@ -268,14 +266,7 @@ export function RoomSidebar({
           </button>
         </div>
 
-        <button
-          type="button"
-          onClick={onCreateRoom}
-          className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-white/15 bg-[#18D6A3] px-4 text-sm font-semibold text-[#03110E] shadow-[0_16px_40px_rgba(24,214,163,0.20)] transition duration-150 hover:-translate-y-0.5 hover:bg-[#35E0B4] hover:shadow-[0_18px_44px_rgba(245,158,11,0.12)] focus:outline-none focus:ring-2 focus:ring-[#18D6A3]/45 active:translate-y-0 active:scale-[0.99]"
-        >
-          <Plus size={17} aria-hidden="true" />
-          Create room
-        </button>
+
 
         <div className="mt-3 rounded-2xl bg-gradient-to-b from-[#5A5A5C]/80 via-white/15 to-[#28282A]/85 p-[1px] shadow-sm shadow-black/20 transition duration-200 focus-within:from-[#18D6A3]/60 focus-within:to-[#18D6A3]/20">
           <label className="group flex h-[38px] items-center gap-2 rounded-[15px] bg-[#18181B]/78 px-3 text-slate-500 backdrop-blur-xl transition duration-200 focus-within:bg-[#1c1c21] focus-within:text-[#18D6A3]">

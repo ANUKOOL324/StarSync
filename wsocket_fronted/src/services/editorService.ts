@@ -1,5 +1,5 @@
 import { apiClient } from './apiClient'
-import type { CodeDocument, CodeRunResult, EditorLanguage, RoomProblemRunResult } from '../types/editor'
+import type { CodeDocument, CodeRunResult, EditorLanguage, RoomProblemRunResult, RoomProblemSubmitResult, SubmissionHistoryItem } from '../types/editor'
 
 type DocumentResponse = {
   document: CodeDocument
@@ -79,6 +79,33 @@ export const editorService = {
       })
 
       return response.data.result
+    } catch (error) {
+      throw new Error(getSafeEditorErrorMessage(error))
+    }
+  },
+
+  async submitProblemCode(roomId: string, problemId: string, language: EditorLanguage, code: string) {
+    try {
+      const response = await apiClient.post<RoomProblemSubmitResult>(`/rooms/${roomId}/problems/submit`, {
+        roomId,
+        problemId,
+        language,
+        code,
+      })
+
+      return response.data
+    } catch (error) {
+      throw new Error(getSafeEditorErrorMessage(error))
+    }
+  },
+
+  async getProblemSubmissions(roomId: string, problemId: string) {
+    try {
+      const response = await apiClient.get<{ submissions: SubmissionHistoryItem[] }>(
+        `/rooms/${roomId}/problems/${problemId}/submissions`
+      )
+
+      return response.data.submissions
     } catch (error) {
       throw new Error(getSafeEditorErrorMessage(error))
     }

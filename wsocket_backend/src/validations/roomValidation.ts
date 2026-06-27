@@ -77,6 +77,9 @@ export const updateRoomSchema = z.object({
   name: z.string().trim().min(2, "Room name must be at least 2 characters").max(60).optional(),
   maxMembers: optionalMaxMembersSchema,
   unlimitedMembers: z.boolean().optional(),
+  sessionStatus: z.enum(["WAITING", "RUNNING", "ENDED"]).optional(),
+  sessionStartedAt: z.string().nullable().optional(),
+  durationMinutes: z.number().int().min(1).max(600).optional(),
 });
 
 export const roomParamsSchema = z.object({
@@ -95,7 +98,20 @@ export const roomMemberParamsSchema = z.object({
   userId: z.string().trim().min(1, "User id is required"),
 });
 
+export const submitRoomProblemCodeSchema = z.object({
+  roomId: z.string().trim().min(1, "Room id is required"),
+  problemId: z.string().trim().min(1, "Problem id is required"),
+  language: editorLanguageSchema,
+  code: z.string().min(1, "Code is required").max(100_000, "Code must be 100,000 characters or less"),
+});
+
+export const roomProblemParamsSchema = z.object({
+  roomId: z.string().trim().min(1, "Room id is required"),
+  problemId: z.string().trim().min(1, "Problem id is required"),
+});
+
 export type RunRoomProblemCodeInput = z.infer<typeof runRoomProblemCodeSchema>;
+export type SubmitRoomProblemCodeInput = z.infer<typeof submitRoomProblemCodeSchema>;
 export type CreateRoomInput = z.infer<typeof createRoomSchema>;
 export type JoinRoomInput = z.infer<typeof joinRoomSchema>;
 export type UpdateRoomInput = z.infer<typeof updateRoomSchema>;

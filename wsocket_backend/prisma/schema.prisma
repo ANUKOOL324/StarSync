@@ -27,6 +27,12 @@ enum RoomRole {
   MEMBER
 }
 
+enum RoomSessionStatus {
+  WAITING
+  RUNNING
+  ENDED
+}
+
 enum RoomMemberStatus {
   ACTIVE
   REMOVED
@@ -66,6 +72,8 @@ model Room {
   difficulty      ProblemDifficulty?
   topics          String[]      @default([])
   durationMinutes Int?
+  sessionStatus   RoomSessionStatus @default(WAITING)
+  sessionStartedAt DateTime?
   createdAt       DateTime      @default(now())
   adminId         String?
   admin           User?         @relation("RoomAdmin", fields: [adminId], references: [id], onDelete: Cascade)

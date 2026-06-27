@@ -18,6 +18,9 @@ export type UpdateRoomPayload = {
   name?: string
   maxMembers?: number | null
   unlimitedMembers?: boolean
+  sessionStatus?: 'WAITING' | 'RUNNING' | 'ENDED'
+  sessionStartedAt?: string | null
+  durationMinutes?: number
 }
 
 const createSlug = (value: string) =>
