@@ -64,7 +64,7 @@ function AppPreview() {
           <span className="h-2.5 w-2.5 rounded-full bg-[#FFBD2E]" />
           <span className="h-2.5 w-2.5 rounded-full bg-[#27C93F]" />
           <span className="ml-2 font-mono text-[11px] text-zinc-500">
-            StarSync Desktop - session_04.flow
+            StarSync
           </span>
         </div>
 
@@ -148,6 +148,7 @@ function AppPreview() {
               </span>
             </div>
           </div>
+        </div>
         </div>
       </div>
     </motion.div>
@@ -365,7 +366,7 @@ export function LandingPage() {
               />
               <p className="text-lg font-semibold tracking-[-0.02em] text-[#D6FFF6]">StarSync</p>
             </div>
-            <p className="mt-1 text-xs text-[#5F6B68]">© 2026 StarSync. All rights reserved.</p>
+            <p className="mt-1 text-xs text-[#5F6B68]">Â© 2026 StarSync. All rights reserved.</p>
           </div>
 
           <div className="flex items-center justify-center gap-3 md:justify-end">
