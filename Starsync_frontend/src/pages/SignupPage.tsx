@@ -64,7 +64,7 @@ export function SignupPage() {
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35 }}
-      className="mx-auto w-full max-w-md rounded-xl bg-gradient-to-b from-[#5A5A5C]/80 via-white/15 to-[#28282A]/85 p-[2px] shadow-2xl shadow-black/45"
+      className="mx-auto w-full max-w-md rounded-xl bg-linear-to-b from-[#5A5A5C]/80 via-white/15 to-[#28282A]/85 p-[2px] shadow-2xl shadow-black/45"
     >
       <div className="rounded-[10px] bg-black/58 p-6 backdrop-blur-2xl">
         <p className="text-xs font-medium uppercase tracking-[0.22em] text-[#7FFFE0]">Create profile</p>

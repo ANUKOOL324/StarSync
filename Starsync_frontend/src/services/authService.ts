@@ -10,6 +10,9 @@ export const authService = {
     const response = await apiClient.post<AuthResponse>('/auth/login', payload)
     return response.data
   },
+  logout: async () => {
+    await apiClient.post('/auth/logout')
+  },
   me: async () => {
     const response = await apiClient.get<{ user: AuthUser }>('/auth/me')
     return response.data.user

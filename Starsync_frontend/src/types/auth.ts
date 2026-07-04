@@ -7,7 +7,6 @@ export type AuthUser = {
 
 export type AuthResponse = {
   user: AuthUser
-  token: string
 }
 
 export type LoginPayload = {

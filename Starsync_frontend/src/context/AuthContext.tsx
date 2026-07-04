@@ -3,7 +3,6 @@ import type { ReactNode } from 'react'
 
 import { authService } from '../services/authService'
 import type { AuthUser, LoginPayload, SignupPayload } from '../types/auth'
-import { tokenStorage } from '../utils/tokenStorage'
 import { AuthContext } from './authContextCore'
 
 type AuthContextValue = {
@@ -12,7 +11,7 @@ type AuthContextValue = {
   isAuthenticated: boolean
   login: (payload: LoginPayload) => Promise<void>
   signup: (payload: SignupPayload) => Promise<void>
-  logout: () => void
+  logout: () => Promise<void>
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -21,17 +20,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const loadUser = async () => {
-      const token = tokenStorage.get()
-
-      if (!token) {
-        setIsLoading(false)
-        return
-      }
-
       try {
         setUser(await authService.me())
       } catch {
-        tokenStorage.clear()
         setUser(null)
       } finally {
         setIsLoading(false)
@@ -48,17 +39,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: Boolean(user),
       login: async (payload) => {
         const result = await authService.login(payload)
-        tokenStorage.set(result.token)
         setUser(result.user)
       },
       signup: async (payload) => {
         const result = await authService.signup(payload)
-        tokenStorage.set(result.token)
         setUser(result.user)
       },
-      logout: () => {
-        tokenStorage.clear()
-        window.location.replace('/')
+      logout: async () => {
+        try {
+          await authService.logout()
+        } finally {
+          setUser(null)
+          window.location.replace('/')
+        }
       },
     }),
     [isLoading, user],
