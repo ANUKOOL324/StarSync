@@ -6,6 +6,7 @@ import { prisma } from "../prisma/client";
 import { createMessage } from "../services/messageService";
 import { verifyEditorRoomAccess } from "../services/editorService";
 import { addGroupRoomMember } from "../services/roomService";
+import { getSession } from "../services/sessionService";
 import { editorLanguageSchema } from "../validations/editorValidation";
 import type {
   ChatClient,
@@ -15,16 +16,16 @@ import type {
   EditorPresenceMessage,
   SocketUser,
 } from "../types/websocket";
-import { verifyAuthToken, type AuthTokenPayload } from "../utils/jwt";
+import { SESSION_COOKIE_NAME } from "../config/session";
 
 type SuccessfulSocketAuth = {
   ok: true;
-  payload: AuthTokenPayload;
+  user: SocketUser;
 };
 
 type FailedSocketAuth = {
   ok: false;
-  reason: "missing" | "invalid" | "expired";
+  reason: "missing" | "invalid";
 };
 
 type SocketAuthResult = SuccessfulSocketAuth | FailedSocketAuth;
@@ -44,31 +45,54 @@ const parseClientMessage = (rawMessage: Buffer): ClientMessage | null => {
   }
 };
 
-const getTokenFromRequest = (request: IncomingMessage): string | null => {
-  const requestHost = request.headers.host ?? "localhost";
-  const requestUrl = new URL(request.url ?? "", `http://${requestHost}`);
-  const token = requestUrl.searchParams.get("token");
+const parseCookieHeader = (cookieHeader: string | undefined): Record<string, string> => {
+  if (!cookieHeader) {
+    return {};
+  }
 
-  return token;
+  return cookieHeader.split(";").reduce<Record<string, string>>((cookies, cookiePair) => {
+    const [rawName, ...rawValueParts] = cookiePair.split("=");
+    const name = rawName?.trim();
+
+    if (!name) {
+      return cookies;
+    }
+
+    const rawValue = rawValueParts.join("=").trim();
+
+    cookies[name] = decodeURIComponent(rawValue);
+    return cookies;
+  }, {});
 };
 
-const verifySocketToken = (request: IncomingMessage): SocketAuthResult => {
-  const token = getTokenFromRequest(request);
+const getSessionIdFromRequest = (request: IncomingMessage): string | null => {
+  const cookies = parseCookieHeader(request.headers.cookie);
+  const sessionId = cookies[SESSION_COOKIE_NAME];
 
-  if (!token) {
+  return sessionId || null;
+};
+
+const verifySocketAuth = async (request: IncomingMessage): Promise<SocketAuthResult> => {
+  const sessionId = getSessionIdFromRequest(request);
+
+  if (!sessionId) {
     return { ok: false, reason: "missing" };
   }
 
-  try {
-    const verifiedPayload = verifyAuthToken(token);
+  const session = await getSession(sessionId);
 
-    return { ok: true, payload: verifiedPayload };
-  } catch (error) {
-    const tokenExpired = error instanceof Error && error.name === "TokenExpiredError";
-    const reason = tokenExpired ? "expired" : "invalid";
-
-    return { ok: false, reason };
+  if (!session) {
+    return { ok: false, reason: "invalid" };
   }
+
+  return {
+    ok: true,
+    user: {
+      id: session.userId,
+      username: session.username,
+      email: session.email,
+    },
+  };
 };
 
 const findConnectedClient = (clientId: string) => {
@@ -251,26 +275,6 @@ const leaveCurrentRoom = (client: ChatClient) => {
   clearEditorPresenceForClient(client);
   client.room = undefined;
   broadcastPresence(previousRoomId);
-};
-
-const resolveAuthenticatedSocketUser = async (
-  tokenPayload: AuthTokenPayload,
-): Promise<SocketUser> => {
-  
-  const user = await prisma.user.findUnique({
-    where: { id: tokenPayload.userId },
-    select: {
-      id: true,
-      username: true,
-      email: true,
-    },
-  });
-
-  if (!user) {
-    throw new Error("Authenticated WebSocket user was not found");
-  }
-
-  return user;
 };
 
 const resolveRoomId = async (roomId: string, userId: string): Promise<string | null> => {
@@ -560,53 +564,36 @@ const registerClientHandlers = (
   });
 };
 
+const handleSocketConnection = async (socket: WebSocket, request: IncomingMessage) => {
+  const authResult = await verifySocketAuth(request);
+
+  if (!authResult.ok) {
+    console.warn(`Rejected WebSocket connection: ${authResult.reason} auth`);
+    socket.close(1008, "Unauthorized");
+    return;
+  }
+
+  const client: ChatClient = {
+    id: crypto.randomUUID(),
+    socket,
+    room: undefined,
+    activeEditorRoom: undefined,
+    user: authResult.user,
+  };
+
+  connectedClients.push(client);
+  registerClientHandlers(client, Promise.resolve(authResult.user));
+};
+
 export const attachWebSocketServer = (server: Server) => {
   const webSocketServer = new WebSocketServer({ server });
 
   webSocketServer.on("connection", (socket, request) => {
-    const authResult = verifySocketToken(request);
-
-    if (!authResult.ok) {
-      console.warn(`Rejected WebSocket connection: ${authResult.reason} token`);
-      socket.close(1008, "Unauthorized");
-      return;
-    }
-
-    
-    
-    const client: ChatClient = {
-      id: crypto.randomUUID(),
-      socket,
-      room: undefined,
-      activeEditorRoom: undefined,
-      user: {
-        id: authResult.payload.userId,
-        username: authResult.payload.email.split("@")[0] || "User",
-        email: authResult.payload.email,
-      },
-    };
-
-    connectedClients.push(client);
-
-    const authenticatedUserPromise = resolveAuthenticatedSocketUser(authResult.payload).then((user) => {
-      client.user = user;
-      return user;
-    });
-
-    void authenticatedUserPromise.catch((error) => {
-      console.warn("Rejected WebSocket connection after user lookup failed", error);
-      removeConnectedClient(client.id);
+    void handleSocketConnection(socket, request).catch((error) => {
+      console.warn("Rejected WebSocket connection after auth failed", error);
       socket.close(1008, "Unauthorized");
     });
-
-    registerClientHandlers(client, authenticatedUserPromise);
   });
 
   return webSocketServer;
 };
-
-
-
-
-
-
