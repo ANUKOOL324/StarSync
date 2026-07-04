@@ -1,34 +1,38 @@
-# WS Chat Collaboration Workspace
+# StarSync
 
-A full-stack realtime collaboration app built with React, TypeScript, Express, native `ws`, Prisma, PostgreSQL, and a Monaco-powered code editor.
+StarSync is a realtime collaboration workspace for chat, direct messages, shared coding rooms, whiteboard sessions, and contest-style problem solving. It uses a React/Vite frontend, an Express/TypeScript backend, native WebSockets, Prisma, PostgreSQL, Redis-backed sessions, Monaco, tldraw, Liveblocks, and a local Piston runner for code execution.
 
-The project intentionally keeps chat and editor collaboration on native `ws`, without Socket.IO, Redis, or Yjs. Liveblocks is used only for the whiteboard tab so the core realtime architecture stays easy to understand and explain.
+## Highlights
 
-## Features
+- HttpOnly cookie authentication with Redis sessions
+- Realtime group rooms and direct messages over native `ws`
+- Persistent chat history, unread states, typing indicators, and online presence
+- Collaborative code editor with autosave and active collaborator presence
+- Whiteboard collaboration through tldraw and Liveblocks
+- Competing rooms with assigned problem-bank questions
+- Run Code execution against visible/sample testcases only
+- Piston-backed code runner for JavaScript, TypeScript, Python, C, and C++
+- Responsive dark workspace UI for dashboard, chat, editor, and contest rooms
 
-- JWT authentication for REST APIs and WebSocket connections
-- Protected frontend routes
-- Persistent group rooms and direct messages
-- Persistent message history with pagination
-- Native `ws` realtime chat
-- Online room presence and typing indicators
-- Unread room indicators
-- Monaco code editor with autosave
-- Editor sync over the existing WebSocket connection
-- Editor active-collaborator presence
-- Collaborative whiteboard with tldraw and Liveblocks
-- Run code through a local Piston Docker runner
-- Supported code-runner languages: C, C++, JavaScript, TypeScript, Python
-- Dark futuristic chat UI with responsive sidebar/details drawers
+## Tech Stack
+
+| Area | Stack |
+| --- | --- |
+| Frontend | React, TypeScript, Vite, Tailwind CSS, Monaco, tldraw |
+| Backend | Node.js, Express, TypeScript, native `ws` |
+| Database | PostgreSQL with Prisma |
+| Sessions | Redis + HttpOnly `sid` cookie |
+| Code runner | Piston Docker API |
+| Whiteboard auth | Liveblocks server token endpoint |
 
 ## Project Structure
 
 ```txt
-websockets/
-|- docker-compose.piston.yml
+StarSync/
 |- Starsync_backend/
 |  |- prisma/
 |  |- src/
+|  |  |- config/
 |  |  |- controllers/
 |  |  |- middleware/
 |  |  |- routes/
@@ -37,29 +41,68 @@ websockets/
 |  |  |- validations/
 |  |  `- websocket/
 |  `- CODE_RUNNER.md
-`- Starsync_frontend/
-   `- src/
-      |- components/
-      |- hooks/
-      |- layouts/
-      |- pages/
-      |- services/
-      |- types/
-      `- utils/
+|- Starsync_frontend/
+|  |- public/
+|  `- src/
+|     |- components/
+|     |- context/
+|     |- hooks/
+|     |- layouts/
+|     |- pages/
+|     |- services/
+|     |- types/
+|     `- utils/
+|- deploy/
+`- docker-compose.piston.yml
+```
+
+## System Flow
+
+```mermaid
+flowchart LR
+  User[Browser] --> Frontend[React Frontend]
+  Frontend -->|HTTP + sid cookie| API[Express API]
+  Frontend -->|WebSocket + sid cookie| WS[Native WS Server]
+  API --> Session[Redis Sessions]
+  WS --> Session
+  API --> DB[(PostgreSQL)]
+  WS --> DB
+  API --> Piston[Piston Runner]
+  API --> Liveblocks[Liveblocks Auth]
+```
+
+## Core App Flow
+
+```mermaid
+flowchart TD
+  A[Sign up or log in] --> B[Dashboard]
+  B --> C[Join room]
+  B --> D[Create collaborative room]
+  B --> E[Create competing room]
+  C --> F[Chat workspace]
+  D --> F
+  F --> G[Chat]
+  F --> H[Editor]
+  F --> I[Whiteboard]
+  E --> J[Competing workspace]
+  J --> K[Assigned DB problems]
+  K --> L[Run visible testcases]
+  J --> M[Submission history]
 ```
 
 ## Requirements
 
-- Node.js
-- npm
-- PostgreSQL database URL, Neon recommended
-- Liveblocks secret key, only needed for the collaborative whiteboard
-- Docker Desktop, only needed for the code runner
+- Node.js and npm
+- PostgreSQL database, Neon works well
+- Redis for session storage, local or hosted
+- Docker Desktop for the optional local Piston code runner
+- Liveblocks secret key for the whiteboard tab
 
 ## Backend Setup
 
+Start Redis before running authenticated routes. A local Redis instance should match `REDIS_URL=redis://localhost:6379`.
+
 ```powershell
-cd websockets
 cd Starsync_backend
 npm install
 copy .env.example .env
@@ -70,27 +113,30 @@ Update `Starsync_backend/.env`:
 ```env
 PORT=3001
 CLIENT_ORIGIN=http://localhost:5173
+FRONTEND_URL=http://localhost:5173
 DATABASE_URL="postgresql://USER:PASSWORD@HOST.neon.tech/DATABASE?sslmode=require"
-JWT_SECRET="change-this-to-a-long-random-secret"
-JWT_EXPIRES_IN=7d
+REDIS_URL=redis://localhost:6379
+SESSION_COOKIE_NAME=sid
+SESSION_TTL_SECONDS=604800
 CODE_RUNNER_URL=http://localhost:2000/api/v2
 LIVEBLOCKS_SECRET_KEY=your_liveblocks_secret_key
 ```
 
-Generate Prisma Client and apply migrations:
+Apply Prisma setup:
 
 ```powershell
 npx prisma generate
 npx prisma migrate deploy
+npx prisma db seed
 ```
 
-For local development, run:
+Run the backend:
 
 ```powershell
 npm run dev
 ```
 
-Backend runs on:
+Backend URL:
 
 ```txt
 http://localhost:3001
@@ -99,7 +145,6 @@ http://localhost:3001
 ## Frontend Setup
 
 ```powershell
-cd websockets
 cd Starsync_frontend
 npm install
 copy .env.example .env
@@ -109,7 +154,7 @@ Update `Starsync_frontend/.env` if needed:
 
 ```env
 VITE_API_URL=http://localhost:3001/api/v1
-VITE_WEBSOCKET_URL=ws://localhost:3001
+VITE_WS_URL=ws://localhost:3001/ws
 ```
 
 Run the frontend:
@@ -118,50 +163,24 @@ Run the frontend:
 npm run dev
 ```
 
-Frontend runs on:
+Frontend URL:
 
 ```txt
 http://localhost:5173
 ```
 
-## Piston Code Runner Setup
+## Local Code Runner
 
-The backend does not run user code with `child_process`. It sends code to a Piston-compatible API.
-
-Start Docker Desktop first. Then from the project root:
+StarSync sends code execution requests to a Piston-compatible API. Start the local runner from the repository root:
 
 ```powershell
-cd websockets
 docker compose -f docker-compose.piston.yml up -d
 ```
 
-Check the runner:
+Check installed runtimes:
 
 ```powershell
-docker compose -f docker-compose.piston.yml ps
 Invoke-RestMethod http://localhost:2000/api/v2/runtimes
-```
-
-If runtimes are missing, install them:
-
-```powershell
-$packagesToInstall = @(
-  @{ language = "gcc"; version = "10.2.0" },
-  @{ language = "node"; version = "20.11.1" },
-  @{ language = "typescript"; version = "5.0.3" },
-  @{ language = "python"; version = "3.10.0" }
-)
-
-foreach ($package in $packagesToInstall) {
-  Invoke-RestMethod `
-    -Method POST `
-    -ContentType "application/json" `
-    -Uri http://localhost:2000/api/v2/packages `
-    -Body (@{
-      language = $package.language
-      version = $package.version
-    } | ConvertTo-Json)
-}
 ```
 
 Stop the runner:
@@ -170,240 +189,121 @@ Stop the runner:
 docker compose -f docker-compose.piston.yml down
 ```
 
-Note: C++ compilation is heavier than Python/JavaScript. The default editor starter uses `#include <iostream>` because it is faster and more reliable locally. Very heavy C++ programs can still timeout cleanly.
+More details are in `Starsync_backend/CODE_RUNNER.md`.
 
-## Liveblocks Whiteboard Setup
+## Whiteboard
 
-The app uses native `ws` for chat, DMs, typing indicators, online presence, editor sync, and editor presence.
+Chat, direct messages, room presence, typing, timers, editor sync, and contest events use the app WebSocket server. The whiteboard uses Liveblocks because canvas synchronization is a separate high-frequency collaboration problem.
 
-Liveblocks is used only for the whiteboard tab.
+Whiteboard access still follows StarSync room membership rules:
 
-To enable the whiteboard:
+1. Frontend requests `POST /api/v1/liveblocks/auth`.
+2. Backend verifies the `sid` session cookie.
+3. Backend checks room membership.
+4. Backend returns a Liveblocks token scoped to the room.
 
-1. Create a Liveblocks project.
-2. Copy your secret key from the Liveblocks dashboard.
-3. Add it to `Starsync_backend/.env`:
+## Competing Rooms
 
-```env
-LIVEBLOCKS_SECRET_KEY=your_liveblocks_secret_key
-```
+Competing rooms use the problem bank stored in PostgreSQL:
 
-The frontend never receives this secret key.
+- Room creation stores difficulty/topic preferences.
+- The backend assigns four available problems to the room.
+- The frontend loads P1/P2/P3/P4 from `GET /api/v1/rooms/:roomId/problems`.
+- Run Code calls `POST /api/v1/rooms/:roomId/problems/run`.
+- Only visible/sample testcases are executed and returned.
+- Hidden testcases stay private and are not returned to the frontend.
+- Submit and leaderboard behavior are intentionally separate from Run Code.
 
-When a user opens the whiteboard, the frontend asks:
+## Run Locally
 
-```txt
-POST /api/v1/liveblocks/auth
-```
-
-The backend:
-
-1. Verifies the normal JWT.
-2. Checks `RoomMember` for the current room.
-3. Allows access only to `whiteboard:<roomId>`.
-4. Returns a short-lived Liveblocks token.
-
-This keeps whiteboard access tied to the same room membership rules as the rest of the app.
-
-## Run Everything Locally
-
-Use three terminals:
-
-Terminal 1, code runner:
+Use separate terminals:
 
 ```powershell
-cd websockets
+# Terminal 1: Piston runner
+cd <repo-root>
 docker compose -f docker-compose.piston.yml up -d
 ```
 
-Terminal 2, backend:
-
 ```powershell
-cd websockets\Starsync_backend
+# Terminal 2: backend
+cd <repo-root>\Starsync_backend
 npm run dev
 ```
 
-Terminal 3, frontend:
-
 ```powershell
-cd websockets\Starsync_frontend
+# Terminal 3: frontend
+cd <repo-root>\Starsync_frontend
 npm run dev
 ```
 
-Then open:
-
-```txt
-http://localhost:5173
-```
-
-## Demo Flow
-
-Use this flow when showing the project:
-
-1. Start Docker Piston if you plan to demo code execution.
-2. Start the backend and frontend.
-3. Sign up or log in.
-4. Create a group room from the dashboard.
-5. Open the room and send a group chat message.
-6. Open the same room with a second user in another browser or incognito window.
-7. Show online room members and typing indicators.
-8. Start a direct message from a room member and send a private message.
-9. Return to the group room and open the Editor tab.
-10. Type code, wait for autosave, then refresh to confirm the code persists.
-11. Run JavaScript or Python code and show stdout in the output panel.
-12. Open the Editor tab with the second user and show active collaborators.
-13. Open the Whiteboard tab with both users and draw together.
-14. Switch one user back to Chat and confirm editor/board state does not break.
-
-Short presenter script:
-
-```txt
-This is a realtime collaboration workspace.
-REST APIs handle persistent actions like auth, rooms, messages, and editor saves.
-Native WebSocket handles chat, DMs, typing, online presence, editor sync, and editor presence.
-Docker Piston handles code execution safely outside the backend process.
-Liveblocks is used only for the whiteboard because high-frequency canvas sync is a different problem from chat.
-```
-
-## Final Demo Checklist
-
-Before recording or presenting:
-
-- [ ] Backend is running on `http://localhost:3001`
-- [ ] Frontend is running on `http://localhost:5173`
-- [ ] Database connection works
-- [ ] Docker Desktop is running
-- [ ] Piston responds at `http://localhost:2000/api/v2/runtimes`
-- [ ] `LIVEBLOCKS_SECRET_KEY` is configured if showing the whiteboard
-- [ ] User A and User B test accounts are ready
-- [ ] One normal browser and one incognito/second browser are open
-- [ ] Chat message persists after refresh
-- [ ] DM message persists after refresh
-- [ ] Editor code persists after refresh
-- [ ] Code runner shows output for a simple JavaScript or Python example
-- [ ] Whiteboard opens and drawing syncs between two users
-
-## Screenshots To Capture
-
-Recommended screenshots for the repository:
-
-| Screenshot | What To Show |
-|---|---|
-| Login page | Dark auth UI and product branding |
-| Dashboard | Create room, join room, recent rooms |
-| Group chat workspace | Room sidebar, live chat, room details |
-| Typing/presence | Online users and typing indicator |
-| Direct message view | Private DM room with another user |
-| Editor tab | Monaco editor with saved code |
-| Code runner output | stdout/stderr panel after running code |
-| Editor collaborators | Active editor avatars/count |
-| Whiteboard tab | tldraw canvas with shared drawing |
-| Responsive drawer | Mobile/tablet sidebar or details drawer |
-
-Add screenshots to this README when they are available.
+Open `http://localhost:5173`.
 
 ## Useful Commands
 
-Backend:
-
 ```powershell
+# Backend
 cd Starsync_backend
-npm run dev
 npm run build
+npx prisma validate
+npx prisma migrate deploy
+npx prisma db seed
 ```
 
-Frontend:
-
 ```powershell
+# Frontend
 cd Starsync_frontend
-npm run dev
 npm run lint
 npm run build
+npm run preview
 ```
 
-Prisma:
-
 ```powershell
-cd Starsync_backend
-npx prisma generate
-npx prisma migrate deploy
-npx prisma studio
-```
-
-Piston:
-
-```powershell
-docker compose -f docker-compose.piston.yml up -d
+# Piston
+cd <repo-root>
 docker compose -f docker-compose.piston.yml ps
 docker compose -f docker-compose.piston.yml down
 ```
 
-## Troubleshooting
+## Deployment Notes
 
-### Docker pipe error on Windows
+The `deploy/` folder contains an example same-origin production setup with Nginx. Same-origin deployment is recommended because the frontend, API, WebSocket server, and HttpOnly `sid` cookie work best behind one public domain.
 
-If you see an error like:
+For Vercel frontend deployment, make sure the project root is set to:
 
 ```txt
-open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified
+Starsync_frontend
 ```
 
-Docker Desktop is not running. Open Docker Desktop, wait until it says the engine is running, then run:
+Use:
+
+```txt
+Build command: npm run build
+Output directory: dist
+```
+
+## Troubleshooting
+
+### Login does not persist after refresh
+
+Check that Redis is running and `REDIS_URL` is correct. The app uses a Redis-backed HttpOnly `sid` cookie for both HTTP and WebSocket auth.
+
+### API requests fail in development
+
+Confirm `CLIENT_ORIGIN` and `FRONTEND_URL` match the frontend URL, usually `http://localhost:5173`.
+
+### Code runner is unavailable
+
+Start Docker Desktop and run:
 
 ```powershell
 docker compose -f docker-compose.piston.yml up -d
-```
-
-### Code runner is currently unavailable
-
-This means the backend could not reach Piston.
-
-Check:
-
-```powershell
-docker compose -f docker-compose.piston.yml ps
 Invoke-RestMethod http://localhost:2000/api/v2/runtimes
 ```
 
-Also confirm `Starsync_backend/.env` contains:
+### Prisma cannot connect
 
-```env
-CODE_RUNNER_URL=http://localhost:2000/api/v2
-```
+Check `DATABASE_URL`. Neon URLs usually need `sslmode=require`.
 
-### C++ timeout
+## Repository Notes
 
-C++ is supported, but Docker Desktop on Windows can compile slowly. Use the lightweight starter code with:
-
-```cpp
-#include <iostream>
-using namespace std;
-
-int main() {
-    cout << "hello" << endl;
-    return 0;
-}
-```
-
-Very heavy C++ code may timeout. The app should show a clean timeout/error message instead of exposing backend stack traces.
-
-### Prisma or database connection error
-
-Check that `DATABASE_URL` in `Starsync_backend/.env` is your real PostgreSQL connection string.
-
-For Neon, keep `sslmode=require` in the URL.
-
-### Port already in use
-
-If port `3001` or `5173` is already running, stop the old process or change the port in your environment/dev command.
-
-## Notes For Forks
-
-This repository does not include:
-
-- `.env` files
-- `node_modules`
-- `dist`
-- local Piston runtime data under `data/`
-
-That is intentional. Forkers should install dependencies, create their own environment files, connect their own database, and start their own local Piston runner.
+This repository does not include `.env` files, `node_modules`, `dist`, local Piston runtime data, or local planning notes. Create environment files from the provided examples before running the app.
