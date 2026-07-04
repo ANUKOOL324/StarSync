@@ -3,7 +3,6 @@ import bcrypt from "bcrypt";
 import { prisma } from "../prisma/client";
 import type { LoginInput, SignupInput } from "../validations/authValidation";
 import { HttpError } from "../utils/HttpError";
-import { signAuthToken } from "../utils/jwt";
 
 const SALT_ROUNDS = 12;
 
@@ -32,7 +31,6 @@ export const signupUser = async (input: SignupInput) => {
     throw new HttpError(409, "Email is already registered");
   }
 
-  
   const hashedPassword = await bcrypt.hash(input.password, SALT_ROUNDS);
 
   const user = await prisma.user.create({
@@ -49,14 +47,8 @@ export const signupUser = async (input: SignupInput) => {
     },
   });
 
-  const token = signAuthToken({
-    userId: user.id,
-    email: user.email,
-  });
-
   return {
     user: toSafeUser(user),
-    token,
   };
 };
 
@@ -69,21 +61,14 @@ export const loginUser = async (input: LoginInput) => {
     throw new HttpError(401, "Invalid email or password");
   }
 
-  
   const passwordMatches = await bcrypt.compare(input.password, user.password);
 
   if (!passwordMatches) {
     throw new HttpError(401, "Invalid email or password");
   }
 
-  const token = signAuthToken({
-    userId: user.id,
-    email: user.email,
-  });
-
   return {
     user: toSafeUser(user),
-    token,
   };
 };
 
