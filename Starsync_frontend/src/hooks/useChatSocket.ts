@@ -4,7 +4,6 @@ import { messageService } from '../services/messageService'
 import { createChatSocket } from '../services/websocketService'
 import type { ChatMessage, OnlineUser, TypingUser, RoomTimerUpdateEvent, RoomSubmissionCreatedEvent } from '../types/chat'
 import type { EditorLanguage, EditorPresenceUser, EditorSyncEvent } from '../types/editor'
-import { tokenStorage } from '../utils/tokenStorage'
 
 type ServerEvent =
   | {
@@ -88,9 +87,7 @@ export function useChatSocket(roomId: string, userId: string | undefined) {
   }, [])
 
   useEffect(() => {
-    const token = tokenStorage.get()
-
-    if (!roomId || !userId || !token) {
+    if (!roomId || !userId) {
       setMessages([])
       setOnlineUsers([])
       setTypingUsers([])
@@ -102,7 +99,7 @@ export function useChatSocket(roomId: string, userId: string | undefined) {
     }
 
     let isActive = true
-    const socket = createChatSocket(token)
+    const socket = createChatSocket()
     const typingTimers = typingTimersRef.current
     socketRef.current = socket
     queueMicrotask(() => {
@@ -455,4 +452,3 @@ export function useChatSocket(roomId: string, userId: string | undefined) {
     typingUsers,
   }
 }
-
