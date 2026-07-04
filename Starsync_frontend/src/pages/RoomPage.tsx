@@ -9,6 +9,33 @@ import { roomService } from '../services/roomService'
 import { useRooms } from '../hooks/useRooms'
 import type { ChatRoom } from '../types/chat'
 
+type RoomPurpose = 'COLLABORATIVE' | 'COMPETING'
+
+const roomPurposeStorageKey = (roomId: string) => `room-purpose:${roomId}`
+
+const readStoredRoomPurpose = (roomId: string | undefined): RoomPurpose | undefined => {
+  if (!roomId) return undefined
+
+  try {
+    const stored = sessionStorage.getItem(roomPurposeStorageKey(roomId))
+    if (stored === 'COLLABORATIVE' || stored === 'COMPETING') {
+      return stored
+    }
+  } catch {
+    return undefined
+  }
+
+  return undefined
+}
+
+const writeStoredRoomPurpose = (roomId: string, purpose: RoomPurpose) => {
+  try {
+    sessionStorage.setItem(roomPurposeStorageKey(roomId), purpose)
+  } catch {
+    return
+  }
+}
+
 export function RoomPage() {
   const { roomId } = useParams()
   const location = useLocation()
@@ -17,9 +44,22 @@ export function RoomPage() {
   const [isLoadingRoom, setIsLoadingRoom] = useState(true)
   const [roomError, setRoomError] = useState<string | null>(null)
 
-  const statePurpose = location.state?.purpose as 'COLLABORATIVE' | 'COMPETING' | undefined
+  const statePurpose = location.state?.purpose as RoomPurpose | undefined
   const cachedRoom = rooms.find((r) => r.id === roomId)
-  const roomPurpose = statePurpose ?? cachedRoom?.purpose ?? room?.purpose
+  const roomPurpose = statePurpose ?? cachedRoom?.purpose ?? room?.purpose ?? readStoredRoomPurpose(roomId)
+
+  useEffect(() => {
+    if (statePurpose && roomId) {
+      writeStoredRoomPurpose(roomId, statePurpose)
+    }
+  }, [statePurpose, roomId])
+
+  useEffect(() => {
+    const purpose = room?.purpose ?? cachedRoom?.purpose
+    if (purpose && roomId) {
+      writeStoredRoomPurpose(roomId, purpose)
+    }
+  }, [cachedRoom?.purpose, room?.purpose, roomId])
 
   useEffect(() => {
     if (!roomId) {
@@ -63,7 +103,12 @@ export function RoomPage() {
     if (roomPurpose === 'COLLABORATIVE') {
       return <ChatWorkspaceSkeleton />
     }
-    return <WorkspaceSkeleton />
+
+    if (roomPurpose === 'COMPETING') {
+      return <WorkspaceSkeleton />
+    }
+
+    return null
   }
 
   if (roomError || !room) {

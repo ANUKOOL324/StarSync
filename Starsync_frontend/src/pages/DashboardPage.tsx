@@ -13,6 +13,7 @@ import {
   Menu,
   MessageSquare,
   Search,
+  Settings,
   Trophy,
   X,
 } from 'lucide-react'
@@ -214,13 +215,13 @@ const staticRoomPreviews: StaticRoomPreview[] = [
 const roomPreviewPageSize = 6
 
 const cardFrameClassName =
-  'rounded-2xl bg-gradient-to-b from-[#5A5A5C]/80 via-white/15 to-[#28282A]/85 p-[2px] shadow-[0_18px_60px_rgba(0,0,0,0.22)] transition duration-300 hover:-translate-y-0.5 cursor-pointer'
+  'rounded-2xl bg-linear-to-b from-[#5A5A5C]/80 via-white/15 to-[#28282A]/85 p-[2px] shadow-[0_18px_60px_rgba(0,0,0,0.22)] transition duration-300 hover:-translate-y-0.5 cursor-pointer'
 
 const actionCardClassName =
   'relative flex h-full min-h-[7.25rem] flex-col justify-between overflow-hidden rounded-[14px] bg-[#18181B]/78 p-3.5 backdrop-blur-2xl transition duration-300 group-hover:bg-[#1F1F23]/88'
 
 const iconBoxClassName =
-  'grid h-8 w-8 place-items-center rounded-lg border border-white/15 bg-gradient-to-b from-[#5A5A5C]/35 to-[#28282A]/35 text-[#D6FFF6] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]'
+  'grid h-8 w-8 place-items-center rounded-lg border border-white/15 bg-linear-to-b from-[#5A5A5C]/35 to-[#28282A]/35 text-[#D6FFF6] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]'
 
 function WorkspaceActionCard({
   actionLabel = 'Create Room',
@@ -232,7 +233,7 @@ function WorkspaceActionCard({
   return (
     <button type="button" onClick={onClick} className={`${cardFrameClassName} group text-left`}>
       <Card className={actionCardClassName}>
-        <span className="pointer-events-none absolute right-0 top-0 h-28 w-28 rounded-full bg-[#57F1DB]/[0.04] blur-2xl" />
+        <span className="pointer-events-none absolute right-0 top-0 h-28 w-28 rounded-full bg-[#57F1DB]/4 blur-2xl" />
         <CardHeader className="relative gap-2">
           <div className={iconBoxClassName}>{icon}</div>
           <div className="grid gap-2">
@@ -314,7 +315,7 @@ function RealRoomCard({
     <button
       type="button"
       onClick={onClick}
-      className="group rounded-2xl bg-gradient-to-b from-[#5A5A5C]/70 via-white/12 to-[#28282A]/75 p-[2px] text-left shadow-[0_16px_48px_rgba(0,0,0,0.2)] transition duration-300 hover:-translate-y-0.5 cursor-pointer"
+      className="group rounded-2xl bg-linear-to-b from-[#5A5A5C]/70 via-white/12 to-[#28282A]/75 p-[2px] text-left shadow-[0_16px_48px_rgba(0,0,0,0.2)] transition duration-300 hover:-translate-y-0.5 cursor-pointer"
     >
       <Card className="flex h-full min-h-[9rem] flex-col justify-between rounded-[14px] bg-[#111316]/86 p-5 transition duration-300 group-hover:bg-[#181B1E]/92">
         <div className="flex items-start justify-between gap-4">
@@ -328,7 +329,7 @@ function RealRoomCard({
             </div>
           </div>
           {roomCode ? (
-            <Badge className="shrink-0 border-white/8 bg-white/[0.04] font-mono text-[10px] text-[#BACAC5]">
+            <Badge className="shrink-0 border-white/8 bg-white/4 font-mono text-[10px] text-[#BACAC5]">
               {roomCode}
             </Badge>
           ) : null}
@@ -595,7 +596,7 @@ export function DashboardPage() {
       <>
         <div className="flex items-center justify-between border-b border-white/8 pb-6 w-full">
           <div className="flex min-w-0 items-center gap-0">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/10 bg-white/[0.03] shadow-lg shadow-black/30">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/10 bg-white/3 shadow-lg shadow-black/30">
               <img src="/starsync-logo.png" alt="StarSync logo" className="h-9 w-9 rounded-full object-cover" />
             </span>
             <span
@@ -604,7 +605,7 @@ export function DashboardPage() {
                 isCollapsed ? 'w-0 opacity-0 ml-0' : 'w-24 opacity-100 ml-3',
               ].join(' ')}
             >
-              <p className="text-sm font-bold uppercase tracking-wider text-[#F7F7F8]">StarSync</p>
+              <p className="bg-gradient-to-b from-[#F8F8FA] via-[#DCDDDF] to-[#A7A8AE] bg-clip-text text-lg font-normal leading-none tracking-[-0.06em] text-transparent">StarSync</p>
             </span>
           </div>
 
@@ -665,7 +666,7 @@ export function DashboardPage() {
             <span
               className={[
                 'transition-all duration-300 ease-in-out overflow-hidden whitespace-nowrap',
-                isCollapsed ? 'w-0 opacity-0 ml-0' : 'w-12 opacity-100 ml-2',
+                isCollapsed ? 'w-0 opacity-0 ml-0' : 'w-14 opacity-100 ml-2.5',
               ].join(' ')}
             >
               Logout
@@ -690,41 +691,80 @@ export function DashboardPage() {
   const renderMainContent = (showMobileMenuButton: boolean) => {
     return (
       <div className="relative z-10 flex min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="sticky top-0 z-30 flex h-20 w-full shrink-0 items-center justify-between border-b border-white/10 bg-[#030404]/95 px-6 shadow-[0_18px_60px_rgba(0,0,0,0.28)] backdrop-blur-2xl">
-          <div className="flex items-center gap-4">
+        <header className="sticky top-0 z-30 flex h-16 w-full shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-[#030404]/95 px-4 shadow-[0_18px_60px_rgba(0,0,0,0.28)] backdrop-blur-2xl sm:h-20 sm:px-6">
+          <div className="flex min-w-0 items-center gap-3 sm:gap-4">
             {showMobileMenuButton ? (
               <button
                 type="button"
                 onClick={() => setIsSidebarOpen(true)}
-                className="grid size-9 place-items-center rounded-lg border border-white/10 bg-white/[0.02] text-[#95A5A0] transition hover:text-white lg:hidden cursor-pointer"
+                className="grid size-9 shrink-0 place-items-center rounded-lg border border-white/10 bg-white/[0.02] text-[#95A5A0] transition hover:text-white lg:hidden cursor-pointer"
                 aria-label="Open sidebar"
               >
                 <Menu size={18} aria-hidden="true" />
               </button>
             ) : null}
-            <div>
-              <h1 className="text-xl font-semibold tracking-tight text-[#F7F7F8]">
+            <div className="min-w-0">
+              <h1 className="truncate text-lg font-semibold tracking-tight text-[#F7F7F8] sm:text-xl">
                 {activeTab === 'home' ? 'Workspace' : 'Rooms'}
               </h1>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <button
               type="button"
-              className="grid size-10 place-items-center rounded-xl border border-white/10 bg-white/[0.03] text-[#BACAC5] transition hover:border-[#57F1DB]/35 hover:text-white cursor-pointer"
+              className="grid size-9 place-items-center rounded-xl border border-white/10 bg-white/3 text-[#BACAC5] transition hover:border-[#57F1DB]/35 hover:text-white sm:size-10 cursor-pointer"
               aria-label="Notifications"
             >
               <Bell size={17} aria-hidden="true" />
             </button>
-            <Avatar name={user?.username ?? 'User'} seed={user?.username ?? user?.email ?? 'user'} size="sm" />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="rounded-full outline-none transition duration-200 hover:scale-105 focus-visible:ring-2 focus-visible:ring-[#57F1DB]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#030404] active:scale-95 cursor-pointer"
+                  aria-label="Open user menu"
+                >
+                  <Avatar name={user?.username ?? 'User'} seed={user?.username ?? user?.email ?? 'user'} size="sm" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                sideOffset={12}
+                className="z-[80] w-[min(17rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border-white/14 bg-[#0D0E10]/98 p-[1px] text-white shadow-[0_18px_48px_rgba(0,0,0,0.45)] backdrop-blur-xl"
+              >
+                <div className="rounded-[15px] bg-[#18181B]/92 p-3.5">
+                  <div className="flex min-w-0 items-center gap-3 border-b border-white/10 pb-3">
+                    <Avatar name={user?.username ?? 'User'} seed={user?.username ?? user?.email ?? 'user'} size="md" />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-[#F7F7F8]">
+                        {user?.username ?? 'User'}
+                      </p>
+                      <p className="truncate text-xs leading-5 text-[#9AA7A3]">
+                        {user?.email ?? 'No email available'}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="mt-3 flex w-full items-center justify-between rounded-xl border border-white/10 bg-white/[0.045] px-3 py-2 text-sm font-semibold text-[#D6FFF6] transition duration-200 hover:border-[#57F1DB]/35 hover:bg-[#57F1DB]/10 active:scale-[0.98] cursor-pointer"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Settings size={15} aria-hidden="true" />
+                      Settings
+                    </span>
+                    <ArrowRight size={14} aria-hidden="true" />
+                  </button>
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
 
         <main className="relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain">
           <div className="dashboard-workspace-field" />
 
-          <div className="relative z-10 mx-auto w-full max-w-[1480px] space-y-8 px-5 pb-14 pt-7 sm:px-8 lg:px-10 xl:px-12">
+          <div className="relative z-10 mx-auto w-full max-w-[1480px] space-y-8 px-4 pb-14 pt-6 sm:px-8 sm:pt-7 lg:px-10 xl:px-12">
             {activeTab === 'home' ? (
               <div className="space-y-8">
                 <section className="mx-auto max-w-3xl text-center">
@@ -802,15 +842,16 @@ export function DashboardPage() {
                   )}
 
                   {filteredStaticRoomPreviews.length > roomPreviewPageSize ? (
-                    <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                    <div className="flex flex-nowrap items-center justify-center gap-1.5 overflow-x-auto px-1 pt-2 sm:gap-3 sm:px-0">
                       <button
                       type="button"
                       onClick={goToPreviousRoomPreviewPage}
                       disabled={roomPreviewPage === 1}
-                      className="inline-flex h-10 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-[#8D9B97] transition hover:text-[#F7F7F8] cursor-pointer disabled:cursor-not-allowed disabled:opacity-45"
+                      className="inline-flex h-9 shrink-0 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-[#8D9B97] transition hover:text-[#F7F7F8] sm:h-10 sm:gap-2 sm:px-3 sm:text-sm cursor-pointer disabled:cursor-not-allowed disabled:opacity-45"
                     >
                       <ChevronLeft size={15} aria-hidden="true" />
-                      Previous
+                      <span className="sm:hidden">Prev</span>
+                      <span className="hidden sm:inline">Previous</span>
                     </button>
 
                     {Array.from({ length: totalRoomPreviewPages }, (_, index) => {
@@ -823,7 +864,7 @@ export function DashboardPage() {
                           type="button"
                           onClick={() => setRoomPreviewPage(pageNumber)}
                           className={[
-                            'grid h-10 w-10 place-items-center rounded-lg border text-sm font-semibold transition cursor-pointer',
+                            'grid h-9 w-9 shrink-0 place-items-center rounded-lg border text-sm font-semibold transition sm:h-10 sm:w-10 cursor-pointer',
                             isCurrentPage
                               ? 'border-[#57F1DB]/35 bg-white/[0.055] text-[#D6FFF6]'
                               : 'border-transparent text-[#F7F7F8] hover:border-white/10 hover:bg-white/[0.035]',
@@ -838,7 +879,7 @@ export function DashboardPage() {
                       type="button"
                       onClick={goToNextRoomPreviewPage}
                       disabled={roomPreviewPage === totalRoomPreviewPages}
-                      className="inline-flex h-10 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-[#F7F7F8] transition hover:text-[#D6FFF6] cursor-pointer disabled:cursor-not-allowed disabled:opacity-45"
+                      className="inline-flex h-9 shrink-0 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-[#F7F7F8] transition hover:text-[#D6FFF6] sm:h-10 sm:gap-2 sm:px-3 sm:text-sm cursor-pointer disabled:cursor-not-allowed disabled:opacity-45"
                     >
                       Next
                       <ChevronRight size={15} aria-hidden="true" />
@@ -895,7 +936,7 @@ export function DashboardPage() {
 
                 <section className="space-y-4">
                   {isLoadingRooms ? (
-                    <PulseLoader className="bg-white/[0.03]" />
+                    <PulseLoader className="bg-white/3" />
                   ) : roomError ? (
                     <Card className="border border-red-300/20 bg-red-950/20 p-4 text-sm text-red-200">
                       {roomError}
@@ -978,7 +1019,7 @@ export function DashboardPage() {
       >
         <FloatingErrorNotification message={joinRoomError} />
 
-        <div className="rounded-[20px] border border-white/16 bg-gradient-to-b from-[#303033]/95 via-[#242426]/95 to-[#202022]/95 px-6 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_18px_55px_rgba(0,0,0,0.32)]">
+        <div className="rounded-[20px] border border-white/16 bg-linear-to-b from-[#303033]/95 via-[#242426]/95 to-[#202022]/95 px-6 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_18px_55px_rgba(0,0,0,0.32)]">
           <div className="mb-4 flex items-center justify-between gap-4">
             <h2 className="text-xl font-bold tracking-tight text-[#F4F4F5]">Join Room</h2>
             <button
@@ -1031,7 +1072,7 @@ export function DashboardPage() {
       >
         <FloatingErrorNotification message={formError} />
 
-        <div className="rounded-[20px] border border-white/16 bg-gradient-to-b from-[#303033]/95 via-[#242426]/95 to-[#202022]/95 px-6 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_18px_55px_rgba(0,0,0,0.32)]">
+        <div className="rounded-[20px] border border-white/16 bg-linear-to-b from-[#303033]/95 via-[#242426]/95 to-[#202022]/95 px-6 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_18px_55px_rgba(0,0,0,0.32)]">
           <div className="mb-5 flex items-center justify-between gap-4">
             <h2 className="text-xl font-bold tracking-tight text-[#F4F4F5]">
               {createRoomPurpose === 'COMPETING' ? 'Create Competing Room' : 'Collaboration Room'}
