@@ -117,22 +117,22 @@ export function EditorOutputPanel({
 
           {isRunning ? <p className="text-[#7FFFE0]">Running...</p> : null}
           {!isRunning && error ? (
-            <pre className="whitespace-pre-wrap break-words text-red-200">{error}</pre>
+            <pre className="whitespace-pre-wrap wrap-break-word text-red-200">{error}</pre>
           ) : null}
           {!isRunning && !error && !hasOutput ? (
             <p className="text-slate-600">Run code to see output here.</p>
           ) : null}
           {!isRunning && result?.compileOutput ? (
-            <pre className="mb-3 whitespace-pre-wrap break-words text-amber-200">{result.compileOutput}</pre>
+            <pre className="mb-3 whitespace-pre-wrap wrap-break-word text-amber-200">{result.compileOutput}</pre>
           ) : null}
           {!isRunning && result?.stderr ? (
-            <pre className="mb-3 whitespace-pre-wrap break-words text-red-200">{result.stderr}</pre>
+            <pre className="mb-3 whitespace-pre-wrap wrap-break-word text-red-200">{result.stderr}</pre>
           ) : null}
           {!isRunning && result?.stdout ? (
-            <pre className="whitespace-pre-wrap break-words text-emerald-100">{result.stdout}</pre>
+            <pre className="whitespace-pre-wrap wrap-break-word text-emerald-100">{result.stdout}</pre>
           ) : null}
           {!isRunning && shouldShowFallbackOutput ? (
-            <pre className="whitespace-pre-wrap break-words text-slate-200">{result?.output}</pre>
+            <pre className="whitespace-pre-wrap wrap-break-word text-slate-200">{result?.output}</pre>
           ) : null}
         </TabsContent>
         ) : null}
@@ -143,16 +143,16 @@ export function EditorOutputPanel({
               Running testcases...
             </div>
           ) : error ? (
-            <pre className="whitespace-pre-wrap break-words rounded-lg border border-red-300/20 bg-red-400/[0.06] p-4 text-sm text-red-100">{error}</pre>
+            <pre className="whitespace-pre-wrap wrap-break-word rounded-lg border border-red-300/20 bg-red-400/[0.06] p-4 text-sm text-red-100">{error}</pre>
           ) : submitDiagnostic ? (
             <div className="rounded-lg border border-red-300/20 bg-red-400/[0.06] p-4">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <p className="text-sm font-semibold text-red-100">{submitDiagnostic.title}</p>
-                <span className="rounded-md border border-red-300/20 bg-red-400/[0.08] px-2 py-0.5 text-xs font-semibold text-red-100">
+                <span className="rounded-md border border-red-300/20 bg-red-400/8 px-2 py-0.5 text-xs font-semibold text-red-100">
                   {submitResult?.passedCount ?? 0} / {submitResult?.totalCount ?? 0} passed
                 </span>
               </div>
-              <pre className="whitespace-pre-wrap break-words rounded-md border border-red-300/20 bg-black/25 p-3 font-mono text-xs text-red-100">
+              <pre className="whitespace-pre-wrap wrap-break-word rounded-md border border-red-300/20 bg-black/25 p-3 font-mono text-xs text-red-100">
                 {submitDiagnostic.message}
               </pre>
             </div>
@@ -196,20 +196,20 @@ export function EditorOutputPanel({
                       <div className="grid gap-3 text-xs md:grid-cols-3">
                         <div className="min-w-0">
                           <p className="mb-1 font-sans uppercase tracking-[0.14em] text-slate-500">Input</p>
-                          <pre className="min-h-16 whitespace-pre-wrap break-words rounded-md border border-white/8 bg-black/25 p-2 text-slate-200">{testcase.input}</pre>
+                          <pre className="min-h-16 whitespace-pre-wrap wrap-break-word rounded-md border border-white/8 bg-black/25 p-2 text-slate-200">{testcase.input}</pre>
                         </div>
                         <div className="min-w-0">
                           <p className="mb-1 font-sans uppercase tracking-[0.14em] text-slate-500">Expected</p>
-                          <pre className="min-h-16 whitespace-pre-wrap break-words rounded-md border border-white/8 bg-black/25 p-2 text-slate-200">{testcase.expectedOutput}</pre>
+                          <pre className="min-h-16 whitespace-pre-wrap wrap-break-word rounded-md border border-white/8 bg-black/25 p-2 text-slate-200">{testcase.expectedOutput}</pre>
                         </div>
                         <div className="min-w-0">
                           <p className="mb-1 font-sans uppercase tracking-[0.14em] text-slate-500">Actual</p>
-                          <pre className="min-h-16 whitespace-pre-wrap break-words rounded-md border border-white/8 bg-black/25 p-2 text-slate-200">{testcase.actualOutput || '(no output)'}</pre>
+                          <pre className="min-h-16 whitespace-pre-wrap wrap-break-word rounded-md border border-white/8 bg-black/25 p-2 text-slate-200">{testcase.actualOutput || '(no output)'}</pre>
                         </div>
                       </div>
 
                       {testcase.error ? (
-                        <pre className="mt-3 whitespace-pre-wrap break-words rounded-md border border-red-300/20 bg-black/25 p-2 text-xs text-red-100">{testcase.error}</pre>
+                        <pre className="mt-3 whitespace-pre-wrap wrap-break-word rounded-md border border-red-300/20 bg-black/25 p-2 text-xs text-red-100">{testcase.error}</pre>
                       ) : null}
                     </>
                   )}
@@ -220,11 +220,11 @@ export function EditorOutputPanel({
             <div className="rounded-lg border border-red-300/20 bg-red-400/[0.06] p-4">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <p className="text-sm font-semibold text-red-100">{runDiagnostic.title}</p>
-                <span className="rounded-md border border-red-300/20 bg-red-400/[0.08] px-2 py-0.5 text-xs font-semibold text-red-100">
+                <span className="rounded-md border border-red-300/20 bg-red-400/8 px-2 py-0.5 text-xs font-semibold text-red-100">
                   {testcaseResult?.passedCount ?? 0} / {testcaseResult?.totalCount ?? 0} passed
                 </span>
               </div>
-              <pre className="whitespace-pre-wrap break-words rounded-md border border-red-300/20 bg-black/25 p-3 font-mono text-xs text-red-100">
+              <pre className="whitespace-pre-wrap wrap-break-word rounded-md border border-red-300/20 bg-black/25 p-3 font-mono text-xs text-red-100">
                 {runDiagnostic.message}
               </pre>
             </div>
@@ -257,20 +257,20 @@ export function EditorOutputPanel({
                   <div className="grid gap-3 text-xs md:grid-cols-3">
                     <div className="min-w-0">
                       <p className="mb-1 font-sans uppercase tracking-[0.14em] text-slate-500">Input</p>
-                      <pre className="min-h-16 whitespace-pre-wrap break-words rounded-md border border-white/8 bg-black/25 p-2 text-slate-200">{testcase.input}</pre>
+                      <pre className="min-h-16 whitespace-pre-wrap wrap-break-word rounded-md border border-white/8 bg-black/25 p-2 text-slate-200">{testcase.input}</pre>
                     </div>
                     <div className="min-w-0">
                       <p className="mb-1 font-sans uppercase tracking-[0.14em] text-slate-500">Expected</p>
-                      <pre className="min-h-16 whitespace-pre-wrap break-words rounded-md border border-white/8 bg-black/25 p-2 text-slate-200">{testcase.expectedOutput}</pre>
+                      <pre className="min-h-16 whitespace-pre-wrap wrap-break-word rounded-md border border-white/8 bg-black/25 p-2 text-slate-200">{testcase.expectedOutput}</pre>
                     </div>
                     <div className="min-w-0">
                       <p className="mb-1 font-sans uppercase tracking-[0.14em] text-slate-500">Actual</p>
-                      <pre className="min-h-16 whitespace-pre-wrap break-words rounded-md border border-white/8 bg-black/25 p-2 text-slate-200">{testcase.actualOutput || '(no output)'}</pre>
+                      <pre className="min-h-16 whitespace-pre-wrap wrap-break-word rounded-md border border-white/8 bg-black/25 p-2 text-slate-200">{testcase.actualOutput || '(no output)'}</pre>
                     </div>
                   </div>
 
                   {testcase.error ? (
-                    <pre className="mt-3 whitespace-pre-wrap break-words rounded-md border border-red-300/20 bg-black/25 p-2 text-xs text-red-100">{testcase.error}</pre>
+                    <pre className="mt-3 whitespace-pre-wrap wrap-break-word rounded-md border border-red-300/20 bg-black/25 p-2 text-xs text-red-100">{testcase.error}</pre>
                   ) : null}
                 </div>
               ))}
