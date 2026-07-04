@@ -26,7 +26,7 @@ The project intentionally keeps chat and editor collaboration on native `ws`, wi
 ```txt
 websockets/
 |- docker-compose.piston.yml
-|- wsocket_backend/
+|- Starsync_backend/
 |  |- prisma/
 |  |- src/
 |  |  |- controllers/
@@ -37,7 +37,7 @@ websockets/
 |  |  |- validations/
 |  |  `- websocket/
 |  `- CODE_RUNNER.md
-`- wsocket_fronted/
+`- Starsync_frontend/
    `- src/
       |- components/
       |- hooks/
@@ -60,12 +60,12 @@ websockets/
 
 ```powershell
 cd websockets
-cd wsocket_backend
+cd Starsync_backend
 npm install
 copy .env.example .env
 ```
 
-Update `wsocket_backend/.env`:
+Update `Starsync_backend/.env`:
 
 ```env
 PORT=3001
@@ -100,12 +100,12 @@ http://localhost:3001
 
 ```powershell
 cd websockets
-cd wsocket_fronted
+cd Starsync_frontend
 npm install
 copy .env.example .env
 ```
 
-Update `wsocket_fronted/.env` if needed:
+Update `Starsync_frontend/.env` if needed:
 
 ```env
 VITE_API_URL=http://localhost:3001/api/v1
@@ -182,7 +182,7 @@ To enable the whiteboard:
 
 1. Create a Liveblocks project.
 2. Copy your secret key from the Liveblocks dashboard.
-3. Add it to `wsocket_backend/.env`:
+3. Add it to `Starsync_backend/.env`:
 
 ```env
 LIVEBLOCKS_SECRET_KEY=your_liveblocks_secret_key
@@ -219,14 +219,14 @@ docker compose -f docker-compose.piston.yml up -d
 Terminal 2, backend:
 
 ```powershell
-cd websockets\wsocket_backend
+cd websockets\Starsync_backend
 npm run dev
 ```
 
 Terminal 3, frontend:
 
 ```powershell
-cd websockets\wsocket_fronted
+cd websockets\Starsync_frontend
 npm run dev
 ```
 
@@ -313,7 +313,7 @@ Then reference them from this README when they are available.
 Backend:
 
 ```powershell
-cd wsocket_backend
+cd Starsync_backend
 npm run dev
 npm run build
 ```
@@ -321,7 +321,7 @@ npm run build
 Frontend:
 
 ```powershell
-cd wsocket_fronted
+cd Starsync_frontend
 npm run dev
 npm run lint
 npm run build
@@ -330,7 +330,7 @@ npm run build
 Prisma:
 
 ```powershell
-cd wsocket_backend
+cd Starsync_backend
 npx prisma generate
 npx prisma migrate deploy
 npx prisma studio
@@ -371,7 +371,7 @@ docker compose -f docker-compose.piston.yml ps
 Invoke-RestMethod http://localhost:2000/api/v2/runtimes
 ```
 
-Also confirm `wsocket_backend/.env` contains:
+Also confirm `Starsync_backend/.env` contains:
 
 ```env
 CODE_RUNNER_URL=http://localhost:2000/api/v2
@@ -395,7 +395,7 @@ Very heavy C++ code may timeout. The app should show a clean timeout/error messa
 
 ### Prisma or database connection error
 
-Check that `DATABASE_URL` in `wsocket_backend/.env` is your real PostgreSQL connection string.
+Check that `DATABASE_URL` in `Starsync_backend/.env` is your real PostgreSQL connection string.
 
 For Neon, keep `sslmode=require` in the URL.
 

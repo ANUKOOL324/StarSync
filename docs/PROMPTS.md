@@ -9,7 +9,7 @@ This document provides a structured, reusable prompt template optimized for AI a
 [Describe the exact goal of the task, e.g., Add unread message counters to rooms list]
 
 # Context
-We are working on a full-stack TypeScript WebSocket Chat Application. The project structure consists of wsocket_backend/ (Node, Express, Prisma, Native ws) and wsocket_fronted/ (React, Vite, TailwindCSS, Monaco, tldraw).
+We are working on a full-stack TypeScript WebSocket Chat Application. The project structure consists of Starsync_backend/ (Node, Express, Prisma, Native ws) and Starsync_frontend/ (React, Vite, TailwindCSS, Monaco, tldraw).
 
 # Constraints
 - Do not use socket.io; keep all WebSocket connections native ws.
@@ -19,8 +19,8 @@ We are working on a full-stack TypeScript WebSocket Chat Application. The projec
 - Avoid introducing over-abstracted utilities or unnecessary Framer Motion animations.
 
 # Files to Inspect
-- [List files to read or edit, e.g., wsocket_fronted/src/pages/Dashboard.tsx]
-- [e.g., wsocket_backend/src/websocket/handler.ts]
+- [List files to read or edit, e.g., Starsync_frontend/src/pages/Dashboard.tsx]
+- [e.g., Starsync_backend/src/websocket/handler.ts]
 
 # Acceptance Criteria
 - [Criteria 1, e.g., Unread count increments in real-time when message is received in an inactive room]
@@ -28,11 +28,11 @@ We are working on a full-stack TypeScript WebSocket Chat Application. The projec
 
 # Validation Commands
 Backend:
-cd wsocket_backend
+cd Starsync_backend
 npm run build
 
 Frontend:
-cd wsocket_fronted
+cd Starsync_frontend
 npm run lint
 npm run build
 

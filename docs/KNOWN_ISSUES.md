@@ -7,7 +7,7 @@ This document tracks known issues, limitations, and debugging steps for the WebS
 ### 1. Liveblocks Requires Local Credentials For Demo
 - **Severity**: Low
 - **Category**: Integration / Setup
-- **Description**: The collaborative whiteboard requires a valid `LIVEBLOCKS_SECRET_KEY` configured in `wsocket_backend/.env`.
+- **Description**: The collaborative whiteboard requires a valid `LIVEBLOCKS_SECRET_KEY` configured in `Starsync_backend/.env`.
 - **Current Behavior**: If the key is missing or invalid, the Liveblocks auth route cannot create a whiteboard room token and the Board tab will show an auth/loading error.
 - **Workaround**: Configure the key from a Liveblocks developer project before demoing the Board tab.
 - **Resolution Plan**: Add a local mock/fallback board mode later if the app needs demos without external credentials.
