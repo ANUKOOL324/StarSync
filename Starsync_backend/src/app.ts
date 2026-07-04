@@ -1,3 +1,4 @@
+import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
 
@@ -15,17 +16,24 @@ import { notFoundHandler } from "./middleware/notFoundHandler";
 
 export const app = express();
 
+app.set("trust proxy", 1);
+
+const allowedOrigins = [
+  env.frontendUrl,
+  env.clientOrigin,
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "http://localhost:5174",
+  "http://127.0.0.1:5174",
+];
+
 app.use(
   cors({
-    origin: [
-      env.clientOrigin,
-      "http://localhost:5173",
-      "http://127.0.0.1:5173",
-      "http://localhost:5174",
-      "http://127.0.0.1:5174",
-    ],
+    origin: Array.from(new Set(allowedOrigins)),
+    credentials: true,
   }),
 );
+app.use(cookieParser());
 app.use(express.json());
 
 app.use("/api", healthRoutes);

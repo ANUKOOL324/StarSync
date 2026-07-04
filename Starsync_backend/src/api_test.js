@@ -1,5 +1,15 @@
 const fs = require('fs');
 
+function getSessionCookie(response) {
+  const setCookie = response.headers.get('set-cookie');
+
+  if (!setCookie) {
+    throw new Error('Auth response did not set a session cookie');
+  }
+
+  return setCookie.split(';')[0];
+}
+
 async function testFlow() {
   const backendUrl = 'http://localhost:3001';
   const timestamp = Date.now();
@@ -22,8 +32,8 @@ async function testFlow() {
     throw new Error(`User A signup failed: ${await signupARes.text()}`);
   }
   const userA = await signupARes.json();
+  const cookieA = getSessionCookie(signupARes);
   console.log(`User A created: ${userA.user.username} (${userA.user.email})`);
-  const tokenA = userA.token;
 
   const signupBRes = await fetch(`${backendUrl}/api/v1/auth/signup`, {
     method: 'POST',
@@ -34,8 +44,8 @@ async function testFlow() {
     throw new Error(`User B signup failed: ${await signupBRes.text()}`);
   }
   const userB = await signupBRes.json();
+  const cookieB = getSessionCookie(signupBRes);
   console.log(`User B created: ${userB.user.username} (${userB.user.email})`);
-  const tokenB = userB.token;
 
   console.log('\n--- CREATING COMPETING ROOM WITH USER A ---');
   const roomPayload = {
@@ -52,7 +62,7 @@ async function testFlow() {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${tokenA}`
+      'Cookie': cookieA
     },
     body: JSON.stringify(roomPayload)
   });
@@ -72,7 +82,7 @@ async function testFlow() {
   const getProblemsRes = await fetch(`${backendUrl}/api/v1/rooms/${room.id}/problems`, {
     method: 'GET',
     headers: {
-      'Authorization': `Bearer ${tokenA}`
+      'Cookie': cookieA
     }
   });
   if (!getProblemsRes.ok) {
@@ -123,7 +133,7 @@ console.log(merged.join(' '));
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${tokenA}`
+      'Cookie': cookieA
     },
     body: JSON.stringify({
       problemId: p1.id,
@@ -155,7 +165,7 @@ console.log(merged.join(' '));
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${tokenA}`
+      'Cookie': cookieA
     },
     body: JSON.stringify({
       problemId: p1.id,
@@ -188,7 +198,7 @@ console.log(merged.join(' '));
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${tokenB}`
+      'Cookie': cookieB
     },
     body: JSON.stringify({
       problemId: p1.id,
@@ -208,7 +218,7 @@ console.log(merged.join(' '));
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${tokenA}`
+      'Cookie': cookieA
     },
     body: JSON.stringify({
       problemId: fakeProblemId,
