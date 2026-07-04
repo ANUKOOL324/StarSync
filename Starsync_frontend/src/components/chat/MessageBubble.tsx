@@ -52,7 +52,7 @@ export function MessageBubble({ isGrouped, message, onRetry }: MessageBubbleProp
             <span className="text-zinc-500">{formatTime(message.createdAt)}</span>
           </div>
         ) : null}
-        <p className="whitespace-pre-wrap break-words text-sm leading-6 text-zinc-100">{message.mess}</p>
+        <p className="whitespace-pre-wrap wrap-break-word text-sm leading-6 text-zinc-100">{message.mess}</p>
         {message.isOwn && message.status ? (
           <div className="mt-1.5 flex items-center justify-end gap-1.5 text-[11px] font-medium">
             {message.status === 'sending' ? (

@@ -33,7 +33,7 @@ const getRoleBadgeClassName = (role: RoomMember['role']) => {
     return 'border-[#FACC15]/25 bg-[#FACC15]/10 text-[#FDE68A]'
   }
 
-  return 'border-white/10 bg-white/[0.04] text-[#BACAC5]'
+  return 'border-white/10 bg-white/4 text-[#BACAC5]'
 }
 
 export function OnlineUsersPanel({
@@ -71,7 +71,7 @@ export function OnlineUsersPanel({
   return (
     <aside
       className={[
-        'neon-field !fixed inset-y-0 right-0 z-50 flex h-dvh w-[min(90vw,20rem)] flex-col overflow-y-auto bg-[#09090B]/95 p-3 shadow-2xl shadow-black/30 backdrop-blur-xl transition-transform duration-200 xl:!static xl:z-auto xl:h-full xl:max-w-none xl:shrink-0 xl:translate-x-0 xl:transition-[width] xl:duration-200',
+        'neon-field !fixed inset-y-0 right-0 z-50 flex h-dvh w-[min(92vw,20rem)] flex-col overflow-y-auto bg-[#09090B] p-3 shadow-2xl shadow-black/40 backdrop-blur-xl transition-transform duration-200 xl:!static xl:z-auto xl:h-full xl:max-w-none xl:shrink-0 xl:translate-x-0 xl:transition-[width] xl:duration-200',
         isOpen
           ? 'translate-x-0 border-l border-white/10'
           : 'translate-x-full pointer-events-none xl:pointer-events-auto',
@@ -82,9 +82,9 @@ export function OnlineUsersPanel({
       aria-hidden={!isOpen}
     >
       <div className="relative grid gap-3">
-        <div className="rounded-2xl bg-gradient-to-b from-[#5A5A5C]/80 via-white/15 to-[#28282A]/85 p-[2px] shadow-[0_18px_60px_rgba(0,0,0,0.22)]">
+        <div className="rounded-2xl bg-linear-to-b from-[#5A5A5C]/80 via-white/15 to-[#28282A]/85 p-[2px] shadow-[0_18px_60px_rgba(0,0,0,0.22)]">
           <section className="relative flex flex-col overflow-hidden rounded-[14px] bg-[#18181B]/78 p-4 backdrop-blur-2xl">
-            <span className="pointer-events-none absolute right-0 top-0 h-24 w-24 rounded-full bg-[#57F1DB]/[0.03] blur-xl" />
+            <span className="pointer-events-none absolute right-0 top-0 h-24 w-24 rounded-full bg-[#57F1DB]/3 blur-xl" />
             <div className="relative mb-4 flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-[#F7F7F8]">
@@ -92,7 +92,7 @@ export function OnlineUsersPanel({
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-1.5">
-                <span className="grid size-8 place-items-center rounded-lg border border-[#18D6A3]/25 bg-gradient-to-b from-[#18D6A3]/15 to-[#18D6A3]/5 text-[#18D6A3] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+                <span className="grid size-8 place-items-center rounded-lg border border-[#18D6A3]/25 bg-linear-to-b from-[#18D6A3]/15 to-[#18D6A3]/5 text-[#18D6A3] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
                   <span className="shrink-0"><Users size={15} aria-hidden="true" /></span>
                 </span>
                 {onClose ? (
@@ -160,12 +160,12 @@ export function OnlineUsersPanel({
           </section>
         </div>
 
-        <div className="rounded-2xl bg-gradient-to-b from-[#5A5A5C]/80 via-white/15 to-[#28282A]/85 p-[2px] shadow-[0_18px_60px_rgba(0,0,0,0.22)]">
+        <div className="rounded-2xl bg-linear-to-b from-[#5A5A5C]/80 via-white/15 to-[#28282A]/85 p-[2px] shadow-[0_18px_60px_rgba(0,0,0,0.22)]">
           <section className="relative flex flex-col overflow-hidden rounded-[14px] bg-[#18181B]/78 p-4 backdrop-blur-2xl">
-            <span className="pointer-events-none absolute right-0 top-0 h-24 w-24 rounded-full bg-[#57F1DB]/[0.03] blur-xl" />
+            <span className="pointer-events-none absolute right-0 top-0 h-24 w-24 rounded-full bg-[#57F1DB]/3 blur-xl" />
             <div className="relative flex items-center justify-between gap-3">
               <p className="text-sm font-semibold text-[#F7F7F8]">Room members</p>
-              <p className="rounded-full border border-[#22C55E]/25 bg-gradient-to-b from-[#22C55E]/15 to-[#22C55E]/5 px-2.5 py-1 text-xs font-medium text-[#86EFAC] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+              <p className="rounded-full border border-[#22C55E]/25 bg-linear-to-b from-[#22C55E]/15 to-[#22C55E]/5 px-2.5 py-1 text-xs font-medium text-[#86EFAC] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
                 {onlineCount} Online
               </p>
             </div>
@@ -234,7 +234,7 @@ export function OnlineUsersPanel({
               }) : null}
 
               {!isLoadingMembers && !membersError && !roomMembers.length ? (
-                <p className="rounded-xl border border-white/8 bg-white/[0.03] px-3 py-4 text-sm text-zinc-500">
+                <p className="rounded-xl border border-white/8 bg-white/3 px-3 py-4 text-sm text-zinc-500">
                   No members found yet.
                 </p>
               ) : null}

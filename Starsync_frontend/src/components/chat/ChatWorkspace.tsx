@@ -57,6 +57,13 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
     updateRoom,
   } = useRooms()
 
+  const [isDesktopLayout, setIsDesktopLayout] = useState(() => {
+    if (typeof window === 'undefined') {
+      return false
+    }
+
+    return window.matchMedia(`(min-width: ${DESKTOP_PANEL_BREAKPOINT}px)`).matches
+  })
   const [isInfoOpen, setIsInfoOpen] = useState(() => {
     if (typeof window === 'undefined') {
       return false
@@ -96,7 +103,10 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
     const desktopQuery = window.matchMedia(`(min-width: ${DESKTOP_PANEL_BREAKPOINT}px)`)
 
     const syncPanelsForViewport = () => {
-      if (!desktopQuery.matches) {
+      const isDesktop = desktopQuery.matches
+      setIsDesktopLayout(isDesktop)
+
+      if (!isDesktop) {
         setIsSidebarOpen(false)
         setIsInfoOpen(false)
         return
@@ -107,6 +117,8 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
     }
 
     const handleDesktopBreakpointChange = (event: MediaQueryListEvent) => {
+      setIsDesktopLayout(event.matches)
+
       if (event.matches) {
         syncPanelsForViewport()
         return
@@ -266,98 +278,92 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
     navigate('/dashboard', { replace: true })
   }
 
+  const sidebarProps = {
+    activeRoom,
+    activeRoomId: activeRoom.id,
+    activeTab,
+    dmRooms,
+    isOpen: isSidebarOpen,
+    onClose: () => setIsSidebarOpen(false),
+    onlineUsers,
+    onCreateDm: createDm,
+    onLogout: logout,
+    onSelectRoom: (nextRoomId: string) => navigate(`/rooms/${nextRoomId}`),
+    onTabChange: setActiveTab,
+    rooms: rooms.filter((room) => room.purpose === 'COLLABORATIVE'),
+    user,
+  }
+
+  const detailsPanelProps = {
+    currentUserId: user?.id,
+    isCurrentUserAdmin: isAdmin,
+    isOpen: isInfoOpen,
+    isLoadingMembers,
+    membersError,
+    onClose: () => setIsInfoOpen(false),
+    onlineUsers,
+    room: activeRoom,
+    roomMembers,
+  }
+
   return (
     <section
       ref={workspaceRef}
-      className="relative flex h-dvh max-h-dvh w-full overflow-hidden xl:flex-row"
+      className="relative flex h-dvh max-h-dvh w-full overflow-hidden"
     >
-      {isSidebarOpen ? (
+      {!isDesktopLayout && isSidebarOpen ? (
         <button
           type="button"
-          className="fixed inset-0 z-40 bg-black/60 xl:hidden"
+          className="fixed inset-0 z-40 bg-black/70 backdrop-blur-[2px]"
           onClick={() => setIsSidebarOpen(false)}
           aria-label="Close sidebar overlay"
         />
       ) : null}
 
-      {isInfoOpen ? (
+      {!isDesktopLayout && isInfoOpen ? (
         <button
           type="button"
-          className="fixed inset-0 z-40 bg-black/60 xl:hidden"
+          className="fixed inset-0 z-40 bg-black/70 backdrop-blur-[2px]"
           onClick={() => setIsInfoOpen(false)}
           aria-label="Close details overlay"
         />
       ) : null}
 
-      {!isSidebarOpen ? (
-        <button
-          type="button"
-          onClick={() => setIsSidebarOpen(true)}
-          className="fixed inset-y-0 left-0 z-30 flex w-4 items-center justify-center bg-[#05080A]/70 backdrop-blur-md transition hover:w-6 hover:bg-[#18D6A3]/10 xl:hidden"
-          aria-label="Open room sidebar"
-        >
-          <span className="h-28 w-1 rounded-full bg-[#18D6A3]/55 shadow-[0_0_18px_rgba(24,214,163,0.45)]" />
-        </button>
-      ) : null}
-
-      {!isInfoOpen ? (
-        <button
-          type="button"
-          onClick={() => setIsInfoOpen(true)}
-          className="fixed inset-y-0 right-0 z-30 flex w-4 items-center justify-center bg-[#05080A]/70 backdrop-blur-md transition hover:w-6 hover:bg-[#18D6A3]/10 xl:hidden"
-          aria-label="Open room details"
-        >
-          <span className="h-28 w-1 rounded-full bg-[#18D6A3]/55 shadow-[0_0_18px_rgba(24,214,163,0.45)]" />
-        </button>
-      ) : null}
+      {!isDesktopLayout ? <RoomSidebar {...sidebarProps} /> : null}
+      {!isDesktopLayout ? <OnlineUsersPanel {...detailsPanelProps} /> : null}
 
       <ResizablePanelGroup
         direction="horizontal"
         id="starsync-room-layout"
         className="relative z-0 min-h-0 min-w-0 flex-1"
       >
-        {isSidebarOpen ? (
+        {isDesktopLayout && isSidebarOpen ? (
           <>
             <ResizablePanel
               id="room-sidebar"
               defaultSize="22%"
               minSize="18%"
               maxSize="30%"
-              className="contents xl:block"
             >
-              <RoomSidebar
-                activeRoom={activeRoom}
-                activeRoomId={activeRoom.id}
-                activeTab={activeTab}
-                dmRooms={dmRooms}
-                isOpen={isSidebarOpen}
-                onClose={() => setIsSidebarOpen(false)}
-                onlineUsers={onlineUsers}
-                onCreateDm={createDm}
-                onLogout={logout}
-                onSelectRoom={(nextRoomId) => navigate(`/rooms/${nextRoomId}`)}
-                onTabChange={setActiveTab}
-                rooms={rooms.filter((room) => room.purpose === 'COLLABORATIVE')}
-                user={user}
-              />
+              <RoomSidebar {...sidebarProps} />
             </ResizablePanel>
-            <ResizableHandle className="hidden border-r border-white/10 xl:flex" withHandle />
+            <ResizableHandle className="border-r border-white/10" withHandle />
           </>
-        ) : (
+        ) : isDesktopLayout ? (
           <button
             type="button"
             onClick={() => setIsSidebarOpen(true)}
-            className="group relative hidden w-2 shrink-0 items-stretch justify-center border-r border-[#18D6A3]/20 bg-[#05080A] transition hover:bg-[#18D6A3]/8 xl:flex"
+            className="group relative flex w-2 shrink-0 items-stretch justify-center border-r border-[#18D6A3]/20 bg-[#05080A] transition hover:bg-[#18D6A3]/8"
             aria-label="Open room sidebar"
           >
             <span className="my-5 block w-px rounded-full bg-white/10 transition group-hover:w-1 group-hover:bg-[#18D6A3]/70" />
           </button>
-        )}
+        ) : null}
 
         <ResizablePanel
           id="room-workspace"
-          defaultSize={isInfoOpen ? '54%' : '78%'}
-          minSize="44%"
+          defaultSize={isDesktopLayout ? (isInfoOpen ? '54%' : '78%') : '100%'}
+          minSize={isDesktopLayout ? '44%' : '100%'}
           className="min-w-0"
         >
           <div className="neon-field relative z-0 flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#09090B]">
@@ -376,8 +382,13 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
                 setRoomActionError(null)
                 setIsSettingsOpen(true)
               }}
+              onOpenSidebar={() => {
+                setIsInfoOpen(false)
+                setIsSidebarOpen(true)
+              }}
               onToggleInfo={() => {
-                if (window.innerWidth < DESKTOP_PANEL_BREAKPOINT) {
+                if (!isDesktopLayout) {
+                  setIsSidebarOpen(false)
                   setIsInfoOpen(true)
                   return
                 }
@@ -431,39 +442,28 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
           </div>
         </ResizablePanel>
 
-        {isInfoOpen ? (
+        {isDesktopLayout && isInfoOpen ? (
           <>
-            <ResizableHandle className="hidden border-l border-white/10 xl:flex" withHandle />
+            <ResizableHandle className="border-l border-white/10" withHandle />
             <ResizablePanel
               id="room-details"
               defaultSize="24%"
               minSize="18%"
               maxSize="32%"
-              className="contents xl:block"
             >
-              <OnlineUsersPanel
-                currentUserId={user?.id}
-                isCurrentUserAdmin={isAdmin}
-                isOpen={isInfoOpen}
-                isLoadingMembers={isLoadingMembers}
-                membersError={membersError}
-                onClose={() => setIsInfoOpen(false)}
-                onlineUsers={onlineUsers}
-                room={activeRoom}
-                roomMembers={roomMembers}
-              />
+              <OnlineUsersPanel {...detailsPanelProps} />
             </ResizablePanel>
           </>
-        ) : (
+        ) : isDesktopLayout ? (
           <button
             type="button"
             onClick={() => setIsInfoOpen(true)}
-            className="group relative hidden w-2 shrink-0 items-stretch justify-center border-l border-[#18D6A3]/20 bg-[#05080A] transition hover:bg-[#18D6A3]/8 xl:flex"
+            className="group relative flex w-2 shrink-0 items-stretch justify-center border-l border-[#18D6A3]/20 bg-[#05080A] transition hover:bg-[#18D6A3]/8"
             aria-label="Open room details"
           >
             <span className="my-5 block w-px rounded-full bg-white/10 transition group-hover:w-1 group-hover:bg-[#18D6A3]/70" />
           </button>
-        )}
+        ) : null}
       </ResizablePanelGroup>
 
 
@@ -476,7 +476,7 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
         hideHeader
         className="relative overflow-visible rounded-[28px] border border-white/10 bg-black/50 p-5 shadow-[0_26px_80px_rgba(0,0,0,0.58)]"
       >
-        <div className="rounded-[20px] border border-white/16 bg-gradient-to-b from-[#303033]/95 via-[#242426]/95 to-[#202022]/95 px-6 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_18px_55px_rgba(0,0,0,0.32)]">
+        <div className="rounded-[20px] border border-white/16 bg-linear-to-b from-[#303033]/95 via-[#242426]/95 to-[#202022]/95 px-6 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_18px_55px_rgba(0,0,0,0.32)]">
           <div className="mb-4 flex items-center justify-between gap-4">
             <h2 className="text-xl font-bold tracking-tight text-[#F4F4F5]">Room settings</h2>
             <button
@@ -559,7 +559,7 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
         hideHeader
         className="relative overflow-visible rounded-[28px] border border-white/10 bg-black/50 p-5 shadow-[0_26px_80px_rgba(0,0,0,0.58)]"
       >
-        <div className="rounded-[20px] border border-white/16 bg-gradient-to-b from-[#303033]/95 via-[#242426]/95 to-[#202022]/95 px-6 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_18px_55px_rgba(0,0,0,0.32)]">
+        <div className="rounded-[20px] border border-white/16 bg-linear-to-b from-[#303033]/95 via-[#242426]/95 to-[#202022]/95 px-6 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_18px_55px_rgba(0,0,0,0.32)]">
           <div className="mb-4 flex items-center justify-between gap-4">
             <h2 className="text-xl font-bold tracking-tight text-[#F4F4F5]">Delete room</h2>
             <button

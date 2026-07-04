@@ -1,13 +1,8 @@
-const skeletonGlowClass = 'relative overflow-hidden before:absolute before:inset-0 before:-translate-x-full before:animate-[pulse_1.8s_ease-in-out_infinite] before:bg-gradient-to-r before:from-transparent before:via-white/8 before:to-transparent'
-
 function SkeletonSurface({ className = '' }: { className?: string }) {
   return (
     <div
-      className={[
-        skeletonGlowClass,
-        'rounded-2xl border border-white/10 bg-white/[0.045] shadow-lg shadow-black/20 backdrop-blur-xl',
-        className,
-      ].join(' ')}
+      aria-hidden="true"
+      className={['animate-pulse bg-white/[0.06]', className].join(' ')}
     />
   )
 }
@@ -25,7 +20,7 @@ function SidebarRoomSkeleton({ isActive = false }: { isActive?: boolean }) {
         <div className="min-w-0 flex-1">
           <SkeletonSurface className="h-3.5 w-28 rounded-full" />
           <SkeletonSurface className="mt-2 h-2.5 w-20 rounded-full bg-white/[0.035]" />
-          <SkeletonSurface className="mt-2 h-2 w-14 rounded-full bg-white/[0.03]" />
+          <SkeletonSurface className="mt-2 h-2 w-14 rounded-full bg-white/3" />
         </div>
         {!isActive ? <SkeletonSurface className="h-5 w-6 rounded-full" /> : null}
       </div>
@@ -42,7 +37,7 @@ function ChatMessageSkeleton({ align = 'left' }: { align?: 'left' | 'right' }) {
       <div className={['grid max-w-[68%] gap-2', isRightAligned ? 'justify-items-end' : 'justify-items-start'].join(' ')}>
         <div className="flex items-center gap-2">
           <SkeletonSurface className="h-3 w-20 rounded-full" />
-          <SkeletonSurface className="h-2.5 w-12 rounded-full bg-white/[0.03]" />
+          <SkeletonSurface className="h-2.5 w-12 rounded-full bg-white/3" />
         </div>
         <SkeletonSurface
           className={[
@@ -64,7 +59,7 @@ export function ChatWorkspaceSkeleton() {
             <SkeletonSurface className="size-10 rounded-2xl" />
             <div className="min-w-0 flex-1">
               <SkeletonSurface className="h-3.5 w-20 rounded-full" />
-              <SkeletonSurface className="mt-2 h-2.5 w-32 rounded-full bg-white/[0.03]" />
+              <SkeletonSurface className="mt-2 h-2.5 w-32 rounded-full bg-white/3" />
             </div>
           </div>
           <SkeletonSurface className="mt-5 h-11 rounded-2xl bg-[#18D6A3]/12" />
@@ -83,7 +78,7 @@ export function ChatWorkspaceSkeleton() {
               <SkeletonSurface className="size-10 rounded-full" />
               <div className="min-w-0 flex-1">
                 <SkeletonSurface className="h-3.5 w-24 rounded-full" />
-                <SkeletonSurface className="mt-2 h-2.5 w-36 rounded-full bg-white/[0.03]" />
+                <SkeletonSurface className="mt-2 h-2.5 w-36 rounded-full bg-white/3" />
               </div>
               <SkeletonSurface className="size-8 rounded-xl" />
             </div>
@@ -99,7 +94,7 @@ export function ChatWorkspaceSkeleton() {
               <SkeletonSurface className="size-12 rounded-full" />
               <div className="min-w-0">
                 <SkeletonSurface className="h-4 w-36 rounded-full" />
-                <SkeletonSurface className="mt-2 h-3 w-24 rounded-full bg-white/[0.03]" />
+                <SkeletonSurface className="mt-2 h-3 w-24 rounded-full bg-white/3" />
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-2">
@@ -127,7 +122,7 @@ export function ChatWorkspaceSkeleton() {
 
         <div className="border-t border-white/10 bg-white/[0.025] px-4 py-3 shadow-[0_-22px_55px_rgba(0,0,0,0.22)] backdrop-blur-xl sm:px-6">
           <div className="mx-auto flex max-w-5xl items-center gap-2 rounded-2xl border border-white/10 bg-slate-950/45 p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_18px_50px_rgba(0,0,0,0.24)] backdrop-blur-xl">
-            <SkeletonSurface className="h-11 flex-1 rounded-xl bg-white/[0.03]" />
+            <SkeletonSurface className="h-11 flex-1 rounded-xl bg-white/3" />
             <SkeletonSurface className="size-10 rounded-xl bg-[#18D6A3]/14" />
           </div>
         </div>
@@ -135,11 +130,11 @@ export function ChatWorkspaceSkeleton() {
 
       <aside className="neon-field hidden w-72 shrink-0 border-l border-white/10 bg-[#09090B]/82 p-3 shadow-2xl shadow-black/30 backdrop-blur-xl lg:block xl:w-80">
         <div className="relative grid gap-3">
-          <section className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 shadow-lg shadow-black/20 backdrop-blur-xl">
+          <section className="rounded-2xl border border-white/10 bg-white/4 p-4 shadow-lg shadow-black/20 backdrop-blur-xl">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
                 <SkeletonSurface className="h-3.5 w-24 rounded-full" />
-                <SkeletonSurface className="mt-2 h-2.5 w-32 rounded-full bg-white/[0.03]" />
+                <SkeletonSurface className="mt-2 h-2.5 w-32 rounded-full bg-white/3" />
               </div>
               <SkeletonSurface className="size-8 rounded-full" />
             </div>
@@ -149,7 +144,7 @@ export function ChatWorkspaceSkeleton() {
               <SkeletonSurface className="h-5 rounded-full" />
             </div>
           </section>
-          <section className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 shadow-lg shadow-black/20 backdrop-blur-xl">
+          <section className="rounded-2xl border border-white/10 bg-white/4 p-4 shadow-lg shadow-black/20 backdrop-blur-xl">
             <div className="mb-4 flex items-center justify-between gap-3">
               <SkeletonSurface className="h-3.5 w-24 rounded-full" />
               <SkeletonSurface className="h-7 w-16 rounded-full bg-[#22C55E]/10" />
@@ -160,7 +155,7 @@ export function ChatWorkspaceSkeleton() {
                   <SkeletonSurface className="size-9 rounded-full" />
                   <div className="min-w-0 flex-1">
                     <SkeletonSurface className="h-3.5 w-24 rounded-full" />
-                    <SkeletonSurface className="mt-2 h-2.5 w-14 rounded-full bg-white/[0.03]" />
+                    <SkeletonSurface className="mt-2 h-2.5 w-14 rounded-full bg-white/3" />
                   </div>
                   <SkeletonSurface className="size-2 rounded-full bg-[#22C55E]/15" />
                 </div>

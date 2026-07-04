@@ -39,7 +39,7 @@ export function RoomCard({ isActive, onSelect, room }: RoomCardProps) {
         'group relative w-full overflow-hidden rounded-xl border px-2.5 py-2 text-left backdrop-blur-xl transition duration-150 focus:outline-none focus:ring-2 focus:ring-[#18D6A3]/35',
         isActive
           ? 'border-[#18D6A3]/28 bg-[#18D6A3]/9 shadow-[0_10px_28px_rgba(24,214,163,0.10)]'
-          : 'border-transparent bg-transparent hover:border-white/8 hover:bg-white/[0.045]',
+          : 'border-white/8 bg-white/[0.04] hover:border-white/12 hover:bg-white/[0.07]',
       ].join(' ')}
     >
       {isActive ? (
@@ -56,9 +56,9 @@ export function RoomCard({ isActive, onSelect, room }: RoomCardProps) {
         <Avatar name={room.name} seed={room.joinCode ?? room.slug} type="room" size="sm" />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-semibold leading-5 text-slate-100">{room.name}</span>
-          <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs leading-4 text-slate-500">
-            <span className="truncate text-slate-400">{room.joinCode ?? 'No code'}</span>
-            <span className="shrink-0 text-slate-600">/</span>
+          <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs leading-4 text-slate-400">
+            <span className="truncate text-slate-300">{room.joinCode ?? 'No code'}</span>
+            <span className="shrink-0 text-slate-500">/</span>
             <span className="shrink-0">{formatRelativeTime(room.createdAt)}</span>
           </span>
         </span>

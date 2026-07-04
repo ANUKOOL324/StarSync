@@ -43,7 +43,7 @@ function SectionHeader({ actionLabel, isOpen, onAction, onToggle, title }: Secti
         type="button"
         onClick={onToggle}
         aria-expanded={isOpen}
-        className="group flex min-w-0 flex-1 items-center gap-1.5 rounded-lg px-1 py-1 text-left text-xs font-medium uppercase tracking-[0.16em] text-slate-500 transition hover:bg-white/[0.045] hover:text-slate-300 focus:outline-none focus:ring-2 focus:ring-[#18D6A3]/35"
+        className="group flex min-w-0 flex-1 items-center gap-1.5 rounded-lg px-1 py-1 text-left text-xs font-medium uppercase tracking-[0.16em] text-slate-400 transition hover:bg-white/[0.055] hover:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#18D6A3]/35"
       >
         <ChevronIcon size={14} aria-hidden="true" className="shrink-0 transition group-hover:text-[#18D6A3]" />
         <span className="truncate">{title}</span>
@@ -225,14 +225,14 @@ export function RoomSidebar({
 
   return (
     <aside
-      data-open={isOpen}
+      data-open={isOpen ? 'true' : 'false'}
       className={[
-        'chat-mobile-sidebar neon-sidebar-field flex h-dvh w-[min(85vw,18rem)] flex-col bg-[#09090B]/95 p-4 shadow-2xl shadow-black/35 backdrop-blur-xl transition-transform duration-200 xl:h-full xl:max-w-none xl:shrink-0 xl:transition-[width] xl:duration-200',
+        'chat-mobile-sidebar neon-sidebar-field flex h-dvh w-[min(92vw,20rem)] flex-col bg-[#09090B] p-4 shadow-2xl shadow-black/40 backdrop-blur-xl transition-transform duration-200 xl:h-full xl:w-full xl:max-w-none xl:shrink-0 xl:transition-[width] xl:duration-200',
         isOpen
           ? 'border-r border-white/10'
           : 'pointer-events-none xl:pointer-events-auto',
         isOpen
-          ? 'xl:w-full xl:overflow-visible'
+          ? 'xl:overflow-visible'
           : 'xl:w-0 xl:overflow-hidden xl:border-r-0 xl:p-0',
       ].join(' ')}
       aria-hidden={!isOpen}
@@ -243,7 +243,7 @@ export function RoomSidebar({
             <button
               type="button"
               onClick={() => navigate('/dashboard')}
-              className="grid size-10 shrink-0 place-items-center rounded-2xl border border-white/10 bg-white/[0.05] p-1.5 shadow-lg shadow-black/20 transition hover:border-[#18D6A3]/30 hover:bg-white/[0.08] focus:outline-none focus:ring-2 focus:ring-[#18D6A3]/40"
+              className="grid size-10 shrink-0 place-items-center rounded-2xl border border-white/10 bg-white/[0.05] p-1.5 shadow-lg shadow-black/20 transition hover:border-[#18D6A3]/30 hover:bg-white/8 focus:outline-none focus:ring-2 focus:ring-[#18D6A3]/40"
               aria-label="Go to dashboard"
             >
               <img
@@ -268,7 +268,7 @@ export function RoomSidebar({
 
 
 
-        <div className="mt-3 rounded-2xl bg-gradient-to-b from-[#5A5A5C]/80 via-white/15 to-[#28282A]/85 p-[1px] shadow-sm shadow-black/20 transition duration-200 focus-within:from-[#18D6A3]/60 focus-within:to-[#18D6A3]/20">
+        <div className="mt-3 rounded-2xl bg-linear-to-b from-[#5A5A5C]/80 via-white/15 to-[#28282A]/85 p-px shadow-sm shadow-black/20 transition duration-200 focus-within:from-[#18D6A3]/60 focus-within:to-[#18D6A3]/20">
           <label className="group flex h-[38px] items-center gap-2 rounded-[15px] bg-[#18181B]/78 px-3 text-slate-500 backdrop-blur-xl transition duration-200 focus-within:bg-[#1c1c21] focus-within:text-[#18D6A3]">
             <Search size={15} aria-hidden="true" className="transition group-focus-within:text-[#18D6A3]" />
             <input
@@ -281,7 +281,7 @@ export function RoomSidebar({
           </label>
         </div>
 
-        <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.035] p-1 shadow-sm shadow-black/20 backdrop-blur-xl">
+        <div className="mt-3 rounded-2xl border border-white/12 bg-white/[0.05] p-1 shadow-sm shadow-black/20">
           <div className="grid grid-cols-3 gap-1">
             {workspaceTabs.map((tab) => {
               const TabIcon = tab.icon
@@ -303,12 +303,12 @@ export function RoomSidebar({
                     'flex h-9 items-center justify-center gap-1.5 rounded-xl text-xs font-medium transition duration-150 focus:outline-none focus:ring-2',
                     isActiveTab
                       ? `${tabStyles.active} ${tabStyles.focus}`
-                      : 'text-slate-500 hover:bg-white/[0.055] hover:text-slate-200 focus:ring-[#18D6A3]/35',
+                      : 'bg-white/[0.03] text-slate-300 hover:bg-white/[0.07] hover:text-slate-100 focus:ring-[#18D6A3]/35',
                   ].join(' ')}
                   aria-pressed={isActiveTab}
                 >
                   <TabIcon size={14} aria-hidden="true" />
-                  <span>{tab.label}</span>
+                  <span className="hidden min-[380px]:inline">{tab.label}</span>
                 </button>
               )
             })}
@@ -339,7 +339,7 @@ export function RoomSidebar({
                   />
                 ))}
                 {!filteredGroupRooms.length ? (
-                  <p className="rounded-xl border border-white/10 bg-white/[0.035] px-3 py-3 text-sm text-slate-500 backdrop-blur-xl">
+                  <p className="rounded-xl border border-white/10 bg-white/[0.05] px-3 py-3 text-sm text-slate-400 backdrop-blur-xl">
                     {normalizedSearchQuery ? 'No matching rooms.' : 'No rooms yet.'}
                   </p>
                 ) : null}
@@ -375,7 +375,7 @@ export function RoomSidebar({
                         'group relative flex min-h-12 w-full items-center gap-2.5 rounded-xl border px-2.5 py-2 text-left backdrop-blur-xl transition duration-150 focus:outline-none focus:ring-2 focus:ring-[#18D6A3]/35',
                         isActiveDm
                           ? 'border-[#18D6A3]/28 bg-[#18D6A3]/9 shadow-[0_10px_28px_rgba(24,214,163,0.10)]'
-                          : 'border-transparent bg-transparent hover:border-white/8 hover:bg-white/[0.045]',
+                          : 'border-white/8 bg-white/[0.04] hover:border-white/12 hover:bg-white/[0.07]',
                       ].join(' ')}
                     >
                       {isActiveDm ? (
@@ -406,14 +406,6 @@ export function RoomSidebar({
                     </button>
                   )
                 })}
-
-                
-                {isDirectMessageRoom ? (
-                  <p className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 text-sm leading-5 text-slate-500 backdrop-blur-xl">
-                    Open a group room to message members.
-                  </p>
-                ) : null}
-
                 {!isDirectMessageRoom && isLoadingRoomMembers ? (
                   <div className="grid gap-1.5">
                     {[0, 1, 2].map((item) => (
@@ -447,7 +439,7 @@ export function RoomSidebar({
                           type="button"
                           disabled={Boolean(openingDmUserId)}
                           onClick={() => void handleCreateDm(member.id)}
-                          className="group relative flex min-h-12 w-full items-center gap-2.5 rounded-xl border border-transparent bg-transparent px-2.5 py-2 text-left backdrop-blur-xl transition duration-150 hover:border-white/8 hover:bg-white/[0.045] focus:outline-none focus:ring-2 focus:ring-[#18D6A3]/35"
+                          className="group relative flex min-h-12 w-full items-center gap-2.5 rounded-xl border border-white/8 bg-white/[0.04] px-2.5 py-2 text-left backdrop-blur-xl transition duration-150 hover:border-white/12 hover:bg-white/[0.07] focus:outline-none focus:ring-2 focus:ring-[#18D6A3]/35"
                         >
                           <span className="relative shrink-0">
                             <Avatar name={member.username} seed={member.email} size="sm" />
@@ -477,7 +469,7 @@ export function RoomSidebar({
                 !isLoadingRoomMembers &&
                 !dmSearchError &&
                 !filteredRoomMembers.length ? (
-                  <p className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 text-sm leading-5 text-slate-500 backdrop-blur-xl">
+                  <p className="rounded-xl border border-white/10 bg-white/[0.05] px-3 py-3 text-sm leading-5 text-slate-400 backdrop-blur-xl">
                     {normalizedSearchQuery ? 'No matching conversations.' : 'No direct messages yet.'}
                   </p>
                 ) : null}

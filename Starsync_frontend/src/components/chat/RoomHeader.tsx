@@ -1,4 +1,4 @@
-import { Info, Settings } from 'lucide-react'
+import { Info, Menu, Settings } from 'lucide-react'
 
 import type { ChatRoom } from '../../types/chat'
 import { getRoomDisplayInfo } from '../../utils/roomDisplay'
@@ -10,6 +10,7 @@ type RoomHeaderProps = {
   isInfoOpen: boolean
   room: ChatRoom
   onOpenSettings: () => void
+  onOpenSidebar?: () => void
   onToggleInfo: () => void
 }
 
@@ -18,6 +19,7 @@ export function RoomHeader({
   connectionStatus,
   isInfoOpen,
   onOpenSettings,
+  onOpenSidebar,
   onToggleInfo,
   room,
 }: RoomHeaderProps) {
@@ -29,6 +31,16 @@ export function RoomHeader({
     <header className="z-20 shrink-0 border-b border-white/10 bg-[#05080A]/90 px-3 py-3 shadow-[0_18px_45px_rgba(0,0,0,0.22)] backdrop-blur-xl sm:px-5">
       <div className="flex items-center justify-between gap-2 sm:gap-3">
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+          {onOpenSidebar ? (
+            <button
+              type="button"
+              onClick={onOpenSidebar}
+              className="grid size-9 shrink-0 place-items-center rounded-lg border border-white/10 bg-white/[0.045] text-slate-300 transition hover:border-[#18D6A3]/25 hover:bg-[#18D6A3]/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-[#18D6A3]/40 xl:hidden cursor-pointer"
+              aria-label="Open room sidebar"
+            >
+              <Menu size={18} aria-hidden="true" />
+            </button>
+          ) : null}
           <Avatar
             name={roomDisplay.avatarName}
             seed={roomDisplay.avatarSeed}
@@ -78,7 +90,7 @@ export function RoomHeader({
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-          <div className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/[0.045] px-3 py-1.5 text-xs text-slate-300 sm:flex">
+          <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.045] px-2 py-1 text-[11px] text-slate-300 sm:gap-2 sm:px-3 sm:py-1.5 sm:text-xs">
             <span
               className={[
                 'size-1.5 rounded-full',
