@@ -58,7 +58,8 @@ function AppPreview() {
       className="relative mx-auto mt-12 w-full max-w-4xl"
     >
       <div className="absolute -inset-1 rounded-xl bg-gradient-to-r from-white/10 to-[#A7A8AE]/15 opacity-30 blur-2xl" />
-      <div className="relative overflow-hidden rounded-xl border border-white/10 bg-[#18181B]/70 p-3 shadow-2xl shadow-black/50 backdrop-blur-2xl">
+      <div className="relative rounded-xl bg-gradient-to-b from-[#5A5A5C] via-white/15 to-[#28282A] p-[1px] shadow-2xl shadow-black/50">
+        <div className="relative overflow-hidden rounded-[11px] bg-[#18181B]/80 p-3 backdrop-blur-2xl">
         <div className="mb-3 flex items-center gap-2 border-b border-white/5 pb-3">
           <span className="h-2.5 w-2.5 rounded-full bg-[#FF5F56]" />
           <span className="h-2.5 w-2.5 rounded-full bg-[#FFBD2E]" />
@@ -189,7 +190,7 @@ export function LandingPage() {
   return (
     <main className="min-h-dvh bg-[#131315] text-[#E5E1E4] selection:bg-[#57F1DB]/20 selection:text-[#D6FFF6]">
       <header className="fixed top-0 z-50 w-full">
-        <nav className="mx-auto grid h-[72px] max-w-[1380px] grid-cols-3 items-center rounded-b-2xl border-b border-white/8 bg-black/15 px-5 py-3 shadow-lg shadow-black/10 backdrop-blur-xl">
+        <nav className="mx-auto flex h-[72px] max-w-[1380px] items-center justify-between rounded-b-2xl border-b border-white/8 bg-black/15 px-5 py-3 shadow-lg shadow-black/10 backdrop-blur-xl md:grid md:grid-cols-3">
           <Link to="/" className="flex items-center justify-self-start" aria-label="StarSync home">
             <img
               src="/starsync-logo.png"
@@ -240,18 +241,62 @@ export function LandingPage() {
           <div className="flex items-center gap-4 justify-self-end">
             <Link
               to="/login"
-              className="rounded-full border border-white/10 bg-[#171717]/35 px-5 py-2.5 text-sm font-semibold text-[#F1F1F3] backdrop-blur-xl transition hover:border-white/20 hover:bg-[#171717]/55"
+              className="hidden rounded-full border-2 border-white/18 bg-white/5 px-5 py-2 text-sm font-semibold text-white transition-all duration-300 hover:border-white/30 hover:bg-white/10 sm:inline-flex active:scale-[0.98] cursor-pointer"
             >
               Sign in
             </Link>
             <Link
               to="/signup"
-              className="hidden rounded-full border border-white/15 bg-[#171717]/55 px-5 py-2.5 text-sm font-semibold text-[#F1F1F3] backdrop-blur-xl transition hover:border-[#57F1DB]/40 hover:text-[#D6FFF6] sm:inline-flex"
+              className="hidden rounded-full border-2 border-white/18 bg-white/5 px-5 py-2 text-sm font-semibold text-white transition-all duration-300 hover:border-white/30 hover:bg-white/10 sm:inline-flex active:scale-[0.98] cursor-pointer"
             >
               Sign up
             </Link>
+            
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white/18 bg-white/5 text-white transition-all duration-300 hover:border-white/30 hover:bg-white/10 md:hidden cursor-pointer"
+              aria-label="Toggle menu"
+            >
+              {isMobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
+            </button>
           </div>
         </nav>
+
+        {isMobileMenuOpen && (
+          <div className="absolute left-0 top-[72px] w-full border-b border-white/8 bg-[#0D0D0F]/95 px-6 py-6 shadow-2xl backdrop-blur-2xl md:hidden">
+            <div className="flex flex-col gap-5">
+              <a
+                href="#product"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="text-lg font-medium text-[#9B9EA6] transition hover:text-white"
+              >
+                Product
+              </a>
+              <a
+                href="#features"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="text-lg font-medium text-[#9B9EA6] transition hover:text-white"
+              >
+                Features
+              </a>
+              <div className="my-1 h-px bg-white/5" />
+              <Link
+                to="/login"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex h-11 w-full max-w-[200px] mx-auto items-center justify-center rounded-full border-2 border-white/18 bg-white/5 text-sm font-semibold text-white transition-all duration-300 hover:border-white/30 hover:bg-white/10 active:scale-[0.98]"
+              >
+                Sign in
+              </Link>
+              <Link
+                to="/signup"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex h-11 w-full max-w-[200px] mx-auto items-center justify-center rounded-full border-2 border-white/18 bg-white/5 text-sm font-semibold text-white transition-all duration-300 hover:border-white/30 hover:bg-white/10 active:scale-[0.98]"
+              >
+                Sign up
+              </Link>
+            </div>
+          </div>
+        )}
       </header>
 
       <section

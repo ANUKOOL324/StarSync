@@ -16,13 +16,13 @@ From the project root:
 docker compose -f docker-compose.piston.yml up -d
 ```
 
-Or from `wsocket_backend`:
+Or from `Starsync_backend`:
 
 ```powershell
 docker compose -f ..\docker-compose.piston.yml up -d
 ```
 
-Then set this in `wsocket_backend/.env`:
+Then set this in `Starsync_backend/.env`:
 
 ```env
 CODE_RUNNER_URL=http://localhost:2000/api/v2
