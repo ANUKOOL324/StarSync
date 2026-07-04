@@ -1,12 +1,12 @@
 node_modules/
 dist/
 .env
-tmp-runtime-logs/
-data/
-node_modules
-# Keep environment variables out of version control
-AGENTS.md
-.agent/
-.codex/
-/src/generated/prisma
 *.tsbuildinfo
+
+# Local runtime data
+data/
+
+# Local planning and agent files
+AGENTS.md
+docs/
+split_commits.py

@@ -300,13 +300,7 @@ Recommended screenshots for the repository:
 | Whiteboard tab | tldraw canvas with shared drawing |
 | Responsive drawer | Mobile/tablet sidebar or details drawer |
 
-Add screenshots under:
-
-```txt
-docs/screenshots/
-```
-
-Then reference them from this README when they are available.
+Add screenshots to this README when they are available.
 
 ## Useful Commands
 
