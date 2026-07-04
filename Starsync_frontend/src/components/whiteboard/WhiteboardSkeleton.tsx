@@ -12,7 +12,7 @@ export function WhiteboardSkeleton() {
       <div className="relative min-h-0 flex-1 overflow-hidden">
         <div className="absolute inset-0 opacity-35 [background-image:radial-gradient(circle_at_1px_1px,rgba(24,214,163,0.3)_1px,transparent_0)] [background-size:18px_18px]" />
         <div className="absolute left-6 top-6 h-12 w-40 animate-pulse rounded-2xl border border-white/10 bg-white/[0.05]" />
-        <div className="absolute right-8 top-20 h-28 w-52 animate-pulse rounded-3xl border border-white/10 bg-white/[0.04]" />
+        <div className="absolute right-8 top-20 h-28 w-52 animate-pulse rounded-3xl border border-white/10 bg-white/4" />
         <div className="absolute bottom-8 left-1/2 h-14 w-[min(28rem,80vw)] -translate-x-1/2 animate-pulse rounded-2xl border border-white/10 bg-white/[0.05]" />
       </div>
     </div>
