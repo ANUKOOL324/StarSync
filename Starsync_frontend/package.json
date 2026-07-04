@@ -1,5 +1,5 @@
 {
-  "name": "wsocket_fronted",
+  "name": "starsync_frontend",
   "private": true,
   "version": "0.0.0",
   "type": "module",
