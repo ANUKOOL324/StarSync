@@ -18,7 +18,7 @@ import {
   Users,
   X,
 } from 'lucide-react'
-import { lazy, Suspense, useCallback, useEffect, useRef, useState, useMemo } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, useMemo, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import type { PanelImperativeHandle } from 'react-resizable-panels'
@@ -145,7 +145,7 @@ function ProblemPanelRail({
                   'flex w-full cursor-pointer flex-col items-center gap-1.5 px-1 py-3 transition',
                   isActive
                     ? 'border-r-2 border-[#57F1DB] bg-[#57F1DB]/10 text-[#D6FFF6]'
-                    : 'border-r-2 border-transparent text-slate-500 hover:bg-white/[0.04] hover:text-slate-200',
+                    : 'border-r-2 border-transparent text-slate-500 hover:bg-white/4 hover:text-slate-200',
                 ].join(' ')}
               >
                 <Icon size={17} aria-hidden="true" />
@@ -190,7 +190,7 @@ function SessionPanelRail({
                   'flex w-full cursor-pointer flex-col items-center gap-1.5 px-1 py-3 transition',
                   isActive
                     ? 'border-l-2 border-[#57F1DB] bg-[#57F1DB]/10 text-[#D6FFF6]'
-                    : 'border-l-2 border-transparent text-slate-500 hover:bg-white/[0.04] hover:text-slate-200',
+                    : 'border-l-2 border-transparent text-slate-500 hover:bg-white/4 hover:text-slate-200',
                 ].join(' ')}
               >
                 <Icon size={17} aria-hidden="true" />
@@ -298,6 +298,28 @@ const clampTimerPart = (value: number, min: number, max: number) => {
   return Math.min(max, Math.max(min, value))
 }
 
+function TimerButtonTooltip({
+  label,
+  children,
+}: {
+  label: string
+  children: ReactNode
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent
+        side="bottom"
+        sideOffset={6}
+        hideArrow
+        className="rounded-md border border-white/12 bg-[#3a3a3c] px-2.5 py-1 text-[11px] font-medium leading-none text-white shadow-[0_6px_20px_rgba(0,0,0,0.35)]"
+      >
+        {label}
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
 function CompetingSessionTimer({
   canManage,
   draftHours,
@@ -343,143 +365,163 @@ function CompetingSessionTimer({
 
   if (!canManage) {
     return (
-      <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.035] px-2.5 py-1.5">
+      <div className="flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.035] px-2 py-1.5 sm:gap-2 sm:px-2.5">
         <Clock3 size={14} className="shrink-0 text-slate-400" aria-hidden="true" />
-        <span className="font-mono text-sm font-semibold tabular-nums text-white">{clockLabel}</span>
+        <span className="font-mono text-xs font-semibold tabular-nums text-white sm:text-sm">{clockLabel}</span>
         {sessionStatus === 'waiting' ? (
-          <span className="text-xs text-slate-500">Waiting</span>
+          <span className="hidden text-xs text-slate-500 sm:inline">Waiting</span>
         ) : null}
-        {isEnded ? <span className="text-xs text-amber-200">Ended</span> : null}
+        {isEnded ? <span className="text-[11px] text-amber-200 sm:text-xs">Ended</span> : null}
       </div>
     )
   }
 
   return (
     <div className={[
-      'flex items-center gap-0.5 rounded-lg border bg-white/[0.035] p-0.5',
+      'flex shrink-0 items-center gap-0.5 rounded-lg border bg-white/[0.035] p-0.5',
       isRunning
         ? 'border-emerald-300/25'
         : isEnded
           ? 'border-amber-300/25'
           : 'border-white/10',
     ].join(' ')}>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        className="size-8 shrink-0"
-        onClick={onStart}
-        disabled={isRunning || !canStart}
-        aria-label="Start session timer"
-      >
-        <Play size={14} aria-hidden="true" />
-      </Button>
+      <TimerButtonTooltip label="Start">
+        <span className="inline-flex">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="size-7 shrink-0 sm:size-8"
+            onClick={onStart}
+            disabled={isRunning || !canStart}
+            aria-label="Start session timer"
+          >
+            <Play size={14} aria-hidden="true" />
+          </Button>
+        </span>
+      </TimerButtonTooltip>
 
       <DropdownMenu open={isTimerMenuOpen} onOpenChange={setIsTimerMenuOpen}>
-        <DropdownMenuTrigger asChild disabled={isRunning}>
-          <button
-            type="button"
-            className={[
-              'min-w-[84px] rounded-md px-2 py-1 font-mono text-sm tabular-nums transition',
-              isRunning
-                ? 'text-white font-semibold'
-                : isEnded
-                  ? 'text-slate-400 font-semibold'
-                  : 'text-white font-semibold hover:bg-white/[0.05]',
-              isRunning ? 'cursor-default' : 'cursor-pointer',
-            ].join(' ')}
-            aria-label="Set session timer"
-          >
-            {clockLabel}
-          </button>
-        </DropdownMenuTrigger>
+        <TimerButtonTooltip label="Set timer">
+          <DropdownMenuTrigger asChild disabled={isRunning}>
+            <button
+              type="button"
+              className={[
+                'min-w-[68px] rounded-md px-1.5 py-1 font-mono text-xs tabular-nums transition sm:min-w-[84px] sm:px-2 sm:text-sm',
+                isRunning
+                  ? 'text-white font-semibold'
+                  : isEnded
+                    ? 'text-slate-400 font-semibold'
+                    : 'text-white font-semibold hover:bg-white/[0.05]',
+                isRunning ? 'cursor-default' : 'cursor-pointer',
+              ].join(' ')}
+              aria-label="Set session timer"
+            >
+              {clockLabel}
+            </button>
+          </DropdownMenuTrigger>
+        </TimerButtonTooltip>
         <DropdownMenuContent
           align="center"
           side="bottom"
           sideOffset={10}
-          className="w-[220px] overflow-hidden rounded-xl border border-white/10 bg-black/85 p-0 text-slate-200 shadow-2xl shadow-black/60 backdrop-blur-xl data-[state=closed]:animate-out data-[state=closed]:duration-150 data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:duration-200 data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-top-1 data-[state=open]:zoom-in-95"
+          collisionPadding={12}
+          className="w-[220px] overflow-visible border-none bg-transparent p-0 text-slate-200 shadow-none data-[state=closed]:animate-out data-[state=closed]:duration-150 data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:duration-200 data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-top-1 data-[state=open]:zoom-in-95"
         >
-          <div className="flex items-center gap-2 border-b border-white/10 px-3 py-2">
-            <span className="grid size-7 place-items-center rounded-full border border-amber-300/20 bg-amber-400/10 text-amber-200">
-              <Clock3 size={14} aria-hidden="true" />
-            </span>
-            <div>
-              <p className="text-xs font-semibold text-white">Session timer</p>
-              <p className="text-[10px] text-slate-500">Set hours and minutes</p>
-            </div>
-          </div>
+          <div className="overflow-hidden rounded-2xl bg-linear-to-b from-[#5A5A5C]/80 via-white/15 to-[#28282A]/85 p-[2px] shadow-[0_18px_60px_rgba(0,0,0,0.22)]">
+            <div className="overflow-hidden rounded-[14px] bg-[#18181B]/78 backdrop-blur-2xl">
+              <div className="flex items-center gap-2 border-b border-white/10 px-3 py-2">
+                <span className="grid size-7 place-items-center rounded-full border border-amber-300/20 bg-amber-400/10 text-amber-200">
+                  <Clock3 size={14} aria-hidden="true" />
+                </span>
+                <div>
+                  <p className="text-xs font-semibold text-white">Session timer</p>
+                </div>
+              </div>
 
-          <div className="space-y-3 px-3 py-3">
-            <div className="flex items-center justify-center gap-3">
-              <label className="flex flex-col items-center gap-1">
-                <span className="text-[10px] uppercase tracking-[0.18em] text-slate-500">hr</span>
-                <Input
-                  type="number"
-                  min={0}
-                  max={23}
-                  value={draftHours}
-                  onChange={(event) => {
-                    applyDraftFromInputs(Number(event.target.value), draftMinutes)
-                  }}
-                  className="h-9 w-14 border-white/10 bg-white/[0.04] text-center font-mono text-sm text-white"
-                />
-              </label>
-              <label className="flex flex-col items-center gap-1">
-                <span className="text-[10px] uppercase tracking-[0.18em] text-slate-500">min</span>
-                <Input
-                  type="number"
-                  min={0}
-                  max={59}
-                  value={draftMinutes}
-                  onChange={(event) => {
-                    applyDraftFromInputs(draftHours, Number(event.target.value))
-                  }}
-                  className="h-9 w-14 border-white/10 bg-white/[0.04] text-center font-mono text-sm text-white"
-                />
-              </label>
-            </div>
+              <div className="space-y-3 px-3 py-3">
+                <div className="flex items-center justify-center gap-3">
+                  <label className="flex flex-col items-center gap-1">
+                    <span className="text-[10px] uppercase tracking-[0.18em] text-slate-500">hr</span>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={23}
+                      value={draftHours}
+                      onChange={(event) => {
+                        applyDraftFromInputs(Number(event.target.value), draftMinutes)
+                      }}
+                      className="h-9 w-14 border-white/10 bg-white/4 text-center font-mono text-sm text-white [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    />
+                  </label>
+                  <label className="flex flex-col items-center gap-1">
+                    <span className="text-[10px] uppercase tracking-[0.18em] text-slate-500">min</span>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={59}
+                      value={draftMinutes}
+                      onChange={(event) => {
+                        applyDraftFromInputs(draftHours, Number(event.target.value))
+                      }}
+                      className="h-9 w-14 border-white/10 bg-white/4 text-center font-mono text-sm text-white [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    />
+                  </label>
+                </div>
 
-            <Button
-              type="button"
-              variant="primary"
-              size="sm"
-              className="h-9 w-full"
-              disabled={!canStart}
-              onClick={() => {
-                onStart()
-                setIsTimerMenuOpen(false)
-              }}
-            >
-              <Play size={14} aria-hidden="true" />
-              Start Timer
-            </Button>
+                <TimerButtonTooltip label="Start">
+                  <span className="inline-flex w-full">
+                    <button
+                      type="button"
+                      disabled={!canStart}
+                      onClick={() => {
+                        onStart()
+                        setIsTimerMenuOpen(false)
+                      }}
+                      className="inline-flex h-9 w-full cursor-pointer items-center justify-center gap-1.5 rounded-full border-2 border-white/10 bg-[#18181B]/90 px-5 text-xs font-semibold text-white shadow-sm transition-colors duration-150 hover:border-white/20 active:bg-[#0A0A0A] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <Play size={14} aria-hidden="true" />
+                      Start Timer
+                    </button>
+                  </span>
+                </TimerButtonTooltip>
+              </div>
+            </div>
           </div>
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        className="size-8 shrink-0 text-red-400 hover:text-red-300 hover:bg-red-500/10"
-        onClick={onEnd}
-        disabled={!isRunning}
-        aria-label="End session timer"
-      >
-        <StopCircle size={14} aria-hidden="true" />
-      </Button>
+      <TimerButtonTooltip label="End">
+        <span className="inline-flex">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="size-7 shrink-0 text-red-400 hover:text-red-300 hover:bg-red-500/10 sm:size-8"
+            onClick={onEnd}
+            disabled={!isRunning}
+            aria-label="End session timer"
+          >
+            <StopCircle size={14} aria-hidden="true" />
+          </Button>
+        </span>
+      </TimerButtonTooltip>
 
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        className="size-8 shrink-0 border-white/10 hover:border-[#3B82F6]/40 hover:bg-transparent hover:text-white"
-        onClick={onReset}
-        disabled={!isRunning && !isEnded}
-        aria-label="Reset session timer"
-      >
-        <RotateCcw size={14} aria-hidden="true" />
-      </Button>
+      <TimerButtonTooltip label="Reset">
+        <span className="inline-flex">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="size-7 shrink-0 border-white/10 hover:border-[#3B82F6]/40 hover:bg-transparent hover:text-white sm:size-8"
+            onClick={onReset}
+            disabled={!isRunning && !isEnded}
+            aria-label="Reset session timer"
+          >
+            <RotateCcw size={14} aria-hidden="true" />
+          </Button>
+        </span>
+      </TimerButtonTooltip>
     </div>
   )
 }
@@ -604,41 +646,44 @@ function ProblemPanel({
       onValueChange={(value) => setActiveTab(value as ProblemPanelTab)}
       className="flex min-h-0 min-w-0 flex-1 flex-col gap-0 overflow-hidden"
     >
-      <div className="min-w-0 shrink-0 overflow-hidden border-b border-white/10 bg-black/20 px-3 py-2">
-        <TabsList variant="competing" className="flex h-9 w-full min-w-0 overflow-hidden">
+      <div className="min-w-0 shrink-0 border-b border-white/10 bg-black/20 px-2 py-2">
+        <TabsList variant="competing" className="grid h-9 w-full min-w-0 grid-cols-3 gap-0.5">
           <TabsTrigger
             value="problem"
-            className="flex items-center gap-1.5 px-3 border border-transparent data-[state=active]:!border-blue-500/40 data-[state=active]:!bg-blue-500/12 data-[state=active]:!text-white data-[state=active]:shadow-[0_0_10px_rgba(59,130,246,0.2)] transition-all duration-150"
+            title="Problem"
+            className="flex !min-w-0 !flex-1 min-w-0 w-full items-center justify-center gap-1 overflow-hidden px-1.5 text-xs border border-transparent data-[state=active]:!border-blue-500/40 data-[state=active]:!bg-blue-500/12 data-[state=active]:!text-white data-[state=active]:shadow-[0_0_10px_rgba(59,130,246,0.2)] transition-all duration-150"
           >
-            <FileText size={15} className="shrink-0" aria-hidden="true" />
-            Problem
+            <FileText size={14} className="shrink-0" aria-hidden="true" />
+            <span className="hidden truncate @[17rem]:inline">Problem</span>
           </TabsTrigger>
           <TabsTrigger
             value="submissions"
-            className="flex items-center gap-1.5 px-3 border border-transparent data-[state=active]:!border-emerald-500/40 data-[state=active]:!bg-emerald-500/12 data-[state=active]:!text-white data-[state=active]:shadow-[0_0_10px_rgba(16,185,129,0.2)] transition-all duration-150"
+            title="Submissions"
+            className="flex !min-w-0 !flex-1 min-w-0 w-full items-center justify-center gap-1 overflow-hidden px-1.5 text-xs border border-transparent data-[state=active]:!border-emerald-500/40 data-[state=active]:!bg-emerald-500/12 data-[state=active]:!text-white data-[state=active]:shadow-[0_0_10px_rgba(16,185,129,0.2)] transition-all duration-150"
           >
-            <ScrollText size={15} className="shrink-0" aria-hidden="true" />
-            Submissions
+            <ScrollText size={14} className="shrink-0" aria-hidden="true" />
+            <span className="hidden truncate @[17rem]:inline">Submissions</span>
           </TabsTrigger>
           <TabsTrigger
             value="editorial"
-            className="flex items-center gap-1.5 px-3 border border-transparent data-[state=active]:!border-amber-300/35 data-[state=active]:!bg-amber-400/10 data-[state=active]:!text-white data-[state=active]:shadow-[0_0_10px_rgba(245,158,11,0.25)] transition-all duration-150"
+            title="Editorial"
+            className="flex !min-w-0 !flex-1 min-w-0 w-full items-center justify-center gap-1 overflow-hidden px-1.5 text-xs border border-transparent data-[state=active]:!border-amber-300/35 data-[state=active]:!bg-amber-400/10 data-[state=active]:!text-white data-[state=active]:shadow-[0_0_10px_rgba(245,158,11,0.25)] transition-all duration-150"
           >
-            <BookOpen size={15} className="shrink-0" aria-hidden="true" />
-            Editorial
+            <BookOpen size={14} className="shrink-0" aria-hidden="true" />
+            <span className="hidden truncate @[17rem]:inline">Editorial</span>
           </TabsTrigger>
         </TabsList>
       </div>
 
-      <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
+      <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto pb-14 xl:pb-0">
         <TabsContent
           value="problem"
-          className="m-0 min-w-0 max-w-full overflow-hidden p-4 sm:p-5"
+          className="m-0 min-w-0 max-w-full overflow-hidden p-3 @[20rem]:p-4"
         >
-          <div className="min-w-0 max-w-full space-y-5 overflow-hidden">
-            <section className="overflow-hidden border-b border-white/10 pb-3">
+          <div className="min-w-0 max-w-full space-y-4 overflow-hidden @[20rem]:space-y-5">
+            <section className="min-w-0 overflow-hidden border-b border-white/10 pb-3">
               <div
-                className="flex max-w-full items-center justify-center gap-1 overflow-hidden sm:gap-1.5"
+                className="flex max-w-full items-center gap-1 overflow-x-auto overscroll-x-contain pb-0.5 [scrollbar-width:thin] @[20rem]:justify-center"
                 aria-label={`Problem ${currentProblemNumber} of ${problems.length}`}
               >
                 <Button
@@ -654,17 +699,15 @@ function ProblemPanel({
                 </Button>
                 {problems.map((problem) => {
                   const isSelected = selectedProblem ? problem.id === selectedProblem.id : false
-                  
-                  
+
                   let difficultyStyles = ''
                   if (isSelected) {
                     if (problem.difficulty === 'EASY') {
-                      difficultyStyles = 'border-emerald-500/40 bg-transparent text-white shadow-[0_0_14px_rgba(16,185,129,0.25)]'
+                      difficultyStyles = 'border-emerald-500/40 bg-transparent text-white shadow-none'
                     } else if (problem.difficulty === 'HARD') {
-                      difficultyStyles = 'border-red-500/40 bg-transparent text-white shadow-[0_0_14px_rgba(239,68,68,0.25)]'
+                      difficultyStyles = 'border-red-500/40 bg-transparent text-white shadow-none'
                     } else {
-                      
-                      difficultyStyles = 'border-amber-500/40 bg-transparent text-white shadow-[0_0_14px_rgba(245,158,11,0.25)]'
+                      difficultyStyles = 'border-amber-500/40 bg-transparent text-white shadow-none'
                     }
                   } else {
                     if (problem.difficulty === 'EASY') {
@@ -672,7 +715,6 @@ function ProblemPanel({
                     } else if (problem.difficulty === 'HARD') {
                       difficultyStyles = 'border-white/10 text-slate-400 hover:border-red-500/30 hover:bg-transparent hover:text-white hover:shadow-[0_0_10px_rgba(239,68,68,0.15)]'
                     } else {
-                      
                       difficultyStyles = 'border-white/10 text-slate-400 hover:border-amber-500/30 hover:bg-transparent hover:text-white hover:shadow-[0_0_10px_rgba(245,158,11,0.15)]'
                     }
                   }
@@ -684,7 +726,7 @@ function ProblemPanel({
                       variant={isSelected ? 'secondary' : 'ghost'}
                       size="sm"
                       className={[
-                        'h-8 min-w-9 shrink-0 px-2.5 text-xs border transition-all duration-200',
+                        'h-8 min-w-9 shrink-0 px-2 text-xs border transition-all duration-200',
                         difficultyStyles,
                       ].join(' ')}
                       onClick={() => onSelectedProblemIdChange(problem.id)}
@@ -713,12 +755,12 @@ function ProblemPanel({
               <div className="space-y-5 overflow-hidden" aria-label="Loading assigned problems">
                 <section className="space-y-4 overflow-hidden">
                   <div className="flex flex-wrap items-center gap-2 overflow-hidden">
-                    <div className="h-6 w-20 animate-pulse rounded-full bg-white/[0.08]" />
+                    <div className="h-6 w-20 animate-pulse rounded-full bg-white/8" />
                     <div className="h-6 w-32 animate-pulse rounded-full bg-white/[0.06]" />
                     <div className="h-6 w-24 animate-pulse rounded-full bg-white/[0.06]" />
                   </div>
                   <div className="space-y-3 overflow-hidden">
-                    <div className="h-7 w-3/5 animate-pulse rounded-md bg-white/[0.08]" />
+                    <div className="h-7 w-3/5 animate-pulse rounded-md bg-white/8" />
                     <div className="h-4 w-full animate-pulse rounded bg-white/[0.06]" />
                     <div className="h-4 w-4/5 animate-pulse rounded bg-white/[0.06]" />
                   </div>
@@ -730,7 +772,7 @@ function ProblemPanel({
                 </section>
 
                 <section className="space-y-3 overflow-hidden">
-                  <div className="h-5 w-24 animate-pulse rounded bg-white/[0.08]" />
+                  <div className="h-5 w-24 animate-pulse rounded bg-white/8" />
                   <div className="grid gap-2 overflow-hidden">
                     <div className="h-10 animate-pulse rounded-lg border border-white/8 bg-black/25" />
                     <div className="h-10 animate-pulse rounded-lg border border-white/8 bg-black/25" />
@@ -751,25 +793,25 @@ function ProblemPanel({
               </Card>
             ) : (
               <>
-              <section className="space-y-4 overflow-hidden">
-                <div className="flex flex-wrap items-center gap-2 overflow-hidden">
+              <section className="min-w-0 space-y-4 overflow-hidden">
+                <div className="flex flex-wrap items-center gap-1.5 overflow-hidden @[20rem]:gap-2">
                   <Badge className={difficultyClassName[selectedProblem.difficulty]}>
                     {formatDifficulty(selectedProblem.difficulty)}
                   </Badge>
                   {selectedProblem.topics.map((topic) => (
                     <Badge
                       key={topic}
-                      className="border-zinc-500/20 bg-zinc-500/10 text-zinc-300"
+                      className="max-w-full truncate border-zinc-500/20 bg-zinc-500/10 text-zinc-300"
                     >
                       {topic}
                     </Badge>
                   ))}
                 </div>
                 <div className="min-w-0 overflow-hidden">
-                  <h2 className="break-words text-xl font-semibold tracking-tight text-white">
+                  <h2 className="wrap-break-word text-lg font-semibold tracking-tight text-white @[20rem]:text-xl">
                     {selectedProblem.title}
                   </h2>
-                  <p className="mt-3 break-words text-sm leading-6 text-slate-400">
+                  <p className="mt-3 wrap-break-word text-sm leading-6 text-slate-400">
                     {selectedProblem.description}
                   </p>
                 </div>
@@ -796,7 +838,7 @@ function ProblemPanel({
                   {selectedProblem.constraints.map((constraint) => (
                     <code
                       key={constraint}
-                      className="block overflow-hidden rounded-lg border border-white/8 bg-black/25 px-3 py-2 font-mono text-xs leading-5 break-words text-slate-300"
+                      className="block overflow-hidden rounded-lg border border-white/8 bg-black/25 px-3 py-2 font-mono text-xs leading-5 wrap-break-word text-slate-300"
                     >
                       {constraint}
                     </code>
@@ -855,11 +897,11 @@ function ProblemPanel({
                 <h2 className="text-lg font-semibold text-white">Submissions</h2>
                 <p className="mt-1 text-sm text-slate-400">Shared submission history for this problem.</p>
               </div>
-              <div className="w-0 min-w-full overflow-x-auto overscroll-x-contain [scrollbar-color:rgba(255,255,255,0.25)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/25 [&::-webkit-scrollbar-track]:bg-white/[0.04]">
+              <div className="w-0 min-w-full overflow-x-auto overscroll-x-contain [scrollbar-color:rgba(255,255,255,0.25)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/25 [&::-webkit-scrollbar-track]:bg-white/4">
                 <table className="w-max min-w-full caption-bottom text-sm">
                   <TableHeader>
                     <TableRow className="border-white/10 hover:bg-transparent">
-                      <TableHead className="px-3 text-slate-400">#</TableHead>
+                      <TableHead className="px-3 text-slate-400">ID</TableHead>
                       <TableHead className="px-3 text-slate-400">When</TableHead>
                       <TableHead className="px-3 text-slate-400">Who</TableHead>
                       <TableHead className="px-3 text-slate-400">Problem</TableHead>
@@ -911,7 +953,7 @@ function ProblemPanel({
           <TabsContent value="editorial" className="m-0 min-w-0 overflow-hidden p-4 sm:p-5">
             <Card className="border-white/10 bg-white/[0.035] py-8 text-center shadow-none">
               <CardHeader className="items-center px-5">
-                <div className="grid size-12 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-[#D6FFF6]">
+                <div className="grid size-12 place-items-center rounded-xl border border-white/10 bg-white/4 text-[#D6FFF6]">
                   <Trophy size={20} aria-hidden="true" />
                 </div>
                 <CardTitle className="text-lg text-white">Editorial locked</CardTitle>
@@ -934,45 +976,69 @@ function ProblemPanel({
           }
         }}
       >
-        <DialogContent className="max-h-[80dvh] max-w-lg overflow-hidden border-white/10 bg-[#0B0D0F]/98 text-white" overlayClassName="backdrop-blur-sm">
-          <DialogHeader>
-            <DialogTitle>{selectedSubmissionDisplayId ? `Submission #${selectedSubmissionDisplayId}` : 'Submission Details'}</DialogTitle>
+        <DialogContent className="max-h-[85dvh] max-w-lg gap-0 overflow-hidden rounded-2xl border border-white/10 bg-[#0B0D0F]/98 p-0 text-white" overlayClassName="backdrop-blur-sm">
+          <DialogHeader className="space-y-1 border-b border-white/10 px-5 py-4 text-left">
+            <DialogTitle className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-lg font-semibold text-white">
+              <span>Submission</span>
+              {selectedSubmissionDisplayId ? (
+                <span className="font-mono text-base font-semibold text-[#7FFFE0]">
+                  {selectedSubmissionDisplayId}
+                </span>
+              ) : null}
+            </DialogTitle>
+            {selectedSubmission ? (
+              <p className="text-sm text-slate-400">
+                {new Date(selectedSubmission.submittedAt).toLocaleString(undefined, {
+                  day: 'numeric',
+                  month: 'short',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </p>
+            ) : null}
           </DialogHeader>
 
           {selectedSubmission ? (
             isSubmissionCodeBlocked ? (
-              <Card className="border-amber-300/20 bg-amber-400/[0.06] py-0 shadow-none">
-                <CardContent className="p-5 text-sm text-amber-100">
-                  Code is available after the session ends.
-                </CardContent>
-              </Card>
+              <div className="px-5 py-4">
+                <Card className="border-amber-300/20 bg-amber-400/[0.06] py-0 shadow-none">
+                  <CardContent className="p-5 text-sm text-amber-100">
+                    Code is available after the session ends.
+                  </CardContent>
+                </Card>
+              </div>
             ) : (
-              <div className="min-h-0 space-y-3 overflow-y-auto pr-1">
+              <div className="min-h-0 space-y-4 overflow-y-auto px-5 py-4">
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <div className="rounded-xl border border-white/8 bg-white/[0.035] p-3">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500">User</p>
+                    <p className="mt-1 text-sm font-medium text-slate-100">{selectedSubmission.username}</p>
+                  </div>
+                  <div className="rounded-xl border border-white/8 bg-white/[0.035] p-3">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500">Problem</p>
+                    <p className="mt-1 text-sm font-medium text-slate-100">{selectedSubmissionProblemLabel}</p>
+                  </div>
+                </div>
+
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm text-slate-400">{selectedSubmission.language}</span>
-                  <span className="text-white/20">Â·</span>
+                  <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-xs capitalize text-slate-300">
+                    {selectedSubmission.language}
+                  </span>
                   <Badge className={getSubmissionStatusClassName(selectedSubmission.status)}>
                     {formatSubmissionStatus(selectedSubmission.status)}
                   </Badge>
-                  <span className="text-white/20">Â·</span>
-                  <span className="text-sm text-slate-400">{selectedSubmission.runtimeMs ? `${selectedSubmission.runtimeMs} ms` : '-'}</span>
-                  <span className="text-white/20">Â·</span>
-                  <span className="text-sm text-slate-400">{selectedSubmission.memoryKb ? `${Math.round(selectedSubmission.memoryKb / 1024)} MB` : '-'}</span>
+                  <span className="text-sm text-slate-400">
+                    {selectedSubmission.runtimeMs ? `${selectedSubmission.runtimeMs} ms` : 'Time —'}
+                  </span>
+                  <span className="text-sm text-slate-500">·</span>
+                  <span className="text-sm text-slate-400">
+                    {selectedSubmission.memoryKb ? `${Math.round(selectedSubmission.memoryKb / 1024)} MB` : 'Memory —'}
+                  </span>
                 </div>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {[
-                    ['User', selectedSubmission.username],
-                    ['Problem', selectedSubmissionProblemLabel],
-                  ].map(([label, value]) => (
-                    <div key={label} className="rounded-lg border border-white/8 bg-white/[0.035] p-2.5">
-                      <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{label}</p>
-                      <p className="mt-0.5 text-sm font-medium text-slate-200">{value}</p>
-                    </div>
-                  ))}
-                </div>
+
                 <div className="overflow-hidden rounded-xl border border-white/10 bg-black/35">
-                  <div className="flex items-center justify-between border-b border-white/10 px-4 py-2">
-                    <span className="text-xs uppercase tracking-[0.18em] text-slate-500">Submitted code</span>
+                  <div className="flex items-center justify-between border-b border-white/10 px-4 py-2.5">
+                    <span className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500">Submitted code</span>
                     <button
                       type="button"
                       className="flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-xs text-slate-400 transition hover:bg-white/[0.06] hover:text-slate-200"
@@ -1003,7 +1069,7 @@ function ProblemPanel({
   if (isCollapsed) {
     return (
       <>
-        <aside className="flex h-full min-h-0 min-w-0 overflow-hidden border-r border-white/10 bg-[#080D14]/95">
+        <aside className="flex h-full min-h-0 min-w-0 overflow-hidden bg-[#080D14]/95 xl:border-r xl:border-white/10">
           <ProblemPanelRail activeTab={activeTab} onSelect={handleRailSelect} />
         </aside>
         {submissionDialog}
@@ -1013,7 +1079,7 @@ function ProblemPanel({
 
   return (
     <>
-      <aside className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden border-r border-white/10 bg-[#080D14]/90">
+      <aside className="@container flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-[#080D14]/90 xl:border-r xl:border-white/10">
         {panelTabs}
       </aside>
       {submissionDialog}
@@ -1147,7 +1213,7 @@ function MembersAndChatPanel({
           <div className="shrink-0 overflow-hidden border-b border-white/10 px-4 py-4">
             <p className="truncate text-sm font-semibold text-white">Session players</p>
             <p className="mt-1 truncate text-xs text-slate-500">
-              {onlineCount} online Â· {members.length || 1} total
+              {onlineCount} online · {members.length || 1} total
             </p>
           </div>
 
@@ -1170,7 +1236,7 @@ function MembersAndChatPanel({
                               {member.username}
                             </p>
                             <div className="mt-1 flex min-w-0 items-center gap-2 overflow-hidden">
-                              <Badge className="shrink-0 border-white/10 bg-white/[0.04] text-[10px] uppercase tracking-[0.16em] text-slate-400">
+                              <Badge className="shrink-0 border-white/10 bg-white/4 text-[10px] uppercase tracking-[0.16em] text-slate-400">
                                 {member.role.toLowerCase()}
                               </Badge>
                               <span className="truncate text-xs text-slate-500">
@@ -1208,14 +1274,14 @@ function MembersAndChatPanel({
 
   if (isCollapsed) {
     return (
-      <aside className="flex h-full min-h-0 min-w-0 overflow-hidden border-l border-white/10 bg-[#080D14]/95">
+      <aside className="flex h-full min-h-0 min-w-0 overflow-hidden bg-[#080D14]/95 xl:border-l xl:border-white/10">
         <SessionPanelRail activeTab={activeTab} onSelect={handleRailSelect} />
       </aside>
     )
   }
 
   return (
-    <aside className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden border-l border-white/10 bg-[#080D14]/90">
+    <aside className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-[#080D14]/90 xl:border-l xl:border-white/10">
       {panelTabs}
     </aside>
   )
@@ -1621,23 +1687,23 @@ export function CompetingRoomWorkspace({ room }: CompetingRoomWorkspaceProps) {
   return (
     <TooltipProvider>
       <section className="flex h-dvh max-h-dvh flex-col overflow-hidden bg-[#05070A] text-[#E5E1E4]">
-        <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-[#060A10]/95 px-3 py-1.5 shadow-[0_18px_60px_rgba(0,0,0,0.26)] backdrop-blur-2xl sm:px-4">
-          <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+        <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-[#060A10]/95 px-2 py-1.5 shadow-[0_18px_60px_rgba(0,0,0,0.26)] backdrop-blur-2xl sm:gap-3 sm:px-4">
+          <div className="flex min-w-0 flex-1 items-center gap-2 pr-1 sm:gap-3 sm:pr-0">
             <button
               type="button"
               disabled
-              className="grid size-8 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.035] text-slate-400 transition-all duration-200 cursor-default disabled:opacity-100 disabled:pointer-events-none disabled:border-white/10 disabled:bg-white/[0.035] disabled:shadow-none"
+              className="hidden size-8 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.035] text-slate-400 transition-all duration-200 cursor-default disabled:opacity-100 disabled:pointer-events-none disabled:border-white/10 disabled:bg-white/[0.035] disabled:shadow-none sm:grid"
               aria-label="Back to dashboard"
             >
               <img src="/starsync-logo.png" alt="StarSync" className="size-5 rounded-full object-cover" />
             </button>
 
-            <h1 className="min-w-0 truncate text-sm font-semibold text-white sm:text-[15px]">
+            <h1 className="min-w-0 flex-1 truncate text-sm font-semibold text-white sm:text-[15px]">
               {roomDisplay.displayName}
             </h1>
           </div>
 
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
             <CompetingSessionTimer
               canManage={canManageTimer}
               draftHours={draftHours}
@@ -1687,6 +1753,15 @@ export function CompetingRoomWorkspace({ room }: CompetingRoomWorkspaceProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="border-white/10 bg-[#111113] text-slate-200">
+                <DropdownMenuItem
+                  onSelect={() => {
+                    setCopyStatus('idle')
+                    setIsInviteDialogOpen(true)
+                  }}
+                  className="flex items-center gap-2 cursor-pointer px-2 py-1 rounded hover:bg-white/5 hover:text-white active:scale-95 transition transform duration-100 focus:outline-none focus:ring-2 focus:ring-[#18D6A3]/30 lg:hidden"
+                >
+                  Invite
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   onSelect={handleLeaveRoom}
                   className="flex items-center gap-2 cursor-pointer px-2 py-1 rounded hover:bg-white/5 hover:text-white active:scale-95 transition transform duration-100 focus:outline-none focus:ring-2 focus:ring-[#18D6A3]/30"
@@ -1806,9 +1881,9 @@ export function CompetingRoomWorkspace({ room }: CompetingRoomWorkspaceProps) {
           size="sm"
           className="rounded-3xl p-0 bg-transparent"
         >
-          <div className="relative w-full overflow-hidden rounded-2xl bg-gradient-to-b from-[#5A5A5C]/80 via-white/15 to-[#28282A]/85 p-[2px] shadow-[0_18px_60px_rgba(0,0,0,0.22)]">
+          <div className="relative w-full overflow-hidden rounded-2xl bg-linear-to-b from-[#5A5A5C]/80 via-white/15 to-[#28282A]/85 p-[2px] shadow-[0_18px_60px_rgba(0,0,0,0.22)]">
             <div className="relative rounded-[14px] bg-[#18181B]/78 p-0 backdrop-blur-2xl text-center overflow-hidden">
-              <div className="flex items-center justify-between gap-3 bg-gradient-to-b from-white/6 to-transparent px-4 py-3">
+              <div className="flex items-center justify-between gap-3 bg-linear-to-b from-white/6 to-transparent px-4 py-3">
                 <h3 className="text-lg font-bold text-[#F7F7F8]">Contest Ended<span className="ml-2 text-white">!</span></h3>
                 <button
                   type="button"
@@ -1820,15 +1895,15 @@ export function CompetingRoomWorkspace({ room }: CompetingRoomWorkspaceProps) {
                 </button>
               </div>
               <div className="p-6">
-                <div className="mb-4 grid h-14 w-14 place-items-center rounded-lg border border-white/15 bg-gradient-to-b from-[#5A5A5C]/35 to-[#28282A]/35 text-[#D6FFF6] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] mx-auto">
+                <div className="mb-4 grid h-14 w-14 place-items-center rounded-lg border border-white/15 bg-linear-to-b from-[#5A5A5C]/35 to-[#28282A]/35 text-[#D6FFF6] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] mx-auto">
                 <Trophy size={26} />
                 </div>
                 <h3 className="mb-2 text-lg font-semibold tracking-tight text-[#F7F7F8]">The contest has ended</h3>
-                <div>
+                <div className="flex justify-center pt-2">
                   <button
                     type="button"
                     onClick={() => setShowEndedModal(false)}
-                    className="inline-flex h-10 min-w-32 cursor-pointer items-center justify-center rounded-full border-2 border-emerald-300/45 bg-[#18D6A3] px-6 text-sm font-bold text-black shadow-[0_0_20px_rgba(24,214,163,0.28)] transition-all duration-150 hover:-translate-y-0.5 hover:border-emerald-200/70 hover:bg-[#20E6B0] hover:shadow-[0_0_28px_rgba(24,214,163,0.42)] active:translate-y-0 active:bg-[#16C796]"
+                    className="inline-flex min-w-32 items-center justify-center cursor-pointer rounded-full border-2 border-white/10 bg-[#18181B]/90 px-5 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors duration-150 hover:border-white/20 active:bg-[#0A0A0A]"
                   >
                     Review
                   </button>
@@ -1838,13 +1913,29 @@ export function CompetingRoomWorkspace({ room }: CompetingRoomWorkspaceProps) {
           </div>
         </Modal>
 
-        <Tabs defaultValue="problem" className="grid min-h-0 min-w-0 flex-1 grid-rows-[auto_minmax(0,1fr)] gap-3 overflow-x-hidden overflow-y-hidden p-3 xl:hidden">
-          <TabsList variant="competing" className="grid h-9 w-full grid-cols-3">
-            <TabsTrigger value="problem" className="border border-transparent data-[state=active]:!border-blue-500/40 data-[state=active]:!bg-blue-500/12 data-[state=active]:!text-white data-[state=active]:shadow-[0_0_10px_rgba(59,130,246,0.2)] transition-all duration-150">Problem</TabsTrigger>
-            <TabsTrigger value="editor">Editor</TabsTrigger>
-            <TabsTrigger value="chat" className="data-[state=active]:!bg-emerald-500/12 data-[state=active]:!text-white">Chat</TabsTrigger>
+        <Tabs defaultValue="problem" className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden p-2 sm:gap-3 sm:p-3 xl:hidden">
+          <TabsList variant="competing" className="grid h-9 w-full shrink-0 grid-cols-3">
+            <TabsTrigger
+              value="problem"
+              className="px-2 text-xs sm:text-sm border border-transparent data-[state=active]:!border-blue-500/40 data-[state=active]:!bg-blue-500/12 data-[state=active]:!text-white data-[state=active]:shadow-[0_0_10px_rgba(59,130,246,0.2)] transition-all duration-150"
+            >
+              Description
+            </TabsTrigger>
+            <TabsTrigger
+              value="editor"
+              className="px-2 text-xs sm:text-sm border border-transparent data-[state=active]:!border-blue-500/40 data-[state=active]:!bg-blue-500/12 data-[state=active]:!text-white data-[state=active]:shadow-[0_0_10px_rgba(59,130,246,0.2)] transition-all duration-150"
+            >
+              Editor
+            </TabsTrigger>
+            <TabsTrigger
+              value="chat"
+              className="px-2 text-xs sm:text-sm border border-transparent data-[state=active]:!border-emerald-500/40 data-[state=active]:!bg-emerald-500/12 data-[state=active]:!text-white data-[state=active]:shadow-[0_0_10px_rgba(16,185,129,0.2)] transition-all duration-150"
+            >
+              Chat
+            </TabsTrigger>
           </TabsList>
 
+          <div className="min-h-0 flex-1 overflow-hidden">
           <TabsContent value="problem" className="m-0 h-full min-h-0 min-w-0 overflow-hidden rounded-2xl border border-white/10">
             <ProblemPanel
               problems={assignedProblems}
@@ -1878,6 +1969,7 @@ export function CompetingRoomWorkspace({ room }: CompetingRoomWorkspaceProps) {
               typingUsers={typingUsers}
             />
           </TabsContent>
+          </div>
         </Tabs>
 
         <Dialog
@@ -1895,9 +1987,9 @@ export function CompetingRoomWorkspace({ room }: CompetingRoomWorkspaceProps) {
             showCloseButton={false}
           >
             <div className="w-full rounded-3xl border border-white/10 bg-zinc-950/90 p-5 shadow-2xl shadow-black/50">
-              <div className="relative w-full overflow-hidden rounded-2xl bg-gradient-to-b from-[#5A5A5C]/80 via-white/15 to-[#28282A]/85 p-[2px] shadow-[0_18px_60px_rgba(0,0,0,0.22)]">
+              <div className="relative w-full overflow-hidden rounded-2xl bg-linear-to-b from-[#5A5A5C]/80 via-white/15 to-[#28282A]/85 p-[2px] shadow-[0_18px_60px_rgba(0,0,0,0.22)]">
                 <div className="relative rounded-[14px] bg-[#18181B]/78 p-0 backdrop-blur-2xl text-center overflow-hidden">
-                  <div className="flex items-center justify-between gap-3 bg-gradient-to-b from-white/6 to-transparent px-4 py-3">
+                  <div className="flex items-center justify-between gap-3 bg-linear-to-b from-white/6 to-transparent px-4 py-3">
                     <h3 className="text-lg font-bold text-[#F7F7F8]">Invite Teammates</h3>
                     <button
                       type="button"
@@ -1914,7 +2006,7 @@ export function CompetingRoomWorkspace({ room }: CompetingRoomWorkspaceProps) {
                       Share this code with teammates
                     </p>
 
-                    <div className="mx-auto w-48 h-16 flex flex-col items-center justify-center rounded-lg border border-white/15 bg-gradient-to-b from-[#5A5A5C]/35 to-[#28282A]/35 text-[#D6FFF6] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
+                    <div className="mx-auto w-48 h-16 flex flex-col items-center justify-center rounded-lg border border-white/15 bg-linear-to-b from-[#5A5A5C]/35 to-[#28282A]/35 text-[#D6FFF6] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
                       <p className="text-[9px] uppercase tracking-[0.28em] text-slate-400">Room code</p>
                       <p className="mt-0.5 break-all font-mono text-base font-bold tracking-widest text-[#D6FFF6]">
                         {room.joinCode ?? 'Room code unavailable'}
