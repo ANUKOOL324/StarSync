@@ -11,16 +11,7 @@ import { liveblocksService } from '../../services/liveblocksService'
 import type { ChatRoom } from '../../types/chat'
 import type { CodeRunResult, EditorLanguage, EditorPresenceUser, RoomProblemRunResult, RoomProblemSubmitResult, SaveStatus } from '../../types/editor'
 
-import { CollaborativeCodeEditor } from './CollaborativeCodeEditor'
-import { EditorOutputPanel } from './EditorOutputPanel'
-import { EditorSkeleton } from './EditorSkeleton'
-import { EditorStatusBar } from './EditorStatusBar'
-import { EditorToolbar } from './EditorToolbar'
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from '../ui/resizable'
+import { CodeEditorWorkspaceView } from './CodeEditorWorkspaceView'
 
 type CodeEditorWorkspaceProps = {
   activeCollaborators: EditorPresenceUser[]
@@ -116,6 +107,7 @@ function CodeEditorWorkspaceContent({
   const [testcaseSubmitResult, setTestcaseSubmitResult] = useState<RoomProblemSubmitResult | null>(null)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const [stdin, setStdin] = useState('')
+  const codeIsEmpty = code.trim().length === 0
   const [loadRetryCount, setLoadRetryCount] = useState(0)
   const [monacoEditor, setMonacoEditor] = useState<MonacoEditorInstance | null>(null)
 
@@ -124,7 +116,6 @@ function CodeEditorWorkspaceContent({
   
   const cursorDecorationsRef = useRef<string[]>([])
   const cursorStyleTagRef = useRef<HTMLStyleElement | null>(null)
-  const codeIsEmpty = code.trim().length === 0
 
   
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -549,119 +540,38 @@ function CodeEditorWorkspaceContent({
     setTestcaseSubmitResult(null)
   }, [competingProblemId])
 
-  if (isLoading) {
-    return <EditorSkeleton />
-  }
-
-  if (editorError && !code) {
-    return (
-      <div className="flex min-h-0 flex-1 items-center justify-center p-4">
-        <div className="w-full max-w-sm rounded-2xl border border-red-300/20 bg-red-950/15 p-5 text-center shadow-xl shadow-black/20 backdrop-blur-md">
-          <p className="text-base font-semibold text-white">Could not load editor document</p>
-          <p className="mt-2 text-sm leading-6 text-slate-400">
-            The editor could not open this room document. Try again after the room connection is ready.
-          </p>
-          <button
-            type="button"
-            onClick={() => setLoadRetryCount((currentCount) => currentCount + 1)}
-            className="mt-4 inline-flex h-10 items-center justify-center rounded-xl border border-[#18D6A3]/25 bg-[#18D6A3]/12 px-4 text-sm font-semibold text-[#7FFFE0] transition hover:bg-[#18D6A3]/18"
-          >
-            Try again
-          </button>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
-      {editorError ? (
-        <div className="shrink-0 border-b border-red-300/20 bg-red-950/20 px-4 py-2 text-sm text-red-100">
-          {editorError}
-        </div>
-      ) : null}
-
-      <EditorToolbar
-        disabled={connectionStatus === 'offline'}
-        isRunning={isRunning || isSubmitting}
-        canRun={!codeIsEmpty}
-        language={language}
-        lastSavedAt={lastSavedAt}
-        onClearOutput={() => {
-          setRunError(null)
-          setRunResult(null)
-          setTestcaseRunResult(null)
-        }}
-        onLanguageChange={handleLanguageChange}
-        onReset={handleResetCode}
-        onRunCode={handleRunCode}
-        onSave={() => void saveDocument()}
-        onSubmit={handleSubmit}
-        saveStatus={saveStatus}
-        toolbarMode={toolbarMode}
-      />
-
-
-
-      <div className="min-h-0 flex-1 overflow-hidden">
-        <ResizablePanelGroup
-          direction="vertical"
-          className="h-full min-h-0 w-full min-w-0 overflow-hidden"
-          key={`editor-layout-${room.id}`}
-        >
-          <ResizablePanel
-            id="code-editor-panel"
-            defaultSize="70%"
-            minSize="10%"
-            collapsible={false}
-            className="min-h-0 min-w-0 overflow-hidden"
-          >
-            <div className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden">
-              <CollaborativeCodeEditor
-                key={room.id}
-                code={code}
-                isLoading={isLoading}
-                language={language}
-                onChange={handleCodeChange}
-                onMount={handleEditorMount}
-              />
-            </div>
-          </ResizablePanel>
-          <ResizableHandle
-            withHandle
-            className="z-20 h-1.5 border-y border-white/5 bg-white/[0.025] transition hover:bg-[#57F1DB]/12"
-          />
-          <ResizablePanel
-            id="code-output-panel"
-            defaultSize="30%"
-            minSize="10%"
-            maxSize="90%"
-            collapsible={false}
-            className="min-h-0 min-w-0 overflow-hidden"
-          >
-            <div className="h-full min-h-0 w-full min-w-0 overflow-hidden">
-              <EditorOutputPanel
-                error={runError}
-                fillAvailableHeight
-                isRunning={isRunning || isSubmitting}
-                result={runResult}
-                testcaseResult={testcaseRunResult}
-                submitResult={testcaseSubmitResult}
-                stdin={stdin}
-                tabVariant={toolbarMode === 'competing' ? 'competing' : 'default'}
-                onStdinChange={setStdin}
-              />
-            </div>
-          </ResizablePanel>
-        </ResizablePanelGroup>
-      </div>
-
-      <EditorStatusBar
-        connectionStatus={connectionStatus}
-        language={language}
-        remoteUserName={null}
-        saveStatus={saveStatus}
-      />
-    </div>
+    <CodeEditorWorkspaceView
+      code={code}
+      connectionStatus={connectionStatus}
+      editorError={editorError}
+      isLoading={isLoading}
+      isRunning={isRunning}
+      isSubmitting={isSubmitting}
+      language={language}
+      lastSavedAt={lastSavedAt}
+      onClearOutput={() => {
+        setRunError(null)
+        setRunResult(null)
+        setTestcaseRunResult(null)
+      }}
+      onCodeChange={handleCodeChange}
+      onEditorMount={handleEditorMount}
+      onLanguageChange={handleLanguageChange}
+      onReset={handleResetCode}
+      onRetryLoad={() => setLoadRetryCount((currentCount) => currentCount + 1)}
+      onRunCode={handleRunCode}
+      onSave={() => void saveDocument()}
+      onStdinChange={setStdin}
+      onSubmit={handleSubmit}
+      roomId={room.id}
+      runError={runError}
+      runResult={runResult}
+      saveStatus={saveStatus}
+      stdin={stdin}
+      submitResult={testcaseSubmitResult}
+      testcaseResult={testcaseRunResult}
+      toolbarMode={toolbarMode}
+    />
   )
 }

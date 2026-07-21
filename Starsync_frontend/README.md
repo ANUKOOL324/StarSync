@@ -1,6 +1,6 @@
-# Frontend
+# StarSync Frontend
 
-React + TypeScript + Vite frontend for the WS Chat collaboration workspace.
+React + TypeScript + Vite frontend for StarSync.
 
 ## Run Locally
 
@@ -14,7 +14,7 @@ Expected environment:
 
 ```env
 VITE_API_URL=http://localhost:3001/api/v1
-VITE_WEBSOCKET_URL=ws://localhost:3001
+VITE_WS_URL=ws://localhost:3001/ws
 ```
 
 ## Scripts
@@ -28,11 +28,15 @@ npm run preview
 
 ## Main Areas
 
-- `src/pages` - public and protected route pages
-- `src/layouts` - auth/protected page wrappers
-- `src/components/chat` - chat workspace, room sidebar, messages, details panel
-- `src/components/editor` - Monaco editor, toolbar, output panel, editor status
+- `src/pages` - landing, auth, dashboard, and room routes
+- `src/layouts` - auth and protected route wrappers
+- `src/components/chat` - chat workspace, sidebar, messages, room settings
+- `src/components/competing` - contest room UI, timer, submissions, problem panel
+- `src/components/dashboard` - dashboard shell, room cards, create/join dialogs
+- `src/components/editor` - Monaco editor, toolbar, output panel
+- `src/components/landing` - landing page visuals
+- `src/components/whiteboard` - tldraw whiteboard workspace
 - `src/components/ui` - shared UI primitives
-- `src/hooks` - auth, room, and socket state hooks
-- `src/services` - REST and WebSocket service helpers
+- `src/hooks` - auth, rooms, and socket hooks
+- `src/services` - REST and WebSocket helpers
 - `src/types` - shared frontend TypeScript types

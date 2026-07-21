@@ -28,16 +28,18 @@ StarSync is a realtime collaboration workspace for chat, direct messages, shared
 ## Project Structure
 
 ```txt
-StarSync/
+<repo-root>/
 |- Starsync_backend/
 |  |- prisma/
 |  |- src/
 |  |  |- config/
 |  |  |- controllers/
 |  |  |- middleware/
+|  |  |- prisma/
 |  |  |- routes/
 |  |  |- services/
 |  |  |- types/
+|  |  |- utils/
 |  |  |- validations/
 |  |  `- websocket/
 |  `- CODE_RUNNER.md
@@ -45,6 +47,13 @@ StarSync/
 |  |- public/
 |  `- src/
 |     |- components/
+|     |  |- chat/
+|     |  |- competing/
+|     |  |- dashboard/
+|     |  |- editor/
+|     |  |- landing/
+|     |  |- ui/
+|     |  `- whiteboard/
 |     |- context/
 |     |- hooks/
 |     |- layouts/
@@ -53,6 +62,8 @@ StarSync/
 |     |- types/
 |     `- utils/
 |- deploy/
+|  |- env/
+|  `- nginx/
 `- docker-compose.piston.yml
 ```
 
@@ -306,4 +317,4 @@ Check `DATABASE_URL`. Neon URLs usually need `sslmode=require`.
 
 ## Repository Notes
 
-This repository does not include `.env` files, `node_modules`, `dist`, local Piston runtime data, or local planning notes. Create environment files from the provided examples before running the app.
+This repository does not include `.env` files, `node_modules`, `dist`, local Piston runtime data under `data/`, or local agent/editor files such as `AGENTS.md`. Create environment files from the provided examples before running the app.

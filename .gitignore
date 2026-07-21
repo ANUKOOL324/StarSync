@@ -1,12 +1,26 @@
 node_modules/
 dist/
 .env
+.env.*
+!.env.example
 *.tsbuildinfo
 
 # Local runtime data
 data/
+tmp-runtime-logs/
 
-# Local planning and agent files
+# Local editor and agent files
+.cursor/
 AGENTS.md
-docs/
 split_commits.py
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
