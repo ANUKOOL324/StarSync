@@ -277,20 +277,16 @@ docker compose -f docker-compose.piston.yml down
 
 ## Deployment Notes
 
-The `deploy/` folder contains an example same-origin production setup with Nginx. Same-origin deployment is recommended because the frontend, API, WebSocket server, and HttpOnly `sid` cookie work best behind one public domain.
+Production deployment is documented in `deploy/README.md`.
 
-For Vercel frontend deployment, make sure the project root is set to:
+Recommended setup for DigitalOcean:
 
-```txt
-Starsync_frontend
-```
+- One Ubuntu Droplet with Nginx, PM2, Redis, and Docker Piston
+- Neon PostgreSQL for the database
+- Same-origin domain for frontend, `/api`, and `/ws`
 
-Use:
-
-```txt
-Build command: npm run build
-Output directory: dist
-```
+Use `deploy/env/backend.production.env.example` and `deploy/env/frontend.production.env.example` when building for production.
+Use `deploy/pm2.ecosystem.config.cjs` to keep the backend running after SSH logout.
 
 ## Troubleshooting
 

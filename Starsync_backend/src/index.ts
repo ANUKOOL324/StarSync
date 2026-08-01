@@ -8,6 +8,6 @@ const server = http.createServer(app);
 
 attachWebSocketServer(server);
 
-server.listen(env.port, () => {
-  console.log(`HTTP and WebSocket server running on port ${env.port}`);
+server.listen(env.port, env.host, () => {
+  console.log(`HTTP and WebSocket server running on ${env.host}:${env.port}`);
 });

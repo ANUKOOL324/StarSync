@@ -27,6 +27,7 @@ const clientOrigin = readOptionalEnv("CLIENT_ORIGIN", "http://localhost:5173");
 
 export const env = {
   nodeEnv: readOptionalEnv("NODE_ENV", "development"),
+  host: readOptionalEnv("HOST", "0.0.0.0"),
   port: readNumber(process.env.PORT, 3001),
   clientOrigin,
   frontendUrl: readOptionalEnv("FRONTEND_URL", clientOrigin),

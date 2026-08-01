@@ -1,59 +1,163 @@
 # StarSync Production Deployment
 
-This example deploys StarSync behind one public domain so the frontend, API, WebSocket, and HttpOnly `sid` cookie all share the same origin.
+This guide deploys StarSync on a single DigitalOcean Droplet behind one public domain. The frontend, API, WebSocket server, and HttpOnly `sid` cookie all share the same origin.
 
-## Build
+## Recommended Stack
 
-1. Build the frontend:
+| Service | Where |
+| --- | --- |
+| Droplet | DigitalOcean, 4 GB RAM recommended |
+| PostgreSQL | Neon free tier |
+| Redis | Same Droplet |
+| Backend | PM2 on `127.0.0.1:3001` |
+| Frontend | Nginx static files |
+| Piston code runner | Docker on same Droplet |
+| Public ports | Only `80` and `443` |
+
+Use a 2 GB Droplet only if you skip Piston or host it elsewhere.
+
+## GitHub Student Pack Credits
+
+1. Activate DigitalOcean credits from the GitHub Student Developer Pack.
+2. Create one Ubuntu Droplet.
+3. Use Neon for PostgreSQL so database cost stays free.
+4. Keep Redis, backend, frontend, and Piston on the Droplet.
+5. Point your domain `A` record to the Droplet IP.
+
+A `$12/month` Droplet can run for many months on typical student credits.
+
+## Server Setup
+
+Install packages on Ubuntu:
 
 ```bash
-cd Starsync_frontend
-npm run build
+sudo apt update
+sudo apt install -y nginx redis-server git curl
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt install -y nodejs
+sudo npm install -g pm2
 ```
 
-2. Copy the frontend build to the Nginx static root:
+Install Docker for Piston:
 
 ```bash
+curl -fsSL https://get.docker.com | sudo sh
+sudo usermod -aG docker $USER
+```
+
+Open firewall:
+
+```bash
+sudo ufw allow OpenSSH
+sudo ufw allow 'Nginx Full'
+sudo ufw enable
+```
+
+## Clone And Configure
+
+```bash
+git clone <your-repo-url> starsync
+cd starsync
+```
+
+Backend env:
+
+```bash
+cd Starsync_backend
+cp ../deploy/env/backend.production.env.example .env
+nano .env
+npm install
+npm run build
+npx prisma migrate deploy
+npx prisma db seed
+```
+
+Set real values in `.env`:
+
+- `CLIENT_ORIGIN=https://yourdomain.com`
+- `FRONTEND_URL=https://yourdomain.com`
+- `DATABASE_URL=` your Neon URL
+- `LIVEBLOCKS_SECRET_KEY=` your Liveblocks secret
+
+Frontend build:
+
+```bash
+cd ../Starsync_frontend
+cp ../deploy/env/frontend.production.env.example .env
+npm install
+npm run build
 sudo mkdir -p /var/www/starsync/frontend
 sudo rsync -a dist/ /var/www/starsync/frontend/dist/
 ```
 
-3. Build and run the backend on localhost only:
+## Start Services
+
+Redis:
 
 ```bash
-cd ../Starsync_backend
-npm run build
-NODE_ENV=production PORT=3001 npm run start
+sudo systemctl enable redis-server
+sudo systemctl start redis-server
 ```
 
-Use PM2 or systemd for a real long-running process.
+Piston:
 
-## Services
+```bash
+cd <repo-root>
+docker compose -f docker-compose.piston.yml up -d
+```
 
-- Run Redis locally or on a private network. Do not expose Redis publicly.
-- Run Piston locally or on a private network. Do not expose Piston publicly.
-- Expose only Nginx ports 80 and 443 publicly.
-- Keep the backend bound behind Nginx and do not expose port 3001 publicly.
+Backend with PM2:
+
+```bash
+cd <repo-root>/deploy
+pm2 start pm2.ecosystem.config.cjs
+pm2 save
+pm2 startup
+```
 
 ## Nginx
 
-1. Copy `deploy/nginx/starsync.conf.example` to your Nginx sites directory.
-2. Replace `yourdomain.com` and any filesystem paths.
-3. Enable the site and reload Nginx.
-4. Enable HTTPS with Certbot, for example:
+```bash
+sudo cp <repo-root>/deploy/nginx/starsync.conf.example /etc/nginx/sites-available/starsync
+sudo nano /etc/nginx/sites-available/starsync
+sudo ln -s /etc/nginx/sites-available/starsync /etc/nginx/sites-enabled/starsync
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+Replace `yourdomain.com` and confirm the frontend path is:
+
+```txt
+/var/www/starsync/frontend/dist
+```
+
+Enable HTTPS:
 
 ```bash
+sudo apt install -y certbot python3-certbot-nginx
 sudo certbot --nginx -d yourdomain.com
 ```
 
-## Environment
+## Verify
 
-Use `deploy/env/backend.production.env.example` for backend production variables.
-Use `deploy/env/frontend.production.env.example` when building the frontend for same-domain deployment.
+1. Open `https://yourdomain.com`
+2. Check `https://yourdomain.com/api/health`
+3. Sign up or log in, refresh, and confirm the session persists
+4. Open a room and confirm WebSocket connects through `wss://yourdomain.com/ws`
+5. Run code in a competing room and confirm Piston responds
 
-## Checks
+Useful commands:
 
-1. Open `https://yourdomain.com` and confirm the React app loads.
-2. Test the API through Nginx, for example `https://yourdomain.com/api/health` if the health route is enabled.
-3. Open a room and confirm the WebSocket connects through `wss://yourdomain.com/ws`.
-4. Login, refresh, and confirm the session persists through the HttpOnly `sid` cookie.
+```bash
+pm2 status
+pm2 logs starsync-backend
+docker compose -f docker-compose.piston.yml ps
+sudo nginx -t
+```
+
+## Notes
+
+- Keep backend on `HOST=127.0.0.1` in production.
+- Do not expose Redis, Piston, or port `3001` publicly.
+- Rebuild frontend after changing `Starsync_frontend/.env`.
+- Restart backend after changing `Starsync_backend/.env` with `pm2 restart starsync-backend`.
