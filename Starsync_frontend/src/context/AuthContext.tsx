@@ -18,7 +18,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  useEffect(() => {
+  useEffect(() =>{
     const loadUser = async () => {
       try {
         setUser(await authService.me())
