@@ -1,57 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { messageService } from '../services/messageService'
-import { createChatSocket } from '../services/websocketService'
+import {
+  createSocketIoChatSocket,
+  type ChatSocket,
+} from '../services/socketIoService'
 import type { ChatMessage, OnlineUser, TypingUser, RoomTimerUpdateEvent, RoomSubmissionCreatedEvent } from '../types/chat'
 import type { EditorLanguage, EditorPresenceUser, EditorSyncEvent } from '../types/editor'
-
-type ServerEvent =
-  | {
-      type: 'message'
-      payload: ChatMessage
-    }
-  | {
-      type: 'message-error'
-      payload: {
-        clientMessageId?: string
-        message: string
-      }
-    }
-  | {
-      type: 'presence'
-      payload: {
-        onlineCount: number
-        users: OnlineUser[]
-      }
-    }
-  | {
-      type: 'typing:update'
-      payload: {
-        roomId: string
-        userId: string
-        username: string
-        isTyping: boolean
-      }
-    }
-  | {
-      type: 'editor:sync'
-      payload: EditorSyncEvent
-    }
-  | {
-      type: 'editor:presence:update'
-      payload: {
-        roomId: string
-        users: EditorPresenceUser[]
-      }
-    }
-  | {
-      type: 'error'
-      payload: {
-        message: string
-      }
-    }
-  | RoomTimerUpdateEvent
-  | RoomSubmissionCreatedEvent
 
 const createClientMessageId = () => crypto.randomUUID()
 
@@ -70,7 +25,7 @@ export function useChatSocket(roomId: string, userId: string | undefined) {
   const [lastEditorSync, setLastEditorSync] = useState<EditorSyncEvent | null>(null)
   const [roomTimerEvent, setRoomTimerEvent] = useState<RoomTimerUpdateEvent['payload'] | null>(null)
   const [newSubmissionEvent, setNewSubmissionEvent] = useState<RoomSubmissionCreatedEvent['payload'] | null>(null)
-  const socketRef = useRef<WebSocket | null>(null)
+  const socketRef = useRef<ChatSocket | null>(null)
   const typingTimersRef = useRef<Map<string, number>>(new Map())
   const lastTypingSentRef = useRef(0)
   const nextCursorRef = useRef<string | null>(null)
@@ -99,7 +54,7 @@ export function useChatSocket(roomId: string, userId: string | undefined) {
     }
 
     let isActive = true
-    const socket = createChatSocket()
+    const socket = createSocketIoChatSocket()
     const typingTimers = typingTimersRef.current
     socketRef.current = socket
     queueMicrotask(() => {
@@ -144,105 +99,79 @@ export function useChatSocket(roomId: string, userId: string | undefined) {
 
     void loadHistory()
 
-    socket.onopen = () => {
-      socket.send(
-        JSON.stringify({
-          type: 'join',
-          payload: { roomId },
-        }),
-      )
-    }
+    socket.on('connect', () => {
+      socket.emit('join', { roomId })
+    })
 
-    socket.onmessage = (event) => {
-      let serverEvent: ServerEvent | ChatMessage
+    socket.on('presence', (payload) => {
+      if (payload.roomId !== roomId) return
 
-      try {
-        serverEvent = JSON.parse(event.data) as ServerEvent | ChatMessage
-      } catch {
-        return
+      setConnectionStatus('online')
+      setOnlineUsers(payload.users)
+    })
+
+    socket.on('typing:update', ({ roomId: eventRoomId, userId: typingUserId, username, isTyping }) => {
+      if (eventRoomId !== roomId) return
+      if (typingUserId === userId) return
+
+      if (isTyping) {
+        setTypingUsers((currentUsers) => {
+          if (currentUsers.some((user) => user.id === typingUserId)) return currentUsers
+          return [...currentUsers, { id: typingUserId, username }]
+        })
+
+        const existingTimer = typingTimers.get(typingUserId)
+        if (existingTimer) window.clearTimeout(existingTimer)
+        typingTimers.set(
+          typingUserId,
+          window.setTimeout(() => clearTypingUser(typingUserId), 4000),
+        )
+      } else {
+        clearTypingUser(typingUserId)
       }
+    })
 
-      if ('type' in serverEvent && serverEvent.type === 'presence') {
-        setConnectionStatus('online')
-        setOnlineUsers(serverEvent.payload.users)
-        return
+    socket.on('editor:sync', (payload) => {
+      if (payload.roomId !== roomId) return
+
+      setLastEditorSync(payload)
+    })
+
+    socket.on('editor:presence:update', (payload) => {
+      if (payload.roomId !== roomId) return
+
+      setEditorPresenceUsers(payload.users)
+    })
+
+    socket.on('message-error', ({ clientMessageId }) => {
+      if (clientMessageId) {
+        setMessages((currentMessages) =>
+          currentMessages.map((message) =>
+            message.clientMessageId === clientMessageId
+              ? { ...message, status: 'failed' }
+              : message,
+          ),
+        )
       }
+    })
 
-      if ('type' in serverEvent && serverEvent.type === 'typing:update') {
-        const { roomId: eventRoomId, userId: typingUserId, username, isTyping } = serverEvent.payload
+    socket.on('ROOM_TIMER_UPDATED', (payload) => {
+      if (payload.roomId !== roomId) return
 
-        if (eventRoomId !== roomId) return
-        if (typingUserId === userId) return
+      setRoomTimerEvent(payload)
+    })
 
-        if (isTyping) {
-          setTypingUsers((currentUsers) => {
-            if (currentUsers.some((user) => user.id === typingUserId)) return currentUsers
-            return [...currentUsers, { id: typingUserId, username }]
-          })
+    socket.on('ROOM_SUBMISSION_CREATED', (payload) => {
+      if (payload.roomId !== roomId) return
 
-          const existingTimer = typingTimers.get(typingUserId)
-          if (existingTimer) window.clearTimeout(existingTimer)
-          typingTimers.set(
-            typingUserId,
-            window.setTimeout(() => clearTypingUser(typingUserId), 4000),
-          )
-        } else {
-          clearTypingUser(typingUserId)
-        }
-        return
-      }
+      setNewSubmissionEvent(payload)
+    })
 
-      if ('type' in serverEvent && serverEvent.type === 'editor:sync') {
-        if (serverEvent.payload.roomId !== roomId) return
+    socket.on('error', (payload) => {
+      setSocketError(payload.message)
+    })
 
-        setLastEditorSync(serverEvent.payload)
-        return
-      }
-
-      if ('type' in serverEvent && serverEvent.type === 'editor:presence:update') {
-        if (serverEvent.payload.roomId !== roomId) return
-
-        setEditorPresenceUsers(serverEvent.payload.users)
-        return
-      }
-
-      if ('type' in serverEvent && serverEvent.type === 'message-error') {
-        const { clientMessageId } = serverEvent.payload
-
-        if (clientMessageId) {
-          setMessages((currentMessages) =>
-            currentMessages.map((message) =>
-              message.clientMessageId === clientMessageId
-                ? { ...message, status: 'failed' }
-                : message,
-            ),
-          )
-        }
-        return
-      }
-
-      if ('type' in serverEvent && serverEvent.type === 'ROOM_TIMER_UPDATED') {
-        if (serverEvent.payload.roomId !== roomId) return
-        setRoomTimerEvent(serverEvent.payload)
-        return
-      }
-
-      if ('type' in serverEvent && serverEvent.type === 'ROOM_SUBMISSION_CREATED') {
-        if (serverEvent.payload.roomId !== roomId) return
-        setNewSubmissionEvent(serverEvent.payload)
-        return
-      }
-
-      if ('type' in serverEvent && serverEvent.type === 'error') {
-        setSocketError(serverEvent.payload.message)
-        return
-      }
-
-      const message: ChatMessage =
-        'type' in serverEvent && serverEvent.type === 'message'
-          ? serverEvent.payload
-          : (serverEvent as ChatMessage)
-
+    socket.on('message', (message) => {
       setMessages((currentMessages) => {
         const existingIndex = currentMessages.findIndex(
           (item) =>
@@ -263,26 +192,32 @@ export function useChatSocket(roomId: string, userId: string | undefined) {
 
         return currentMessages.map((item, index) => (index === existingIndex ? nextMessage : item))
       })
-    }
+    })
 
-    socket.onclose = () => {
+    socket.on('connect_error', () => {
       setConnectionStatus('offline')
       setTypingUsers([])
       setEditorPresenceUsers([])
-    }
+    })
 
-    socket.onerror = () => {
+    socket.on('disconnect', () => {
       setConnectionStatus('offline')
       setTypingUsers([])
       setEditorPresenceUsers([])
-    }
+    })
+
+    socket.connect()
 
     return () => {
       isActive = false
       typingTimers.forEach((timer) => window.clearTimeout(timer))
       typingTimers.clear()
-      socket.close()
-      socketRef.current = null
+      socket.removeAllListeners()
+      socket.disconnect()
+
+      if (socketRef.current === socket) {
+        socketRef.current = null
+      }
     }
   }, [clearTypingUser, roomId, userId])
 
@@ -314,26 +249,17 @@ export function useChatSocket(roomId: string, userId: string | undefined) {
     const now = Date.now()
 
     if (now - lastTypingSentRef.current < 1200) return
-    if (socketRef.current?.readyState !== WebSocket.OPEN) return
+    if (!socketRef.current?.connected) return
 
     lastTypingSentRef.current = now
-    socketRef.current.send(
-      JSON.stringify({
-        type: 'typing:start',
-        payload: { roomId },
-      }),
-    )
+    socketRef.current.emit('typing:start', { roomId })
   }, [roomId])
 
   const sendStopTyping = useCallback(() => {
-    if (socketRef.current?.readyState !== WebSocket.OPEN) return
+    if (!socketRef.current?.connected) return
+
     lastTypingSentRef.current = 0
-    socketRef.current.send(
-      JSON.stringify({
-        type: 'typing:stop',
-        payload: { roomId },
-      }),
-    )
+    socketRef.current.emit('typing:stop', { roomId })
   }, [roomId])
 
   const sendMessage = (message: string, existingClientMessageId?: string) => {
@@ -343,7 +269,7 @@ export function useChatSocket(roomId: string, userId: string | undefined) {
 
     const clientMessageId = existingClientMessageId ?? createClientMessageId()
 
-    if (socketRef.current?.readyState !== WebSocket.OPEN) {
+    if (!socketRef.current?.connected) {
       setMessages((currentMessages) => [
         ...currentMessages,
         {
@@ -383,12 +309,10 @@ export function useChatSocket(roomId: string, userId: string | undefined) {
     })
 
     sendStopTyping()
-    socketRef.current.send(
-      JSON.stringify({
-        type: 'chat',
-        payload: { message: trimmedMessage, clientMessageId },
-      }),
-    )
+    socketRef.current.emit('chat', {
+      message: trimmedMessage,
+      clientMessageId,
+    })
   }
 
   const retryMessage = (message: ChatMessage) => {
@@ -397,35 +321,25 @@ export function useChatSocket(roomId: string, userId: string | undefined) {
 
   const sendEditorChange = useCallback(
     (content: string, language: EditorLanguage) => {
-      if (socketRef.current?.readyState !== WebSocket.OPEN) return
+      if (!socketRef.current?.connected) return
 
-      socketRef.current.send(
-        JSON.stringify({
-          type: 'editor:change',
-          payload: {
-            roomId,
-            content,
-            language,
-          },
-        }),
-      )
+      socketRef.current.emit('editor:change', {
+        roomId,
+        content,
+        language,
+      })
     },
     [roomId],
   )
 
   const sendEditorPresence = useCallback(
     (status: 'active' | 'inactive') => {
-      if (socketRef.current?.readyState !== WebSocket.OPEN) return
+      if (!socketRef.current?.connected) return
 
-      socketRef.current.send(
-        JSON.stringify({
-          type: 'editor:presence',
-          payload: {
-            roomId,
-            status,
-          },
-        }),
-      )
+      socketRef.current.emit('editor:presence', {
+        roomId,
+        status,
+      })
     },
     [roomId],
   )
