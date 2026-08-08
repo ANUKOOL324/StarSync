@@ -3,11 +3,13 @@ import type { Socket } from "socket.io";
 import { Server } from "socket.io";
 
 import { env } from "../config/env";
+import { verifyEditorRoomAccess } from "../services/editorService";
 import { createMessage } from "../services/messageService";
 import { addGroupRoomMember } from "../services/roomService";
 import type { SocketUser } from "../types/websocket";
 import { authenticateSocketCookie } from "../utils/socketAuth";
 import { resolveSocketRoomId } from "../utils/socketRoom";
+import { editorLanguageSchema, type EditorLanguage } from "../validations/editorValidation";
 
 type JoinPayload = {
   roomId: string;
@@ -24,6 +26,12 @@ type TypingStartPayload = {
 
 type TypingStopPayload = {
   roomId: string;
+};
+
+type EditorChangePayload = {
+  roomId: string;
+  content: string;
+  language: string;
 };
 
 type ErrorPayload = {
@@ -59,11 +67,22 @@ type TypingUpdatePayload = {
   isTyping: boolean;
 };
 
+type EditorSyncPayload = {
+  roomId: string;
+  content: string;
+  language: EditorLanguage;
+  updatedBy: {
+    id: string;
+    username: string;
+  };
+};
+
 interface ClientToServerEvents {
   join: (payload: JoinPayload) => void;
   chat: (payload: ChatPayload) => void;
   "typing:start": (payload: TypingStartPayload) => void;
   "typing:stop": (payload: TypingStopPayload) => void;
+  "editor:change": (payload: EditorChangePayload) => void;
 }
 
 interface ServerToClientEvents {
@@ -72,6 +91,7 @@ interface ServerToClientEvents {
   message: (payload: MessagePayload) => void;
   "message-error": (payload: MessageErrorPayload) => void;
   "typing:update": (payload: TypingUpdatePayload) => void;
+  "editor:sync": (payload: EditorSyncPayload) => void;
 }
 
 interface InterServerEvents {}
@@ -287,6 +307,56 @@ const handleTypingStop = async (
   await broadcastTypingUpdate(io, verifiedRoomId, user, false);
 };
 
+const handleEditorChange = async (socket: SocketIoConnection, payload: EditorChangePayload) => {
+  if (
+    !payload ||
+    typeof payload.roomId !== "string" ||
+    typeof payload.content !== "string" ||
+    typeof payload.language !== "string"
+  ) {
+    socket.emit("error", { message: "Invalid message" });
+    return;
+  }
+
+  const roomIdFromClient = payload.roomId.trim();
+  const content = payload.content;
+  const languageResult = editorLanguageSchema.safeParse(payload.language);
+
+  if (!languageResult.success) {
+    socket.emit("error", { message: "Unsupported language." });
+    return;
+  }
+
+  const verifiedRoomId = await resolveSocketRoomId(roomIdFromClient, socket.data.user.id);
+
+  if (!verifiedRoomId || socket.data.currentRoomId !== verifiedRoomId) {
+    socket.emit("error", { message: "Join the room before syncing editor changes" });
+    return;
+  }
+
+  if (content.length > 50_000) {
+    socket.emit("error", { message: "Editor content is too large" });
+    return;
+  }
+
+  try {
+    await verifyEditorRoomAccess(verifiedRoomId, socket.data.user.id);
+
+    socket.to(verifiedRoomId).emit("editor:sync", {
+      roomId: verifiedRoomId,
+      content,
+      language: languageResult.data,
+      updatedBy: {
+        id: socket.data.user.id,
+        username: socket.data.user.username,
+      },
+    });
+  } catch (error) {
+    console.error("Socket.IO editor sync failed", error);
+    socket.emit("error", { message: "Editor sync failed" });
+  }
+};
+
 export const attachSocketIoServer = (httpServer: HttpServer) => {
   const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>(
     httpServer,
@@ -343,6 +413,13 @@ export const attachSocketIoServer = (httpServer: HttpServer) => {
     socket.on("typing:stop", (payload) => {
       void handleTypingStop(io, socket, payload).catch((error) => {
         console.error("Socket.IO typing stop failed", error);
+      });
+    });
+
+    socket.on("editor:change", (payload) => {
+      void handleEditorChange(socket, payload).catch((error) => {
+        console.error("Socket.IO editor sync failed", error);
+        socket.emit("error", { message: "Editor sync failed" });
       });
     });
 
