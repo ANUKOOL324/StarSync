@@ -15,6 +15,11 @@ import {
   updateRoom,
 } from "../services/roomService";
 import { broadcastRoomUpdate, broadcastRoomSubmissionCreated } from "../websocket/socketManager";
+import {
+  broadcastSocketIoRoomSubmissionCreated,
+  broadcastSocketIoRoomTimerUpdated,
+} from "../socketio/socketIoManager";
+import { resolveSocketRoomId } from "../utils/socketRoom";
 import { HttpError } from "../utils/HttpError";
 import {
   createRoomSchema,
@@ -116,15 +121,19 @@ export const updateRoomController = async (request: Request, response: Response)
   const room = await updateRoom(roomId, input, request.user.userId);
 
   if (input.sessionStatus || input.sessionStartedAt !== undefined) {
+    const timerPayload = {
+      roomId: room.id,
+      sessionStatus: room.sessionStatus,
+      sessionStartedAt: room.sessionStartedAt,
+      durationMinutes: room.durationMinutes,
+    };
+
     broadcastRoomUpdate(roomId, {
       type: "ROOM_TIMER_UPDATED",
-      payload: {
-        roomId: room.id,
-        sessionStatus: room.sessionStatus,
-        sessionStartedAt: room.sessionStartedAt,
-        durationMinutes: room.durationMinutes,
-      },
+      payload: timerPayload,
     });
+
+    broadcastSocketIoRoomTimerUpdated(room.id, timerPayload);
   }
 
   response.status(200).json({ room });
@@ -163,20 +172,26 @@ export const submitRoomProblemCodeController = async (request: Request, response
     roomId,
   });
   const result = await submitRoomProblemCode(input, request.user.userId);
+  const canonicalRoomId = await resolveSocketRoomId(roomId, request.user.userId);
 
-  broadcastRoomSubmissionCreated(roomId, {
-    roomId,
-    problemId: result.problemId,
-    submissionId: result.submissionId,
-    userId: request.user.userId,
-    username: result.username,
-    status: result.status,
-    language: result.language,
-    passedCount: result.passedCount,
-    totalCount: result.totalCount,
-    runtimeMs: result.runtimeMs,
-    submittedAt: result.submittedAt,
-  });
+  if (canonicalRoomId) {
+    const submissionPayload = {
+      roomId: canonicalRoomId,
+      problemId: result.problemId,
+      submissionId: result.submissionId,
+      userId: request.user.userId,
+      username: result.username,
+      status: result.status,
+      language: result.language,
+      passedCount: result.passedCount,
+      totalCount: result.totalCount,
+      ...(result.runtimeMs !== undefined ? { runtimeMs: result.runtimeMs } : {}),
+      submittedAt: result.submittedAt,
+    };
+
+    broadcastRoomSubmissionCreated(roomId, submissionPayload);
+    broadcastSocketIoRoomSubmissionCreated(canonicalRoomId, submissionPayload);
+  }
 
   response.status(200).json(result);
 };

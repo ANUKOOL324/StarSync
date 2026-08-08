@@ -87,6 +87,27 @@ type EditorPresenceUpdatePayload = {
   users: SocketUser[];
 };
 
+type RoomTimerUpdatedPayload = {
+  roomId: string;
+  sessionStatus: "WAITING" | "RUNNING" | "ENDED";
+  sessionStartedAt: Date | null;
+  durationMinutes: number | null;
+};
+
+type RoomSubmissionCreatedPayload = {
+  roomId: string;
+  problemId: string;
+  submissionId: string;
+  userId: string;
+  username: string;
+  status: string;
+  language: string;
+  passedCount: number;
+  totalCount: number;
+  runtimeMs?: number;
+  submittedAt: Date;
+};
+
 interface ClientToServerEvents {
   join: (payload: JoinPayload) => void;
   chat: (payload: ChatPayload) => void;
@@ -104,6 +125,8 @@ interface ServerToClientEvents {
   "typing:update": (payload: TypingUpdatePayload) => void;
   "editor:sync": (payload: EditorSyncPayload) => void;
   "editor:presence:update": (payload: EditorPresenceUpdatePayload) => void;
+  ROOM_TIMER_UPDATED: (payload: RoomTimerUpdatedPayload) => void;
+  ROOM_SUBMISSION_CREATED: (payload: RoomSubmissionCreatedPayload) => void;
 }
 
 interface InterServerEvents {}
@@ -125,6 +148,30 @@ type SocketIoConnection = Socket<
 
 const typingTimersBySocketId = new Map<string, NodeJS.Timeout>();
 const editorPresenceByRoom = new Map<string, Map<string, SocketUser>>();
+
+let activeSocketIoServer: SocketIoServer | null = null;
+
+export const broadcastSocketIoRoomTimerUpdated = (
+  roomId: string,
+  payload: RoomTimerUpdatedPayload,
+) => {
+  if (!activeSocketIoServer) {
+    return;
+  }
+
+  activeSocketIoServer.to(roomId).emit("ROOM_TIMER_UPDATED", payload);
+};
+
+export const broadcastSocketIoRoomSubmissionCreated = (
+  roomId: string,
+  payload: RoomSubmissionCreatedPayload,
+) => {
+  if (!activeSocketIoServer) {
+    return;
+  }
+
+  activeSocketIoServer.to(roomId).emit("ROOM_SUBMISSION_CREATED", payload);
+};
 
 const getAllowedOrigins = (): string[] => {
   return Array.from(
@@ -488,6 +535,8 @@ export const attachSocketIoServer = (httpServer: HttpServer) => {
       },
     },
   );
+
+  activeSocketIoServer = io;
 
   io.use(async (socket, next) => {
     const cookieHeader = socket.handshake.headers.cookie;
