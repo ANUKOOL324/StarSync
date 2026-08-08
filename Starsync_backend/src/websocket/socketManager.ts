@@ -2,7 +2,6 @@ import crypto from "node:crypto";
 import type { IncomingMessage, Server } from "node:http";
 import { WebSocketServer, type WebSocket } from "ws";
 
-import { prisma } from "../prisma/client";
 import { createMessage } from "../services/messageService";
 import { verifyEditorRoomAccess } from "../services/editorService";
 import { addGroupRoomMember } from "../services/roomService";
@@ -16,6 +15,7 @@ import type {
   SocketUser,
 } from "../types/websocket";
 import { authenticateSocketCookie, type SocketCookieAuthResult } from "../utils/socketAuth";
+import { resolveSocketRoomId } from "../utils/socketRoom";
 
 type SocketAuthResult = SocketCookieAuthResult;
 
@@ -220,40 +220,8 @@ const leaveCurrentRoom = (client: ChatClient) => {
   broadcastPresence(previousRoomId);
 };
 
-const resolveRoomId = async (roomId: string, userId: string): Promise<string | null> => {
-  const trimmedRoomId = roomId.trim();
-
-  if (!trimmedRoomId) return null;
-
-  const room = await prisma.room.findFirst({
-    where: {
-      OR: [{ id: trimmedRoomId }, { slug: trimmedRoomId }],
-    },
-    select: {
-      id: true,
-      type: true,
-      members: {
-        where: { userId },
-        select: {
-          id: true,
-          status: true,
-        },
-      },
-    },
-  });
-
-  if (!room) return null;
-
-  const existingMember = room.members[0] ?? null;
-
-  if (existingMember?.status === "REMOVED") {
-    return null;
-  }
-
-  return existingMember?.status === "ACTIVE" ? room.id : null;
-};
 const handleJoinMessage = async (client: ChatClient, roomIdFromClient: string) => {
-  const nextRoomId = await resolveRoomId(roomIdFromClient, client.user.id);
+  const nextRoomId = await resolveSocketRoomId(roomIdFromClient, client.user.id);
 
   if (!nextRoomId) {
     sendSocketError(client.socket, "Room not found or access denied");
@@ -270,7 +238,7 @@ const handleJoinMessage = async (client: ChatClient, roomIdFromClient: string) =
 };
 
 const handleTypingStart = async (client: ChatClient, roomId: string) => {
-  const verifiedRoomId = await resolveRoomId(roomId, client.user.id);
+  const verifiedRoomId = await resolveSocketRoomId(roomId, client.user.id);
   if (!verifiedRoomId || client.room !== verifiedRoomId) return;
 
   broadcastTypingUpdate(client, verifiedRoomId, true);
@@ -285,7 +253,7 @@ const handleTypingStart = async (client: ChatClient, roomId: string) => {
 };
 
 const handleTypingStop = async (client: ChatClient, roomId: string) => {
-  const verifiedRoomId = await resolveRoomId(roomId, client.user.id);
+  const verifiedRoomId = await resolveSocketRoomId(roomId, client.user.id);
   if (!verifiedRoomId || client.room !== verifiedRoomId) return;
 
   clearTypingTimer(client.id);
@@ -357,7 +325,7 @@ const handleEditorChange = async (client: ChatClient, parsedMessage: EditorChang
     return;
   }
 
-  const verifiedRoomId = await resolveRoomId(roomIdFromClient, client.user.id);
+  const verifiedRoomId = await resolveSocketRoomId(roomIdFromClient, client.user.id);
 
   if (!verifiedRoomId || client.room !== verifiedRoomId) {
     sendSocketError(client.socket, "Join the room before syncing editor changes");
@@ -395,7 +363,7 @@ const handleEditorChange = async (client: ChatClient, parsedMessage: EditorChang
 const handleEditorPresence = async (client: ChatClient, parsedMessage: EditorPresenceMessage) => {
   const roomIdFromClient = parsedMessage.payload.roomId.trim();
   const nextStatus = parsedMessage.payload.status;
-  const verifiedRoomId = await resolveRoomId(roomIdFromClient, client.user.id);
+  const verifiedRoomId = await resolveSocketRoomId(roomIdFromClient, client.user.id);
 
   if (!verifiedRoomId || client.room !== verifiedRoomId) {
     sendSocketError(client.socket, "Join the room before updating editor presence");
@@ -529,7 +497,10 @@ const handleSocketConnection = async (socket: WebSocket, request: IncomingMessag
 };
 
 export const attachWebSocketServer = (server: Server) => {
-  const webSocketServer = new WebSocketServer({ server });
+  const webSocketServer = new WebSocketServer({
+    server,
+    path: "/ws",
+  });
 
   webSocketServer.on("connection", (socket, request) => {
     void handleSocketConnection(socket, request).catch((error) => {
