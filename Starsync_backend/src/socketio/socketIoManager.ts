@@ -34,6 +34,11 @@ type EditorChangePayload = {
   language: string;
 };
 
+type EditorPresencePayload = {
+  roomId: string;
+  status: "active" | "inactive";
+};
+
 type ErrorPayload = {
   message: string;
 };
@@ -77,12 +82,18 @@ type EditorSyncPayload = {
   };
 };
 
+type EditorPresenceUpdatePayload = {
+  roomId: string;
+  users: SocketUser[];
+};
+
 interface ClientToServerEvents {
   join: (payload: JoinPayload) => void;
   chat: (payload: ChatPayload) => void;
   "typing:start": (payload: TypingStartPayload) => void;
   "typing:stop": (payload: TypingStopPayload) => void;
   "editor:change": (payload: EditorChangePayload) => void;
+  "editor:presence": (payload: EditorPresencePayload) => void;
 }
 
 interface ServerToClientEvents {
@@ -92,6 +103,7 @@ interface ServerToClientEvents {
   "message-error": (payload: MessageErrorPayload) => void;
   "typing:update": (payload: TypingUpdatePayload) => void;
   "editor:sync": (payload: EditorSyncPayload) => void;
+  "editor:presence:update": (payload: EditorPresenceUpdatePayload) => void;
 }
 
 interface InterServerEvents {}
@@ -99,6 +111,7 @@ interface InterServerEvents {}
 interface SocketData {
   user: SocketUser;
   currentRoomId?: string;
+  activeEditorRoom?: string;
 }
 
 type SocketIoServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
@@ -111,6 +124,7 @@ type SocketIoConnection = Socket<
 >;
 
 const typingTimersBySocketId = new Map<string, NodeJS.Timeout>();
+const editorPresenceByRoom = new Map<string, Map<string, SocketUser>>();
 
 const getAllowedOrigins = (): string[] => {
   return Array.from(
@@ -156,6 +170,63 @@ const broadcastTypingUpdate = async (
       isTyping,
     });
   }
+};
+
+const getActiveEditorUsers = (roomId: string): SocketUser[] => {
+  const activeClients = editorPresenceByRoom.get(roomId);
+
+  if (!activeClients) {
+    return [];
+  }
+
+  const usersById = new Map<string, SocketUser>();
+
+  activeClients.forEach((user) => {
+    usersById.set(user.id, user);
+  });
+
+  return Array.from(usersById.values());
+};
+
+const broadcastEditorPresence = (io: SocketIoServer, roomId: string) => {
+  io.to(roomId).emit("editor:presence:update", {
+    roomId,
+    users: getActiveEditorUsers(roomId),
+  });
+};
+
+const removeEditorPresenceForRoom = (
+  io: SocketIoServer,
+  socket: SocketIoConnection,
+  roomId: string,
+) => {
+  const activeClients = editorPresenceByRoom.get(roomId);
+
+  if (!activeClients) {
+    return;
+  }
+
+  activeClients.delete(socket.id);
+
+  if (activeClients.size === 0) {
+    editorPresenceByRoom.delete(roomId);
+  }
+
+  if (socket.data.activeEditorRoom === roomId) {
+    delete socket.data.activeEditorRoom;
+  }
+
+  broadcastEditorPresence(io, roomId);
+};
+
+const clearEditorPresenceForSocket = (io: SocketIoServer, socket: SocketIoConnection) => {
+  const activeRoomId = socket.data.activeEditorRoom;
+
+  if (!activeRoomId) {
+    return;
+  }
+
+  removeEditorPresenceForRoom(io, socket, activeRoomId);
 };
 
 const getOnlineUsersInRoom = async (io: SocketIoServer, roomId: string): Promise<SocketUser[]> => {
@@ -207,6 +278,7 @@ const handleJoin = async (io: SocketIoServer, socket: SocketIoConnection, payloa
   if (previousRoomId && previousRoomId !== nextRoomId) {
     clearTypingTimer(socket.id);
     await broadcastTypingUpdate(io, previousRoomId, user, false);
+    clearEditorPresenceForSocket(io, socket);
     await socket.leave(previousRoomId);
     await broadcastPresence(io, previousRoomId);
   }
@@ -357,6 +429,54 @@ const handleEditorChange = async (socket: SocketIoConnection, payload: EditorCha
   }
 };
 
+const handleEditorPresence = async (
+  io: SocketIoServer,
+  socket: SocketIoConnection,
+  payload: EditorPresencePayload,
+) => {
+  if (
+    !payload ||
+    typeof payload.roomId !== "string" ||
+    (payload.status !== "active" && payload.status !== "inactive")
+  ) {
+    socket.emit("error", { message: "Invalid message" });
+    return;
+  }
+
+  const roomIdFromClient = payload.roomId.trim();
+  const nextStatus = payload.status;
+  const verifiedRoomId = await resolveSocketRoomId(roomIdFromClient, socket.data.user.id);
+
+  if (!verifiedRoomId || socket.data.currentRoomId !== verifiedRoomId) {
+    socket.emit("error", { message: "Join the room before updating editor presence" });
+    return;
+  }
+
+  try {
+    await verifyEditorRoomAccess(verifiedRoomId, socket.data.user.id);
+
+    if (nextStatus === "inactive") {
+      removeEditorPresenceForRoom(io, socket, verifiedRoomId);
+      return;
+    }
+
+    if (socket.data.activeEditorRoom && socket.data.activeEditorRoom !== verifiedRoomId) {
+      removeEditorPresenceForRoom(io, socket, socket.data.activeEditorRoom);
+    }
+
+    const activeClients = editorPresenceByRoom.get(verifiedRoomId) ?? new Map<string, SocketUser>();
+
+    activeClients.set(socket.id, socket.data.user);
+    editorPresenceByRoom.set(verifiedRoomId, activeClients);
+    socket.data.activeEditorRoom = verifiedRoomId;
+
+    broadcastEditorPresence(io, verifiedRoomId);
+  } catch (error) {
+    console.error("Socket.IO editor presence update failed", error);
+    socket.emit("error", { message: "Editor presence update failed" });
+  }
+};
+
 export const attachSocketIoServer = (httpServer: HttpServer) => {
   const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>(
     httpServer,
@@ -423,6 +543,13 @@ export const attachSocketIoServer = (httpServer: HttpServer) => {
       });
     });
 
+    socket.on("editor:presence", (payload) => {
+      void handleEditorPresence(io, socket, payload).catch((error) => {
+        console.error("Socket.IO editor presence update failed", error);
+        socket.emit("error", { message: "Editor presence update failed" });
+      });
+    });
+
     socket.on("disconnecting", () => {
       const roomId = socket.data.currentRoomId;
 
@@ -433,6 +560,8 @@ export const attachSocketIoServer = (httpServer: HttpServer) => {
           console.error("Socket.IO typing cleanup failed", error);
         });
       }
+
+      clearEditorPresenceForSocket(io, socket);
     });
 
     socket.on("disconnect", (reason) => {
