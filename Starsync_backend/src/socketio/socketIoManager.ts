@@ -3,12 +3,26 @@ import type { Socket } from "socket.io";
 import { Server } from "socket.io";
 
 import { env } from "../config/env";
+import { createMessage } from "../services/messageService";
 import { addGroupRoomMember } from "../services/roomService";
 import type { SocketUser } from "../types/websocket";
 import { authenticateSocketCookie } from "../utils/socketAuth";
 import { resolveSocketRoomId } from "../utils/socketRoom";
 
 type JoinPayload = {
+  roomId: string;
+};
+
+type ChatPayload = {
+  message: string;
+  clientMessageId?: string;
+};
+
+type TypingStartPayload = {
+  roomId: string;
+};
+
+type TypingStopPayload = {
   roomId: string;
 };
 
@@ -22,13 +36,42 @@ type PresencePayload = {
   users: SocketUser[];
 };
 
+type MessagePayload = {
+  id: string;
+  clientMessageId?: string;
+  mess: string;
+  content: string;
+  createdAt: Date;
+  senderId: string;
+  roomId: string;
+  sender: SocketUser;
+};
+
+type MessageErrorPayload = {
+  clientMessageId?: string;
+  message: string;
+};
+
+type TypingUpdatePayload = {
+  roomId: string;
+  userId: string;
+  username: string;
+  isTyping: boolean;
+};
+
 interface ClientToServerEvents {
   join: (payload: JoinPayload) => void;
+  chat: (payload: ChatPayload) => void;
+  "typing:start": (payload: TypingStartPayload) => void;
+  "typing:stop": (payload: TypingStopPayload) => void;
 }
 
 interface ServerToClientEvents {
   error: (payload: ErrorPayload) => void;
   presence: (payload: PresencePayload) => void;
+  message: (payload: MessagePayload) => void;
+  "message-error": (payload: MessageErrorPayload) => void;
+  "typing:update": (payload: TypingUpdatePayload) => void;
 }
 
 interface InterServerEvents {}
@@ -47,6 +90,8 @@ type SocketIoConnection = Socket<
   SocketData
 >;
 
+const typingTimersBySocketId = new Map<string, NodeJS.Timeout>();
+
 const getAllowedOrigins = (): string[] => {
   return Array.from(
     new Set([
@@ -58,6 +103,39 @@ const getAllowedOrigins = (): string[] => {
       "http://127.0.0.1:5174",
     ]),
   );
+};
+
+const clearTypingTimer = (socketId: string) => {
+  const typingTimer = typingTimersBySocketId.get(socketId);
+
+  if (!typingTimer) {
+    return;
+  }
+
+  clearTimeout(typingTimer);
+  typingTimersBySocketId.delete(socketId);
+};
+
+const broadcastTypingUpdate = async (
+  io: SocketIoServer,
+  roomId: string,
+  user: SocketUser,
+  isTyping: boolean,
+) => {
+  const roomSockets = await io.in(roomId).fetchSockets();
+
+  for (const roomSocket of roomSockets) {
+    if (roomSocket.data.user.id === user.id) {
+      continue;
+    }
+
+    roomSocket.emit("typing:update", {
+      roomId,
+      userId: user.id,
+      username: user.username,
+      isTyping,
+    });
+  }
 };
 
 const getOnlineUsersInRoom = async (io: SocketIoServer, roomId: string): Promise<SocketUser[]> => {
@@ -107,6 +185,8 @@ const handleJoin = async (io: SocketIoServer, socket: SocketIoConnection, payloa
   const previousRoomId = socket.data.currentRoomId;
 
   if (previousRoomId && previousRoomId !== nextRoomId) {
+    clearTypingTimer(socket.id);
+    await broadcastTypingUpdate(io, previousRoomId, user, false);
     await socket.leave(previousRoomId);
     await broadcastPresence(io, previousRoomId);
   }
@@ -114,6 +194,97 @@ const handleJoin = async (io: SocketIoServer, socket: SocketIoConnection, payloa
   await socket.join(nextRoomId);
   socket.data.currentRoomId = nextRoomId;
   await broadcastPresence(io, nextRoomId);
+};
+
+const handleChat = async (io: SocketIoServer, socket: SocketIoConnection, payload: ChatPayload) => {
+  const messageContent = typeof payload?.message === "string" ? payload.message.trim() : "";
+  const clientMessageId = payload?.clientMessageId;
+  const roomId = socket.data.currentRoomId;
+
+  if (!roomId || !messageContent) {
+    socket.emit("message-error", {
+      ...(clientMessageId ? { clientMessageId } : {}),
+      message: "Join a room before sending messages",
+    });
+    return;
+  }
+
+  clearTypingTimer(socket.id);
+  await broadcastTypingUpdate(io, roomId, socket.data.user, false);
+
+  try {
+    const savedMessage = await createMessage({
+      content: messageContent,
+      roomId,
+      senderId: socket.data.user.id,
+    });
+
+    io.to(roomId).emit("message", {
+      id: savedMessage.id,
+      ...(clientMessageId ? { clientMessageId } : {}),
+      mess: savedMessage.content,
+      content: savedMessage.content,
+      createdAt: savedMessage.createdAt,
+      senderId: savedMessage.senderId,
+      roomId: savedMessage.roomId,
+      sender: savedMessage.sender,
+    });
+  } catch (error) {
+    console.error("Socket.IO message persistence failed", error);
+    socket.emit("message-error", {
+      ...(clientMessageId ? { clientMessageId } : {}),
+      message: "Message could not be saved",
+    });
+  }
+};
+
+const handleTypingStart = async (
+  io: SocketIoServer,
+  socket: SocketIoConnection,
+  payload: TypingStartPayload,
+) => {
+  if (typeof payload?.roomId !== "string") {
+    return;
+  }
+
+  const user = socket.data.user;
+  const verifiedRoomId = await resolveSocketRoomId(payload.roomId, user.id);
+
+  if (!verifiedRoomId || socket.data.currentRoomId !== verifiedRoomId) {
+    return;
+  }
+
+  await broadcastTypingUpdate(io, verifiedRoomId, user, true);
+  clearTypingTimer(socket.id);
+
+  const staleTypingTimer = setTimeout(() => {
+    typingTimersBySocketId.delete(socket.id);
+    void broadcastTypingUpdate(io, verifiedRoomId, user, false).catch((error) => {
+      console.error("Socket.IO stale typing update failed", error);
+    });
+  }, 3000);
+
+  typingTimersBySocketId.set(socket.id, staleTypingTimer);
+};
+
+const handleTypingStop = async (
+  io: SocketIoServer,
+  socket: SocketIoConnection,
+  payload: TypingStopPayload,
+) => {
+  if (typeof payload?.roomId !== "string") {
+    return;
+  }
+
+  const user = socket.data.user;
+  const verifiedRoomId = await resolveSocketRoomId(payload.roomId, user.id);
+
+  if (!verifiedRoomId || socket.data.currentRoomId !== verifiedRoomId) {
+    return;
+  }
+
+  clearTypingTimer(socket.id);
+  await broadcastTypingUpdate(io, verifiedRoomId, user, false);
 };
 
 export const attachSocketIoServer = (httpServer: HttpServer) => {
@@ -151,6 +322,40 @@ export const attachSocketIoServer = (httpServer: HttpServer) => {
         console.error("Socket.IO room join failed", error);
         socket.emit("error", { message: "Room join failed" });
       });
+    });
+
+    socket.on("chat", (payload) => {
+      void handleChat(io, socket, payload).catch((error) => {
+        console.error("Socket.IO chat failed", error);
+        socket.emit("message-error", {
+          ...(payload?.clientMessageId ? { clientMessageId: payload.clientMessageId } : {}),
+          message: "Message could not be saved",
+        });
+      });
+    });
+
+    socket.on("typing:start", (payload) => {
+      void handleTypingStart(io, socket, payload).catch((error) => {
+        console.error("Socket.IO typing start failed", error);
+      });
+    });
+
+    socket.on("typing:stop", (payload) => {
+      void handleTypingStop(io, socket, payload).catch((error) => {
+        console.error("Socket.IO typing stop failed", error);
+      });
+    });
+
+    socket.on("disconnecting", () => {
+      const roomId = socket.data.currentRoomId;
+
+      clearTypingTimer(socket.id);
+
+      if (roomId) {
+        void broadcastTypingUpdate(io, roomId, socket.data.user, false).catch((error) => {
+          console.error("Socket.IO typing cleanup failed", error);
+        });
+      }
     });
 
     socket.on("disconnect", (reason) => {
