@@ -16,12 +16,19 @@ type ErrorPayload = {
   message: string;
 };
 
+type PresencePayload = {
+  roomId: string;
+  onlineCount: number;
+  users: SocketUser[];
+};
+
 interface ClientToServerEvents {
   join: (payload: JoinPayload) => void;
 }
 
 interface ServerToClientEvents {
   error: (payload: ErrorPayload) => void;
+  presence: (payload: PresencePayload) => void;
 }
 
 interface InterServerEvents {}
@@ -30,6 +37,15 @@ interface SocketData {
   user: SocketUser;
   currentRoomId?: string;
 }
+
+type SocketIoServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
+
+type SocketIoConnection = Socket<
+  ClientToServerEvents,
+  ServerToClientEvents,
+  InterServerEvents,
+  SocketData
+>;
 
 const getAllowedOrigins = (): string[] => {
   return Array.from(
@@ -44,7 +60,28 @@ const getAllowedOrigins = (): string[] => {
   );
 };
 
-const handleJoin = async (socket: Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>, payload: JoinPayload) => {
+const getOnlineUsersInRoom = async (io: SocketIoServer, roomId: string): Promise<SocketUser[]> => {
+  const roomSockets = await io.in(roomId).fetchSockets();
+  const usersById = new Map<string, SocketUser>();
+
+  roomSockets.forEach((roomSocket) => {
+    usersById.set(roomSocket.data.user.id, roomSocket.data.user);
+  });
+
+  return Array.from(usersById.values());
+};
+
+const broadcastPresence = async (io: SocketIoServer, roomId: string) => {
+  const users = await getOnlineUsersInRoom(io, roomId);
+
+  io.to(roomId).emit("presence", {
+    roomId,
+    onlineCount: users.length,
+    users,
+  });
+};
+
+const handleJoin = async (io: SocketIoServer, socket: SocketIoConnection, payload: JoinPayload) => {
   const user = socket.data.user;
 
   if (typeof payload?.roomId !== "string") {
@@ -71,10 +108,12 @@ const handleJoin = async (socket: Socket<ClientToServerEvents, ServerToClientEve
 
   if (previousRoomId && previousRoomId !== nextRoomId) {
     await socket.leave(previousRoomId);
+    await broadcastPresence(io, previousRoomId);
   }
 
   await socket.join(nextRoomId);
   socket.data.currentRoomId = nextRoomId;
+  await broadcastPresence(io, nextRoomId);
 };
 
 export const attachSocketIoServer = (httpServer: HttpServer) => {
@@ -108,14 +147,21 @@ export const attachSocketIoServer = (httpServer: HttpServer) => {
     console.log(`Socket.IO connected: ${user.username}`);
 
     socket.on("join", (payload) => {
-      void handleJoin(socket, payload).catch((error) => {
+      void handleJoin(io, socket, payload).catch((error) => {
         console.error("Socket.IO room join failed", error);
         socket.emit("error", { message: "Room join failed" });
       });
     });
 
     socket.on("disconnect", (reason) => {
-      // Socket.IO removes the socket from all rooms automatically on disconnect.
+      const roomId = socket.data.currentRoomId;
+
+      if (roomId) {
+        void broadcastPresence(io, roomId).catch((error) => {
+          console.error("Socket.IO presence update failed", error);
+        });
+      }
+
       console.log(`Socket.IO disconnected: ${user.username} (${reason})`);
     });
   });
