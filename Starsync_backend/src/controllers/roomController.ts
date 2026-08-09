@@ -14,7 +14,6 @@ import {
   getRoomProblemSubmissions,
   updateRoom,
 } from "../services/roomService";
-import { broadcastRoomUpdate, broadcastRoomSubmissionCreated } from "../websocket/socketManager";
 import {
   broadcastSocketIoRoomSubmissionCreated,
   broadcastSocketIoRoomTimerUpdated,
@@ -128,11 +127,6 @@ export const updateRoomController = async (request: Request, response: Response)
       durationMinutes: room.durationMinutes,
     };
 
-    broadcastRoomUpdate(roomId, {
-      type: "ROOM_TIMER_UPDATED",
-      payload: timerPayload,
-    });
-
     broadcastSocketIoRoomTimerUpdated(room.id, timerPayload);
   }
 
@@ -189,7 +183,6 @@ export const submitRoomProblemCodeController = async (request: Request, response
       submittedAt: result.submittedAt,
     };
 
-    broadcastRoomSubmissionCreated(roomId, submissionPayload);
     broadcastSocketIoRoomSubmissionCreated(canonicalRoomId, submissionPayload);
   }
 

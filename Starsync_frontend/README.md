@@ -14,7 +14,7 @@ Expected environment:
 
 ```env
 VITE_API_URL=http://localhost:3001/api/v1
-VITE_WS_URL=ws://localhost:3001/ws
+VITE_SOCKET_IO_URL=http://localhost:3001
 ```
 
 ## Scripts
@@ -38,5 +38,5 @@ npm run preview
 - `src/components/whiteboard` - tldraw whiteboard workspace
 - `src/components/ui` - shared UI primitives
 - `src/hooks` - auth, rooms, and socket hooks
-- `src/services` - REST and WebSocket helpers
+- `src/services` - REST and Socket.IO helpers
 - `src/types` - shared frontend TypeScript types

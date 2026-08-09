@@ -1,11 +1,11 @@
 # StarSync
 
-StarSync is a realtime collaboration workspace for chat, direct messages, shared coding rooms, whiteboard sessions, and contest-style problem solving. It uses a React/Vite frontend, an Express/TypeScript backend, native WebSockets, Prisma, PostgreSQL, Redis-backed sessions, Monaco, tldraw, Liveblocks, and a local Piston runner for code execution.
+StarSync is a realtime collaboration workspace for chat, direct messages, shared coding rooms, whiteboard sessions, and contest-style problem solving. It uses a React/Vite frontend, an Express/TypeScript backend, Socket.IO, Prisma, PostgreSQL, Redis-backed sessions, Monaco, tldraw, Liveblocks, and a local Piston runner for code execution.
 
 ## Highlights
 
 - HttpOnly cookie authentication with Redis sessions
-- Realtime group rooms and direct messages over native `ws`
+- Realtime group rooms and direct messages over Socket.IO
 - Persistent chat history, unread states, typing indicators, and online presence
 - Collaborative code editor with autosave and active collaborator presence
 - Whiteboard collaboration through tldraw and Liveblocks
@@ -19,7 +19,7 @@ StarSync is a realtime collaboration workspace for chat, direct messages, shared
 | Area | Stack |
 | --- | --- |
 | Frontend | React, TypeScript, Vite, Tailwind CSS, Monaco, tldraw |
-| Backend | Node.js, Express, TypeScript, native `ws` |
+| Backend | Node.js, Express, TypeScript, Socket.IO |
 | Database | PostgreSQL with Prisma |
 | Sessions | Redis + HttpOnly `sid` cookie |
 | Code runner | Piston Docker API |
@@ -38,10 +38,10 @@ StarSync is a realtime collaboration workspace for chat, direct messages, shared
 |  |  |- prisma/
 |  |  |- routes/
 |  |  |- services/
+|  |  |- socketio/
 |  |  |- types/
 |  |  |- utils/
-|  |  |- validations/
-|  |  `- websocket/
+|  |  `- validations/
 |  `- CODE_RUNNER.md
 |- Starsync_frontend/
 |  |- public/
@@ -73,11 +73,11 @@ StarSync is a realtime collaboration workspace for chat, direct messages, shared
 flowchart LR
   User[Browser] --> Frontend[React Frontend]
   Frontend -->|HTTP + sid cookie| API[Express API]
-  Frontend -->|WebSocket + sid cookie| WS[Native WS Server]
+  Frontend -->|Socket.IO + sid cookie| Realtime[Socket.IO Server]
   API --> Session[Redis Sessions]
-  WS --> Session
+  Realtime --> Session
   API --> DB[(PostgreSQL)]
-  WS --> DB
+  Realtime --> DB
   API --> Piston[Piston Runner]
   API --> Liveblocks[Liveblocks Auth]
 ```
@@ -165,7 +165,7 @@ Update `Starsync_frontend/.env` if needed:
 
 ```env
 VITE_API_URL=http://localhost:3001/api/v1
-VITE_WS_URL=ws://localhost:3001/ws
+VITE_SOCKET_IO_URL=http://localhost:3001
 ```
 
 Run the frontend:
@@ -204,7 +204,7 @@ More details are in `Starsync_backend/CODE_RUNNER.md`.
 
 ## Whiteboard
 
-Chat, direct messages, room presence, typing, timers, editor sync, and contest events use the app WebSocket server. The whiteboard uses Liveblocks because canvas synchronization is a separate high-frequency collaboration problem.
+Chat, direct messages, room presence, typing, timers, editor sync, and contest events use the app Socket.IO server at `/socket.io/`. The whiteboard uses Liveblocks because canvas synchronization is a separate high-frequency collaboration problem.
 
 Whiteboard access still follows StarSync room membership rules:
 
@@ -283,7 +283,7 @@ Recommended setup for DigitalOcean:
 
 - One Ubuntu Droplet with Nginx, PM2, Redis, and Docker Piston
 - Neon PostgreSQL for the database
-- Same-origin domain for frontend, `/api`, and `/ws`
+- Same-origin domain for frontend, `/api`, and `/socket.io/`
 
 Use `deploy/env/backend.production.env.example` and `deploy/env/frontend.production.env.example` when building for production.
 Use `deploy/pm2.ecosystem.config.cjs` to keep the backend running after SSH logout.
@@ -292,7 +292,7 @@ Use `deploy/pm2.ecosystem.config.cjs` to keep the backend running after SSH logo
 
 ### Login does not persist after refresh
 
-Check that Redis is running and `REDIS_URL` is correct. The app uses a Redis-backed HttpOnly `sid` cookie for both HTTP and WebSocket auth.
+Check that Redis is running and `REDIS_URL` is correct. The app uses a Redis-backed HttpOnly `sid` cookie for both HTTP and Socket.IO auth.
 
 ### API requests fail in development
 

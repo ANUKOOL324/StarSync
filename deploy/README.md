@@ -143,7 +143,7 @@ sudo certbot --nginx -d yourdomain.com
 1. Open `https://yourdomain.com`
 2. Check `https://yourdomain.com/api/health`
 3. Sign up or log in, refresh, and confirm the session persists
-4. Open a room and confirm WebSocket connects through `wss://yourdomain.com/ws`
+4. Open a room and confirm Socket.IO connects through `https://yourdomain.com/socket.io/`
 5. Run code in a competing room and confirm Piston responds
 
 Useful commands:

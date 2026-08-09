@@ -1,6 +1,6 @@
 import { SESSION_COOKIE_NAME } from "../config/session";
 import { getSession } from "../services/sessionService";
-import type { SocketUser } from "../types/websocket";
+import type { SocketUser } from "../types/socket";
 
 export type SocketCookieAuthResult =
   | {

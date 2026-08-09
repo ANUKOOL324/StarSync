@@ -6,7 +6,7 @@ import { env } from "../config/env";
 import { verifyEditorRoomAccess } from "../services/editorService";
 import { createMessage } from "../services/messageService";
 import { addGroupRoomMember } from "../services/roomService";
-import type { SocketUser } from "../types/websocket";
+import type { SocketUser } from "../types/socket";
 import { authenticateSocketCookie } from "../utils/socketAuth";
 import { resolveSocketRoomId } from "../utils/socketRoom";
 import { editorLanguageSchema, type EditorLanguage } from "../validations/editorValidation";
