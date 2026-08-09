@@ -38,7 +38,7 @@ export function DashboardHome({
   return (
     <div className="space-y-8">
       <section className="mx-auto max-w-3xl text-center">
-        <h2 className="text-3xl font-semibold tracking-tight text-[#F7F7F8] sm:text-4xl">StarSync Dashboard</h2>
+        <h2 className="dashboard-section-heading">StarSync Dashboard</h2>
       </section>
 
       <section className="grid gap-4 md:grid-cols-3">
@@ -62,7 +62,7 @@ export function DashboardHome({
 
       <section className="mt-8 space-y-5">
         <div className="text-center">
-          <h3 className="text-xl font-semibold text-[#F7F7F8]">Room Examples</h3>
+          <h3 className="dashboard-subsection-heading">Room Examples</h3>
         </div>
         <div className="grid gap-5 text-center">
           <div className="relative mx-auto w-full max-w-md">

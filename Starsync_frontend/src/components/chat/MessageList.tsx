@@ -119,7 +119,7 @@ export function MessageList({
                 {showDate ? (
                   <div className="my-4 flex items-center gap-3">
                     <div className="h-px flex-1 bg-white/8" />
-                    <span className="rounded-full border border-white/8 bg-white/[0.045] backdrop-blur-xl px-3 py-1 text-xs text-zinc-500">
+                    <span className="rounded-full border border-white/8 bg-white/[0.045] px-3 py-1 text-xs text-zinc-500 backdrop-blur-xl">
                       {currentDate}
                     </span>
                     <div className="h-px flex-1 bg-white/8" />

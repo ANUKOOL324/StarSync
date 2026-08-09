@@ -74,26 +74,22 @@ export function CompetingSessionTimer({
 
   if (!canManage) {
     return (
-      <div className="flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.035] px-2 py-1.5 sm:gap-2 sm:px-2.5">
-        <Clock3 size={14} className="shrink-0 text-slate-400" aria-hidden="true" />
-        <span className="font-mono text-xs font-semibold tabular-nums text-white sm:text-sm">{clockLabel}</span>
-        {sessionStatus === 'waiting' ? (
-          <span className="hidden text-xs text-slate-500 sm:inline">Waiting</span>
-        ) : null}
-        {isEnded ? <span className="text-[11px] text-amber-200 sm:text-xs">Ended</span> : null}
-      </div>
+      <span className="inline-flex shrink-0 rounded-md bg-linear-to-b from-[#5A5A5C]/80 via-white/15 to-[#28282A]/85 p-px shadow-[0_8px_24px_rgba(0,0,0,0.18)] transition duration-200 hover:via-white/20">
+        <div className="flex shrink-0 items-center gap-1.5 rounded-[5px] bg-[#18181B]/78 px-2 py-1.5 backdrop-blur-2xl sm:gap-2 sm:px-2.5">
+          <Clock3 size={14} className="shrink-0 text-slate-400" aria-hidden="true" />
+          <span className="font-mono text-xs font-semibold tabular-nums text-white sm:text-sm">{clockLabel}</span>
+          {sessionStatus === 'waiting' ? (
+            <span className="hidden text-xs text-slate-500 sm:inline">Waiting</span>
+          ) : null}
+          {isEnded ? <span className="text-[11px] text-amber-200 sm:text-xs">Ended</span> : null}
+        </div>
+      </span>
     )
   }
 
   return (
-    <div className={[
-      'flex shrink-0 items-center gap-0.5 rounded-lg border bg-white/[0.035] p-0.5',
-      isRunning
-        ? 'border-emerald-300/25'
-        : isEnded
-          ? 'border-amber-300/25'
-          : 'border-white/10',
-    ].join(' ')}>
+    <span className="inline-flex shrink-0 rounded-md bg-linear-to-b from-[#5A5A5C]/80 via-white/15 to-[#28282A]/85 p-px shadow-[0_8px_24px_rgba(0,0,0,0.18)] transition duration-200 hover:via-white/20">
+      <div className="flex shrink-0 items-center gap-0.5 rounded-[5px] bg-[#18181B]/78 p-0.5 backdrop-blur-2xl">
       <TimerButtonTooltip label="Start">
         <span className="inline-flex">
           <Button
@@ -118,10 +114,10 @@ export function CompetingSessionTimer({
               className={[
                 'min-w-[68px] rounded-md px-1.5 py-1 font-mono text-xs tabular-nums transition sm:min-w-[84px] sm:px-2 sm:text-sm',
                 isRunning
-                  ? 'text-white font-semibold'
+                  ? 'font-semibold text-white'
                   : isEnded
-                    ? 'text-slate-400 font-semibold'
-                    : 'text-white font-semibold hover:bg-white/[0.05]',
+                    ? 'font-semibold text-slate-400'
+                    : 'font-semibold text-white hover:bg-white/[0.05]',
                 isRunning ? 'cursor-default' : 'cursor-pointer',
               ].join(' ')}
               aria-label="Set session timer"
@@ -222,7 +218,7 @@ export function CompetingSessionTimer({
             type="button"
             variant="ghost"
             size="icon-sm"
-            className="size-7 shrink-0 border-white/10 hover:border-[#3B82F6]/40 hover:bg-transparent hover:text-white sm:size-8"
+            className="size-7 shrink-0 border-0 text-slate-300 hover:bg-white/8 hover:text-white sm:size-8"
             onClick={onReset}
             disabled={!isRunning && !isEnded}
             aria-label="Reset session timer"
@@ -231,6 +227,7 @@ export function CompetingSessionTimer({
           </Button>
         </span>
       </TimerButtonTooltip>
-    </div>
+      </div>
+    </span>
   )
 }

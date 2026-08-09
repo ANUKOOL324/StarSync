@@ -2,6 +2,7 @@ import { Liveblocks } from "@liveblocks/node";
 
 import { env } from "../config/env";
 import { prisma } from "../prisma/client";
+import { ensureGroupRoom, findRoomForAccess, getActiveRoomMember } from "./roomAccessService";
 import { HttpError } from "../utils/HttpError";
 
 type LiveblocksAuthInput = {
@@ -48,20 +49,12 @@ const getAppRoomIdFromLiveblocksRoom = (liveblocksRoomId: string) => {
 };
 
 const verifyLiveblocksRoomMembership = async (appRoomId: string, userId: string) => {
-  const roomMember = await prisma.roomMember.findUnique({
-    where: {
-      userId_roomId: {
-        userId,
-        roomId: appRoomId,
-      },
-    },
-    select: {
-      id: true,
-      status: true,
-    },
-  });
+  const room = await findRoomForAccess(appRoomId);
+  ensureGroupRoom(room);
 
-  if (!roomMember || roomMember.status !== "ACTIVE") {
+  const roomMember = await getActiveRoomMember(room.id, userId);
+
+  if (!roomMember) {
     throw new HttpError(403, "You do not have access to this collaboration room");
   }
 };

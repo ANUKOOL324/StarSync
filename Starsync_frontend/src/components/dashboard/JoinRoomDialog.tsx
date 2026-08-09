@@ -68,15 +68,15 @@ export function JoinRoomDialog({ isOpen, onClose, onJoin, onJoined }: JoinRoomDi
       <FloatingErrorNotification message={error} />
       <div className="rounded-[20px] border border-white/16 bg-linear-to-b from-[#303033]/95 via-[#242426]/95 to-[#202022]/95 px-6 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_18px_55px_rgba(0,0,0,0.32)]">
         <div className="mb-4 flex items-center justify-between gap-4">
-          <h2 className="text-xl font-bold tracking-tight text-[#F4F4F5]">Join Room</h2>
+          <h2 className="dashboard-dialog-title">Join Room</h2>
           <button type="button" onClick={closeDialog} className="grid size-9 cursor-pointer place-items-center rounded-full text-zinc-300 transition hover:bg-white/10 hover:text-white" aria-label="Close modal">
             <X size={20} aria-hidden="true" />
           </button>
         </div>
         <form onSubmit={handleSubmit} className="mx-auto grid max-w-[21rem] justify-items-center gap-4 text-center">
-          <label className="grid w-full justify-items-center text-sm text-zinc-400">
+          <label className="dashboard-dialog-label grid w-full justify-items-center">
             <div className="w-full rounded-xl border border-white/18 bg-[#2B2B2E]/80 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-400">Room Code</span>
+              <span className="dashboard-kicker block">Room Code</span>
               <Input
                 value={roomCode}
                 onChange={(event) => {
@@ -85,11 +85,11 @@ export function JoinRoomDialog({ isOpen, onClose, onJoin, onJoined }: JoinRoomDi
                 }}
                 placeholder="RM-ABC123"
                 autoFocus
-                className="mt-2 h-8 border-0 bg-transparent p-0 text-center text-lg font-bold tracking-[0.12em] text-[#D6FFF6] shadow-none placeholder:text-zinc-500 focus-visible:border-0 focus-visible:ring-0"
+                className="dashboard-dialog-input mt-2 h-8 border-0 bg-transparent p-0 text-center text-lg tracking-[0.12em] text-[#D6FFF6] shadow-none placeholder:text-zinc-500 focus-visible:border-0 focus-visible:ring-0"
               />
             </div>
           </label>
-          <Button type="submit" disabled={isJoining} variant="ghost" className="h-11 rounded-full border-2 border-white/10 bg-transparent px-7 text-base font-semibold text-white shadow-[0_10px_28px_rgba(0,0,0,0.22)] hover:border-white/22 hover:bg-white/8 hover:text-white">
+          <Button type="submit" disabled={isJoining} variant="ghost" className="landing-nav-button h-11 rounded-full border-2 border-white/10 bg-transparent px-7 text-base text-white shadow-[0_10px_28px_rgba(0,0,0,0.22)] hover:border-white/22 hover:bg-white/8 hover:text-white">
             {isJoining ? 'Joining...' : 'Enter Code'}
           </Button>
         </form>

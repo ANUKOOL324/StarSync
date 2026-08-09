@@ -105,7 +105,14 @@ export function CodeEditorWorkspaceView({
               <CollaborativeCodeEditor key={roomId} code={code} isLoading={isLoading} language={language} onChange={onCodeChange} onMount={onEditorMount} />
             </div>
           </ResizablePanel>
-          <ResizableHandle withHandle className="z-20 h-1.5 border-y border-white/5 bg-white/[0.025] transition hover:bg-[#57F1DB]/12" />
+          <ResizableHandle
+            withHandle
+            className={
+              toolbarMode === 'competing'
+                ? 'z-20 h-1.5 border-y border-white/5 bg-[#1a1a1c] transition hover:bg-[#2a2a2e] active:bg-[#303033] focus-visible:ring-1 focus-visible:ring-white/15 focus-visible:ring-offset-0'
+                : 'z-20 h-1.5 border-y border-white/5 bg-white/[0.025] transition hover:bg-[#57F1DB]/12'
+            }
+          />
           <ResizablePanel id="code-output-panel" defaultSize="30%" minSize="10%" maxSize="90%" collapsible={false} className="min-h-0 min-w-0 overflow-hidden">
             <div className="h-full min-h-0 w-full min-w-0 overflow-hidden">
               <EditorOutputPanel error={runError} fillAvailableHeight isRunning={isBusy} result={runResult} testcaseResult={testcaseResult} submitResult={submitResult} stdin={stdin} tabVariant={toolbarMode === 'competing' ? 'competing' : 'default'} onStdinChange={onStdinChange} />
@@ -113,7 +120,13 @@ export function CodeEditorWorkspaceView({
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>
-      <EditorStatusBar connectionStatus={connectionStatus} language={language} remoteUserName={null} saveStatus={saveStatus} />
+      <EditorStatusBar
+        connectionStatus={connectionStatus}
+        hideConnectionStatus={toolbarMode === 'competing'}
+        language={language}
+        remoteUserName={null}
+        saveStatus={saveStatus}
+      />
     </div>
   )
 }

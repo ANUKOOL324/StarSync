@@ -195,11 +195,159 @@ input[type="reset"] {
   z-index: 100;
 }
 
+.auth-kicker {
+  font-family: "Aleo", Georgia, "Times New Roman", serif;
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #d2d3d8;
+}
+
+.auth-title {
+  font-family: "Clash Display", ui-sans-serif, system-ui, sans-serif;
+  font-size: 1.875rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: #ffffff;
+}
+
+.auth-copy {
+  font-family: "Aleo", Georgia, "Times New Roman", serif;
+  font-size: 0.875rem;
+  font-weight: 300;
+  color: #bacac5;
+}
+
+.auth-link {
+  font-family: "Aleo", Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  color: #d6fff6;
+}
+
+.auth-link:hover {
+  color: #ffffff;
+}
+
+.landing-nav-link {
+  font-family: "Aleo", Georgia, "Times New Roman", serif;
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+.landing-nav-button {
+  font-family: "Clash Display", ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+}
+
+.landing-nav-link-mobile {
+  font-family: "Aleo", Georgia, "Times New Roman", serif;
+  font-size: 1.125rem;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+.landing-nav-button-mobile {
+  font-family: "Clash Display", ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+}
+
+.landing-footer-brand {
+  font-family: "Cormorant", Georgia, "Times New Roman", serif;
+  font-size: 1.125rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.landing-footer-copy {
+  font-family: "Aleo", Georgia, "Times New Roman", serif;
+  font-size: 0.75rem;
+  font-weight: 300;
+  line-height: 1.25rem;
+  letter-spacing: 0.01em;
+  color: #7b8582;
+}
+
 .landing-hero-frame {
-  --hero-content-top: clamp(76px, 19vw, 132px);
-  --hero-preview-gap: clamp(20px, 5vw, 48px);
+  --hero-scale: min(1, calc(100vw / 64rem));
 
   isolation: isolate;
+  padding-top: calc(72px * var(--hero-scale));
+}
+
+.landing-hero-stage {
+  padding-bottom: calc(48px * var(--hero-scale));
+}
+
+.landing-hero-title {
+  margin-top: calc(4px * var(--hero-scale));
+  font-family: "Cormorant", Georgia, "Times New Roman", serif;
+  font-size: calc(8rem * var(--hero-scale));
+  font-weight: 500;
+  line-height: 0.98;
+  letter-spacing: -0.075em;
+}
+
+.landing-hero-welcome {
+  margin-top: calc(24px * var(--hero-scale));
+  font-size: calc(1.125rem * var(--hero-scale));
+  font-weight: 100;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #f1f1f3;
+}
+
+.landing-hero-subtitle {
+  margin-top: calc(16px * var(--hero-scale));
+  font-family: "Kalam", cursive;
+  font-size: calc(1.625rem * var(--hero-scale));
+  font-weight: 300;
+  letter-spacing: 0.02em;
+  color: #c8c9ce;
+}
+
+.landing-hero-badge {
+  margin-top: calc(56px * var(--hero-scale));
+  font-size: calc(12px * var(--hero-scale));
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #d2d3d8;
+}
+
+.landing-hero-cta {
+  margin-top: calc(20px * var(--hero-scale));
+  margin-bottom: calc(112px * var(--hero-scale));
+}
+
+.landing-hero-cta-button {
+  padding: calc(0.625rem * var(--hero-scale)) calc(2.5rem * var(--hero-scale));
+  font-size: calc(0.875rem * var(--hero-scale));
+}
+
+.landing-app-preview {
+  margin-top: calc(48px * var(--hero-scale));
+}
+
+@media (min-width: 1024px) {
+  .landing-hero-frame {
+    --hero-scale: 1;
+  }
+
+  .hero-backdrop-lines--top {
+    height: 152px;
+  }
+
+  .landing-hero-stage {
+    padding-bottom: 0;
+  }
 }
 
 .hero-backdrop {
@@ -268,7 +416,7 @@ input[type="reset"] {
 
 .hero-backdrop-lines--top {
   top: 0;
-  height: calc(var(--hero-content-top) + 14px);
+  height: calc(142px * var(--hero-scale));
 }
 
 .hero-backdrop-lines--top span {
@@ -299,45 +447,81 @@ input[type="reset"] {
   z-index: 1;
 }
 
-.landing-hero-stage {
-  padding-top: var(--hero-content-top);
-  padding-bottom: clamp(24px, 6vw, 48px);
+.features-section {
+  background-color: #050807;
 }
 
-.landing-app-preview {
-  margin-top: var(--hero-preview-gap);
+.features-section-heading {
+  font-family: "Aleo", Georgia, "Times New Roman", serif;
+  font-size: clamp(0.9375rem, 3.9vw, 1.625rem);
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
 }
 
 @media (min-width: 640px) {
-  .landing-hero-frame {
-    --hero-content-top: clamp(96px, 14vw, 132px);
-    --hero-preview-gap: clamp(32px, 5vw, 44px);
+  .features-section-heading {
+    font-size: 2.25rem;
+    letter-spacing: -0.015em;
   }
 }
 
 @media (min-width: 1024px) {
-  .landing-hero-frame {
-    --hero-content-top: 0px;
-    --hero-preview-gap: 48px;
-
-    padding-top: 72px;
-  }
-
-  .hero-backdrop-lines--top {
-    height: 152px;
-  }
-
-  .landing-hero-stage {
-    padding-bottom: 0;
-  }
-
-  .landing-hero-badge {
-    margin-top: 56px;
+  .features-section-heading {
+    font-size: 3rem;
   }
 }
 
-.features-section {
-  background-color: #050807;
+.features-section-tagline {
+  font-size: 0.75rem;
+  font-weight: 300;
+  letter-spacing: 0.28em;
+  text-transform: lowercase;
+  color: #a8b5b1;
+}
+
+@media (min-width: 640px) {
+  .features-section-tagline {
+    font-size: 0.875rem;
+    letter-spacing: 0.32em;
+  }
+}
+
+.features-card-title {
+  font-family: "Clash Display", ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: 0.02em;
+  color: #ececee;
+}
+
+@media (min-width: 640px) {
+  .features-card-title {
+    font-size: 1rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .features-card-title {
+    font-size: 1.0625rem;
+  }
+}
+
+.features-card-text {
+  font-family: "Aleo", Georgia, "Times New Roman", serif;
+  font-weight: 300;
+  font-size: 0.8125rem;
+  line-height: 1.65;
+  letter-spacing: 0.01em;
+  color: #9aa8a3;
+}
+
+@media (min-width: 640px) {
+  .features-card-text {
+    font-size: 0.9375rem;
+    line-height: 1.7;
+  }
 }
 
 .features-backdrop {
@@ -405,6 +589,252 @@ input[type="reset"] {
   width: 1px;
   height: 100%;
   background: rgba(66, 220, 150, 0.28);
+}
+
+.dashboard-section-heading {
+  font-family: "Aleo", Georgia, "Times New Roman", serif;
+  font-size: 1.875rem;
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
+  color: #f7f7f8;
+}
+
+@media (min-width: 640px) {
+  .dashboard-section-heading {
+    font-size: 2.25rem;
+  }
+}
+
+.dashboard-subsection-heading {
+  font-family: "Clash Display", ui-sans-serif, system-ui, sans-serif;
+  font-size: 1.25rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: #f7f7f8;
+}
+
+.dashboard-page-title {
+  font-family: "Clash Display", ui-sans-serif, system-ui, sans-serif;
+  font-size: 1.125rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: #f7f7f8;
+}
+
+@media (min-width: 640px) {
+  .dashboard-page-title {
+    font-size: 1.25rem;
+  }
+}
+
+.dashboard-body-copy {
+  font-family: "Aleo", Georgia, "Times New Roman", serif;
+  font-size: 0.875rem;
+  font-weight: 300;
+  line-height: 1.625;
+  color: #bacac5;
+}
+
+@media (min-width: 640px) {
+  .dashboard-body-copy {
+    font-size: 1rem;
+  }
+}
+
+.dashboard-kicker {
+  font-family: "Aleo", Georgia, "Times New Roman", serif;
+  font-size: 0.625rem;
+  font-weight: 400;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #859490;
+}
+
+.dashboard-meta-label {
+  font-family: "Aleo", Georgia, "Times New Roman", serif;
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: #d6fff6;
+}
+
+.dashboard-action-label {
+  font-family: "Clash Display", ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+}
+
+.dashboard-action-label-sm {
+  font-family: "Clash Display", ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+}
+
+.dashboard-nav-link {
+  font-family: "Aleo", Georgia, "Times New Roman", serif;
+  font-size: 0.875rem;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+.dashboard-dialog-title {
+  font-family: "Clash Display", ui-sans-serif, system-ui, sans-serif;
+  font-size: 1.25rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: #f4f4f5;
+}
+
+.dashboard-dialog-section-title {
+  font-family: "Clash Display", ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: #ffffff;
+}
+
+.dashboard-dialog-label {
+  font-family: "Aleo", Georgia, "Times New Roman", serif;
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: #d4d4d8;
+}
+
+.dashboard-dialog-input {
+  font-family: "Aleo", Georgia, "Times New Roman", serif;
+  font-weight: 300;
+}
+
+.dashboard-dialog-radio {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1rem;
+  height: 1rem;
+  margin-top: 0.125rem;
+  flex-shrink: 0;
+  cursor: pointer;
+  border: 1.5px solid rgba(255, 255, 255, 0.55);
+  border-radius: 9999px;
+  background: transparent;
+}
+
+.dashboard-dialog-radio:checked {
+  border-color: #ffffff;
+  background: radial-gradient(circle, #ffffff 38%, transparent 40%);
+}
+
+.dashboard-dialog-radio:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.35);
+  outline-offset: 2px;
+}
+
+.room-font-display {
+  font-family: "Clash Display", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.room-font-body {
+  font-family: "Aleo", Georgia, "Times New Roman", serif;
+  font-weight: 300;
+  letter-spacing: 0.01em;
+}
+
+.room-font-body-regular {
+  font-family: "Aleo", Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+.room-font-kicker {
+  font-family: "Aleo", Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.room-font-brand {
+  font-family: "Cormorant", Georgia, "Times New Roman", serif;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.competing-room-ui {
+  font-family: "Aleo", Georgia, "Times New Roman", serif;
+  font-weight: 300;
+  letter-spacing: 0.01em;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(121, 121, 121, 0.45) transparent;
+}
+
+.competing-room-ui * {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(121, 121, 121, 0.45) transparent;
+}
+
+.competing-room-ui *::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.competing-room-ui *::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.competing-room-ui *::-webkit-scrollbar-thumb {
+  background: rgba(121, 121, 121, 0.45);
+  border: none;
+  border-radius: 999px;
+}
+
+.competing-room-ui *::-webkit-scrollbar-thumb:hover {
+  background: rgba(121, 121, 121, 0.65);
+}
+
+.competing-room-ui [data-slot="resizable-handle"] > div {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: #202022;
+  color: rgba(148, 163, 184, 0.85);
+}
+
+.competing-room-ui :where(
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  button,
+  [role="tab"],
+  label,
+  th
+) {
+  font-family: "Clash Display", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.competing-room-ui :where(.font-mono, [class*="font-mono"], code, pre) {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  letter-spacing: normal;
+}
+
+.competing-problem-content {
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-weight: 400;
+  letter-spacing: normal;
+}
+
+.competing-problem-content :where(h2, h3, p, li, span, div, button) {
+  font-family: inherit;
+  letter-spacing: normal;
+}
+
+.competing-problem-content :where(code, pre, .font-mono, [class*="font-mono"]) {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
 }
 
 /* Dynamic scrollbar colors for the landing page */

@@ -35,6 +35,9 @@ const defineEditorTheme: BeforeMount = (monaco) => {
       'editorCursor.foreground': '#18D6A3',
       'editorLineNumber.foreground': '#475569',
       'editor.selectionBackground': '#18D6A333',
+      'scrollbarSlider.background': '#79797966',
+      'scrollbarSlider.hoverBackground': '#64646499',
+      'scrollbarSlider.activeBackground': '#bfbfbf66',
     },
   })
 }

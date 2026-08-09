@@ -1,18 +1,21 @@
 import { useState } from 'react'
-import { CalendarDays, Check, Copy, Crown, UserMinus, Users, X } from 'lucide-react'
+import { CalendarDays, Check, Copy, Loader2, MessageSquare, UserMinus, Users, X } from 'lucide-react'
 
 import type { ChatRoom, OnlineUser, RoomMember } from '../../types/chat'
 import { Avatar } from '../ui/Avatar'
 
 type OnlineUsersPanelProps = {
   currentUserId?: string
+  dmActionError?: string | null
   isCurrentUserAdmin: boolean
   isOpen: boolean
   isLoadingMembers: boolean
   membersError: string | null
   onClose?: () => void
+  onOpenDirectMessage?: (memberId: string) => void
   onRequestRemoveMember?: (member: RoomMember) => void
   onlineUsers: OnlineUser[]
+  openingDmUserId?: string | null
   removingMemberId?: string | null
   room: ChatRoom
   roomMembers: RoomMember[]
@@ -38,13 +41,16 @@ const getRoleBadgeClassName = (role: RoomMember['role']) => {
 
 export function OnlineUsersPanel({
   currentUserId,
+  dmActionError,
   isCurrentUserAdmin,
   isOpen,
   isLoadingMembers,
   membersError,
   onClose,
+  onOpenDirectMessage,
   onRequestRemoveMember,
   onlineUsers,
+  openingDmUserId,
   removingMemberId,
   room,
   roomMembers,
@@ -52,6 +58,7 @@ export function OnlineUsersPanel({
   const [copiedCode, setCopiedCode] = useState(false)
   const onlineCount = onlineUsers.length
   const isDirectMessage = room.type === 'DM'
+  const isGroupRoom = room.type === 'GROUP'
 
   const handleCopyCode = async () => {
     if (!room.joinCode) return
@@ -65,8 +72,6 @@ export function OnlineUsersPanel({
   }
   const displayMemberCount = roomMembers.length || room._count?.members || 0
   const memberLabel = displayMemberCount === 1 ? 'member' : 'members'
-  const ownerName = room.admin?.username ?? 'Room admin'
-  const onlineUserIds = new Set(onlineUsers.map((user) => user.id))
 
   return (
     <aside
@@ -87,8 +92,8 @@ export function OnlineUsersPanel({
             <span className="pointer-events-none absolute right-0 top-0 h-24 w-24 rounded-full bg-[#57F1DB]/3 blur-xl" />
             <div className="relative mb-4 flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-[#F7F7F8]">
-                  {isDirectMessage ? 'Direct Message Details' : 'Room Details'}
+                <p className="room-font-display text-sm font-semibold text-[#F7F7F8]">
+                  {isDirectMessage ? 'Conversation details' : 'Room Details'}
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-1.5">
@@ -100,7 +105,7 @@ export function OnlineUsersPanel({
                     type="button"
                     onClick={onClose}
                     className="grid size-8 place-items-center rounded-lg text-slate-400 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-[#18D6A3]/40 xl:hidden cursor-pointer"
-                    aria-label="Close Room Details"
+                    aria-label={isDirectMessage ? 'Close conversation details' : 'Close Room Details'}
                   >
                     <X size={18} aria-hidden="true" />
                   </button>
@@ -108,16 +113,26 @@ export function OnlineUsersPanel({
               </div>
             </div>
 
+            {dmActionError ? (
+              <p className="room-font-body mb-3 rounded-xl border border-red-300/20 bg-red-950/20 px-3 py-3 text-sm text-red-200">
+                {dmActionError}
+              </p>
+            ) : null}
+
             <dl className="relative grid gap-3 text-sm">
               <div className="flex items-center justify-between gap-4 border-t border-white/8 pt-3">
-                <dt className="text-[#BACAC5]">Members</dt>
-                <dd className="font-medium text-[#F7F7F8]">
-                  {room.maxMembers ? `${displayMemberCount} / ${room.maxMembers} ${memberLabel}` : `${displayMemberCount} / ∞`}
+                <dt className="room-font-body text-[#BACAC5]">{isDirectMessage ? 'Participants' : 'Members'}</dt>
+                <dd className="room-font-body-regular font-medium text-[#F7F7F8]">
+                  {isDirectMessage
+                    ? displayMemberCount
+                    : room.maxMembers
+                      ? `${displayMemberCount} / ${room.maxMembers} ${memberLabel}`
+                      : `${displayMemberCount} / ∞`}
                 </dd>
               </div>
-              {!isDirectMessage ? (
+              {isGroupRoom ? (
                 <div className="flex items-center justify-between gap-4 border-t border-white/8 pt-3">
-                  <dt className="text-[#BACAC5]">Room code</dt>
+                  <dt className="room-font-body text-[#BACAC5]">Room code</dt>
                   <dd className="flex items-center gap-2 font-mono text-xs font-medium text-[#D6FFF6]">
                     <span className="max-w-28 truncate">{room.joinCode ?? 'No code'}</span>
                     {room.joinCode ? (
@@ -141,21 +156,12 @@ export function OnlineUsersPanel({
                 </div>
               ) : null}
               <div className="flex items-center justify-between gap-4 border-t border-white/8 pt-3">
-                <dt className="flex items-center gap-2 text-[#BACAC5]">
+                <dt className="room-font-body flex items-center gap-2 text-[#BACAC5]">
                   <span className="shrink-0"><CalendarDays size={14} aria-hidden="true" /></span>
-                  Created
+                  {isDirectMessage ? 'Started' : 'Created'}
                 </dt>
-                <dd className="text-right font-medium text-[#F7F7F8]">{formatCreatedDate(room.createdAt)}</dd>
+                <dd className="room-font-body-regular text-right font-medium text-[#F7F7F8]">{formatCreatedDate(room.createdAt)}</dd>
               </div>
-              {!isDirectMessage ? (
-                <div className="flex items-center justify-between gap-4 border-t border-white/8 pt-3">
-                  <dt className="flex items-center gap-2 text-[#BACAC5]">
-                    <span className="shrink-0"><Crown size={14} aria-hidden="true" /></span>
-                    Owner
-                  </dt>
-                  <dd className="max-w-32 truncate text-right font-medium text-[#F7F7F8]">{ownerName}</dd>
-                </div>
-              ) : null}
             </dl>
           </section>
         </div>
@@ -164,8 +170,10 @@ export function OnlineUsersPanel({
           <section className="relative flex flex-col overflow-hidden rounded-[14px] bg-[#18181B]/78 p-4 backdrop-blur-2xl">
             <span className="pointer-events-none absolute right-0 top-0 h-24 w-24 rounded-full bg-[#57F1DB]/3 blur-xl" />
             <div className="relative flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-[#F7F7F8]">Room members</p>
-              <p className="rounded-full border border-[#22C55E]/25 bg-linear-to-b from-[#22C55E]/15 to-[#22C55E]/5 px-2.5 py-1 text-xs font-medium text-[#86EFAC] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+              <p className="room-font-display text-sm font-semibold text-[#F7F7F8]">
+                {isDirectMessage ? 'Participants' : 'Room members'}
+              </p>
+              <p className="room-font-display rounded-full border border-[#22C55E]/25 bg-linear-to-b from-[#22C55E]/15 to-[#22C55E]/5 px-2.5 py-1 text-xs font-medium text-[#86EFAC] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
                 {onlineCount} Online
               </p>
             </div>
@@ -190,26 +198,33 @@ export function OnlineUsersPanel({
               ) : null}
 
               {!isLoadingMembers && !membersError ? roomMembers.map((member) => {
-                const memberIsOnline = onlineUserIds.has(member.id)
                 const canRemoveMember = Boolean(
                   isCurrentUserAdmin &&
-                  !isDirectMessage &&
+                  isGroupRoom &&
                   member.id !== currentUserId &&
                   member.role === 'MEMBER' &&
                   onRequestRemoveMember,
                 )
+                const canMessageMember = Boolean(
+                  isGroupRoom &&
+                  member.id !== currentUserId &&
+                  onOpenDirectMessage,
+                )
+                const isOpeningDm = openingDmUserId === member.id
 
                 return (
                   <div key={member.id} className="flex items-center gap-3 rounded-xl border border-transparent p-1.5 transition hover:border-white/8 hover:bg-white/[0.035]">
                     <Avatar name={member.username} seed={member.username || member.email} size="sm" />
                     <div className="min-w-0 flex-1">
                       <div className="flex min-w-0 items-center gap-2">
-                        <p className="truncate text-sm font-medium text-[#F7F7F8]">{member.username}</p>
-                        <span className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold ${getRoleBadgeClassName(member.role)}`}>
-                          {member.role}
-                        </span>
+                        <p className="room-font-display truncate text-sm font-medium text-[#F7F7F8]">{member.username}</p>
+                        {!isDirectMessage ? (
+                          <span className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold ${getRoleBadgeClassName(member.role)}`}>
+                            {member.role}
+                          </span>
+                        ) : null}
                       </div>
-                      <p className="truncate text-xs text-[#BACAC5]">{member.email}</p>
+                      <p className="room-font-body truncate text-xs text-[#BACAC5]">{member.email}</p>
                     </div>
                     {canRemoveMember ? (
                       <button
@@ -221,20 +236,28 @@ export function OnlineUsersPanel({
                       >
                         <UserMinus size={15} aria-hidden="true" />
                       </button>
-                    ) : (
-                      <span
-                        className={[
-                          'size-2 shrink-0 rounded-full',
-                          memberIsOnline ? 'bg-[#22C55E] shadow-[0_0_12px_rgba(34,197,94,0.55)]' : 'bg-zinc-600',
-                        ].join(' ')}
-                      />
-                    )}
+                    ) : canMessageMember ? (
+                      <button
+                        type="button"
+                        onClick={() => onOpenDirectMessage?.(member.id)}
+                        disabled={Boolean(openingDmUserId)}
+                        className="grid size-8 shrink-0 place-items-center rounded-lg border border-white/10 text-[#D6FFF6] transition hover:border-[#18D6A3]/35 hover:bg-[#18D6A3]/10 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+                        aria-label={`Message ${member.username}`}
+                        title={isOpeningDm ? 'Opening conversation...' : 'Message'}
+                      >
+                        {isOpeningDm ? (
+                          <Loader2 size={15} className="animate-spin" aria-hidden="true" />
+                        ) : (
+                          <MessageSquare size={15} aria-hidden="true" />
+                        )}
+                      </button>
+                    ) : null}
                   </div>
                 )
               }) : null}
 
               {!isLoadingMembers && !membersError && !roomMembers.length ? (
-                <p className="rounded-xl border border-white/8 bg-white/3 px-3 py-4 text-sm text-zinc-500">
+                <p className="room-font-body rounded-xl border border-white/8 bg-white/3 px-3 py-4 text-sm text-zinc-500">
                   No members found yet.
                 </p>
               ) : null}

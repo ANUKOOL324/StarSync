@@ -38,7 +38,7 @@ export function DashboardSidebar({
             'overflow-hidden whitespace-nowrap transition-all duration-300 ease-in-out',
             isCollapsed ? 'ml-0 w-0 opacity-0' : 'ml-3 w-24 opacity-100',
           ].join(' ')}>
-            <p className="bg-gradient-to-b from-[#F8F8FA] via-[#DCDDDF] to-[#A7A8AE] bg-clip-text text-lg font-normal leading-none tracking-[-0.06em] text-transparent">
+            <p className="landing-footer-brand bg-linear-to-b from-[#F8F8FA] via-[#DCDDDF] to-[#A7A8AE] bg-clip-text text-transparent">
               StarSync
             </p>
           </span>
@@ -66,7 +66,7 @@ export function DashboardSidebar({
               onClick={() => onChangeTab(id)}
               title={isCollapsed ? label : undefined}
               className={[
-                'flex w-full cursor-pointer items-center gap-0 rounded-xl border px-3.5 py-3 text-sm font-medium transition-all duration-300',
+                'dashboard-nav-link flex w-full cursor-pointer items-center gap-0 rounded-xl border px-3.5 py-3 transition-all duration-300',
                 isActive
                   ? 'border-r-2 border-[#57F1DB] border-y-white/8 border-l-white/8 bg-white/[0.055] text-[#D6FFF6]'
                   : 'border-transparent text-[#95A5A0] hover:border-white/8 hover:bg-white/[0.035] hover:text-white',
@@ -89,7 +89,7 @@ export function DashboardSidebar({
           type="button"
           variant="ghost"
           onClick={onLogout}
-          className="w-full gap-0 px-3.5 py-2.5 text-xs !justify-start cursor-pointer transition-all duration-300 ease-in-out"
+          className="dashboard-nav-link w-full gap-0 px-3.5 py-2.5 text-xs !justify-start cursor-pointer transition-all duration-300 ease-in-out"
           title={isCollapsed ? 'Logout' : undefined}
         >
           <LogOut size={14} className="shrink-0" aria-hidden="true" />

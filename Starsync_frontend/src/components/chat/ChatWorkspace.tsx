@@ -156,8 +156,12 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
   const [roomActionError, setRoomActionError] = useState<string | null>(null)
   const [membersError, setMembersError] = useState<string | null>(null)
   const [roomMembers, setRoomMembers] = useState<RoomMember[]>([])
+  const [openingDmUserId, setOpeningDmUserId] = useState<string | null>(null)
+  const [dmActionError, setDmActionError] = useState<string | null>(null)
   const activeRoom = getRoom(roomId)
-  const isAdmin = Boolean(user?.id && activeRoom?.adminId === user.id)
+  const isDirectMessage = activeRoom?.type === 'DM'
+  const isGroupRoom = activeRoom?.type === 'GROUP'
+  const isAdmin = Boolean(user?.id && activeRoom?.adminId === user.id && !isDirectMessage)
   const activeRoomDisplay = activeRoom ? getRoomDisplayInfo(activeRoom) : null
 
   const {
@@ -218,7 +222,17 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
   }, [activeRoom?.id, messages.length, markRoomRead])
 
   useEffect(() => {
-    if (!activeRoom?.id || connectionStatus !== 'online') {
+    if (!activeRoom?.id || !isDirectMessage) {
+      return
+    }
+
+    if (activeTab !== 'chat') {
+      setActiveTab('chat')
+    }
+  }, [activeRoom?.id, activeTab, isDirectMessage])
+
+  useEffect(() => {
+    if (!activeRoom?.id || connectionStatus !== 'online' || isDirectMessage) {
       return
     }
 
@@ -230,7 +244,7 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
         sendEditorPresence('inactive')
       }
     }
-  }, [activeRoom?.id, activeTab, connectionStatus, sendEditorPresence])
+  }, [activeRoom?.id, activeTab, connectionStatus, isDirectMessage, sendEditorPresence])
 
   if (isLoadingRooms) {
     return <ChatWorkspaceSkeleton />
@@ -275,6 +289,24 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
     navigate('/dashboard', { replace: true })
   }
 
+  const handleOpenDirectMessage = async (memberId: string) => {
+    if (!isGroupRoom || !activeRoom?.id || openingDmUserId) {
+      return
+    }
+
+    setDmActionError(null)
+    setOpeningDmUserId(memberId)
+
+    try {
+      const dmRoom = await createDm(memberId, activeRoom.id)
+      navigate(`/rooms/${dmRoom.id}`)
+    } catch {
+      setDmActionError('Could not open that conversation. Try again.')
+    } finally {
+      setOpeningDmUserId(null)
+    }
+  }
+
   const sidebarProps = {
     activeRoom,
     activeRoomId: activeRoom.id,
@@ -283,7 +315,6 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
     isOpen: isSidebarOpen,
     onClose: () => setIsSidebarOpen(false),
     onlineUsers,
-    onCreateDm: createDm,
     onLogout: logout,
     onSelectRoom: (nextRoomId: string) => navigate(`/rooms/${nextRoomId}`),
     onTabChange: setActiveTab,
@@ -293,12 +324,15 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
 
   const detailsPanelProps = {
     currentUserId: user?.id,
+    dmActionError,
     isCurrentUserAdmin: isAdmin,
     isOpen: isInfoOpen,
     isLoadingMembers,
     membersError,
     onClose: () => setIsInfoOpen(false),
+    onOpenDirectMessage: isGroupRoom ? handleOpenDirectMessage : undefined,
     onlineUsers,
+    openingDmUserId,
     room: activeRoom,
     roomMembers,
   }
@@ -376,9 +410,11 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
                   : undefined
               }
               onOpenSettings={() => {
+                if (isDirectMessage) return
                 setRoomActionError(null)
                 setIsSettingsOpen(true)
               }}
+              showSettings={!isDirectMessage}
               onOpenSidebar={() => {
                 setIsInfoOpen(false)
                 setIsSidebarOpen(true)
@@ -417,7 +453,7 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
               </>
             )}
 
-            {activeTab === 'editor' && (
+            {activeTab === 'editor' && !isDirectMessage && (
               <Suspense fallback={<EditorSkeleton />}>
                 <LazyCodeEditorWorkspace
                   connectionStatus={connectionStatus}
@@ -427,7 +463,7 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
               </Suspense>
             )}
 
-            {activeTab === 'whiteboard' && (
+            {activeTab === 'whiteboard' && !isDirectMessage && (
               <Suspense fallback={<WhiteboardSkeleton />}>
                 <LazyWhiteboardWorkspace
                   room={activeRoom}
@@ -465,26 +501,28 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
 
 
 
-      <RoomSettingsDialogs
-        isAdmin={isAdmin}
-        isDeleteConfirmOpen={isDeleteConfirmOpen}
-        isSettingsOpen={isSettingsOpen}
-        onCancelDelete={() => {
-          setIsDeleteConfirmOpen(false)
-          setIsSettingsOpen(true)
-        }}
-        onCloseDelete={() => setIsDeleteConfirmOpen(false)}
-        onCloseSettings={() => setIsSettingsOpen(false)}
-        onDelete={handleDeleteRoom}
-        onLeave={handleLeaveRoom}
-        onOpenDelete={() => {
-          setIsSettingsOpen(false)
-          setIsDeleteConfirmOpen(true)
-        }}
-        onRename={handleRenameRoom}
-        room={activeRoom}
-        roomActionError={roomActionError}
-      />
+      {!isDirectMessage ? (
+        <RoomSettingsDialogs
+          isAdmin={isAdmin}
+          isDeleteConfirmOpen={isDeleteConfirmOpen}
+          isSettingsOpen={isSettingsOpen}
+          onCancelDelete={() => {
+            setIsDeleteConfirmOpen(false)
+            setIsSettingsOpen(true)
+          }}
+          onCloseDelete={() => setIsDeleteConfirmOpen(false)}
+          onCloseSettings={() => setIsSettingsOpen(false)}
+          onDelete={handleDeleteRoom}
+          onLeave={handleLeaveRoom}
+          onOpenDelete={() => {
+            setIsSettingsOpen(false)
+            setIsDeleteConfirmOpen(true)
+          }}
+          onRename={handleRenameRoom}
+          room={activeRoom}
+          roomActionError={roomActionError}
+        />
+      ) : null}
     </section>
   )
 }

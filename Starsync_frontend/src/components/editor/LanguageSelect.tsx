@@ -32,7 +32,7 @@ export function LanguageSelect({ className, disabled, language, onChange }: Lang
       <SelectTrigger
         aria-label="Programming language"
         className={[
-          'h-8 min-w-[7.25rem] border-white/10 bg-black/35 text-slate-100 shadow-none sm:h-9 sm:min-w-32',
+          'h-8 min-w-[7.25rem] cursor-pointer border-white/10 bg-black/35 text-slate-100 shadow-none sm:h-9 sm:min-w-32',
           'hover:bg-white/[0.055] focus-visible:border-[#18D6A3]/40 focus-visible:ring-[#18D6A3]/15',
           className,
         ]
@@ -50,7 +50,7 @@ export function LanguageSelect({ className, disabled, language, onChange }: Lang
           <SelectItem
             key={item.value}
             value={item.value}
-            className="focus:bg-[#18D6A3]/12 focus:text-[#D6FFF6]"
+            className="cursor-pointer focus:bg-[#18D6A3]/12 focus:text-[#D6FFF6]"
           >
             {item.label}
           </SelectItem>

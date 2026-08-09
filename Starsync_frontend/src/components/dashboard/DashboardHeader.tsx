@@ -33,7 +33,7 @@ export function DashboardHeader({ activeTab, onOpenSidebar, showMobileMenu, user
             <Menu size={18} aria-hidden="true" />
           </button>
         ) : null}
-        <h1 className="truncate text-lg font-semibold tracking-tight text-[#F7F7F8] sm:text-xl">
+        <h1 className="dashboard-page-title truncate">
           {activeTab === 'home' ? 'Workspace' : 'Rooms'}
         </h1>
       </div>
@@ -65,13 +65,13 @@ export function DashboardHeader({ activeTab, onOpenSidebar, showMobileMenu, user
               <div className="flex min-w-0 items-center gap-3 border-b border-white/10 pb-3">
                 <Avatar name={displayName} seed={avatarSeed} size="md" />
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-[#F7F7F8]">{displayName}</p>
-                  <p className="truncate text-xs leading-5 text-[#9AA7A3]">{user?.email ?? 'No email available'}</p>
+                  <p className="features-card-title truncate text-[#F7F7F8]">{displayName}</p>
+                  <p className="landing-footer-copy truncate">{user?.email ?? 'No email available'}</p>
                 </div>
               </div>
               <button
                 type="button"
-                className="mt-3 flex w-full cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.045] px-3 py-2 text-sm font-semibold text-[#D6FFF6] transition duration-200 hover:border-[#57F1DB]/35 hover:bg-[#57F1DB]/10 active:scale-[0.98]"
+                className="dashboard-action-label mt-3 flex w-full cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.045] px-3 py-2 text-[#D6FFF6] transition duration-200 hover:border-[#57F1DB]/35 hover:bg-[#57F1DB]/10 active:scale-[0.98]"
               >
                 <span className="flex items-center gap-2">
                   <Settings size={15} aria-hidden="true" />

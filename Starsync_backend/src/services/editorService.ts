@@ -1,5 +1,6 @@
 import { env } from "../config/env";
 import { prisma } from "../prisma/client";
+import { ensureGroupRoom } from "./roomAccessService";
 import { HttpError } from "../utils/HttpError";
 import type {
   EditorLanguage,
@@ -199,13 +200,11 @@ const findRoomForEditorAccess = async (roomId: string, userId: string): Promise<
 };
 export const verifyEditorRoomAccess = async (roomId: string, userId: string) => {
   const room = await findRoomForEditorAccess(roomId, userId);
+  ensureGroupRoom({ id: room.id, type: room.type, adminId: null });
   const userIsActiveRoomMember = room.members.some((member) => {
     return member.userId === userId && member.status === "ACTIVE";
   });
 
-  
-  
-  
   if (!userIsActiveRoomMember) {
     throw new HttpError(403, "You do not have access to this room editor");
   }

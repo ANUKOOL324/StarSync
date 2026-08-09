@@ -1,5 +1,7 @@
 import crypto from "node:crypto";
 
+import { Prisma } from "@prisma/client";
+
 import { prisma } from "../prisma/client";
 import { HttpError } from "../utils/HttpError";
 
@@ -126,10 +128,15 @@ const formatDmRoom = (room: any, currentUserId: string) => {
   };
 };
 
+const getDmActivityTimestamp = (room: ReturnType<typeof formatDmRoom>) => {
+  const lastMessageAt = room.lastMessage?.createdAt;
+  return new Date(lastMessageAt ?? room.createdAt).getTime();
+};
+
 export const createOrGetDmRoom = async (
   currentUserId: string,
   targetUserId: string,
-  sourceRoomId?: string,
+  sourceRoomId: string,
 ) => {
   if (currentUserId === targetUserId) {
     throw new HttpError(400, "You cannot start a DM with yourself");
@@ -144,13 +151,11 @@ export const createOrGetDmRoom = async (
     throw new HttpError(404, "User not found");
   }
 
-  if (sourceRoomId) {
-    await verifyUsersBelongToSourceRoom({
-      currentUserId,
-      sourceRoomId,
-      targetUserId,
-    });
-  }
+  await verifyUsersBelongToSourceRoom({
+    currentUserId,
+    sourceRoomId,
+    targetUserId,
+  });
 
   const dmSlug = createDmSlug(currentUserId, targetUserId);
 
@@ -163,24 +168,39 @@ export const createOrGetDmRoom = async (
     return formatDmRoom(existingDmRoom, currentUserId);
   }
 
-  const createdDmRoom = await prisma.room.create({
-    data: {
-      name: targetUser.username,
-      slug: dmSlug,
-      joinCode: `DM-${crypto.randomUUID()}`,
-      maxMembers: null,
-      type: "DM",
-      members: {
-        create: [
-          { userId: currentUserId, role: "ADMIN", status: "ACTIVE" },
-          { userId: targetUserId, role: "MEMBER", status: "ACTIVE" },
-        ],
+  try {
+    const createdDmRoom = await prisma.room.create({
+      data: {
+        name: targetUser.username,
+        slug: dmSlug,
+        joinCode: `DM-${crypto.randomUUID()}`,
+        maxMembers: null,
+        type: "DM",
+        members: {
+          create: [
+            { userId: currentUserId, role: "MEMBER", status: "ACTIVE" },
+            { userId: targetUserId, role: "MEMBER", status: "ACTIVE" },
+          ],
+        },
       },
-    },
-    select: dmRoomSelect,
-  });
+      select: dmRoomSelect,
+    });
 
-  return formatDmRoom(createdDmRoom, currentUserId);
+    return formatDmRoom(createdDmRoom, currentUserId);
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      const concurrentDmRoom = await prisma.room.findUnique({
+        where: { slug: dmSlug },
+        select: dmRoomSelect,
+      });
+
+      if (concurrentDmRoom) {
+        return formatDmRoom(concurrentDmRoom, currentUserId);
+      }
+    }
+
+    throw error;
+  }
 };
 
 export const getDmRoomsForUser = async (currentUserId: string) => {
@@ -191,9 +211,10 @@ export const getDmRoomsForUser = async (currentUserId: string) => {
         some: { userId: currentUserId, status: "ACTIVE" },
       },
     },
-    orderBy: { createdAt: "desc" },
     select: dmRoomSelect,
   });
 
-  return dmRooms.map((room) => formatDmRoom(room, currentUserId));
+  return dmRooms
+    .map((room) => formatDmRoom(room, currentUserId))
+    .sort((leftRoom, rightRoom) => getDmActivityTimestamp(rightRoom) - getDmActivityTimestamp(leftRoom));
 };

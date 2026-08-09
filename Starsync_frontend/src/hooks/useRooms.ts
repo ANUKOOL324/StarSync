@@ -100,7 +100,7 @@ export function useRooms() {
     return room
   }
 
-  const createDm = async (userId: string, sourceRoomId?: string) => {
+  const createDm = async (userId: string, sourceRoomId: string) => {
     const room = await dmService.create({ sourceRoomId, userId })
     setDmRooms((currentRooms) => [room, ...currentRooms.filter((item) => item.id !== room.id)])
     markRoomRead(room.id)

@@ -8,6 +8,7 @@ type MessageInputProps = {
   onStopTyping: () => void
   onSend: (message: string) => void
   onTyping: () => void
+  sendButtonVariant?: 'default' | 'competing'
   variant?: 'default' | 'sidebar'
 }
 
@@ -21,6 +22,7 @@ export function MessageInput({
   onSend,
   onStopTyping,
   onTyping,
+  sendButtonVariant = 'default',
   variant = 'default',
 }: MessageInputProps) {
   const heightLimits = INPUT_HEIGHT[variant]
@@ -111,6 +113,31 @@ export function MessageInput({
   }
 
   const isSidebar = variant === 'sidebar'
+  const isCompetingSendButton = sendButtonVariant === 'competing'
+  const sendButtonSizeClass = isSidebar ? 'size-9' : 'size-10'
+  const sendIconSize = isSidebar ? 16 : 17
+
+  const sendButton = (
+    <button
+      type="submit"
+      disabled={disabled}
+      className={[
+        'grid shrink-0 place-items-center transition duration-150 focus:outline-none disabled:cursor-not-allowed disabled:opacity-45',
+        isCompetingSendButton
+          ? [
+              sendButtonSizeClass,
+              'rounded-[11px] border-0 bg-[#18181B]/78 text-[#18D6A3] backdrop-blur-2xl hover:bg-[#18D6A3]/08 hover:text-[#18D6A3] active:scale-[0.97] active:bg-[#18D6A3]/16 active:text-[#35E0B4] active:shadow-[inset_0_1px_3px_rgba(0,0,0,0.35)] disabled:hover:bg-[#18181B]/78 disabled:active:scale-100',
+            ].join(' ')
+          : [
+              sendButtonSizeClass,
+              'rounded-xl border border-white/15 bg-[#18D6A3] text-[#03110E] shadow-[0_12px_30px_rgba(24,214,163,0.22)] hover:-translate-y-0.5 hover:bg-[#35E0B4] hover:shadow-[0_14px_34px_rgba(245,158,11,0.12)] focus:ring-2 focus:ring-[#18D6A3]/35 active:translate-y-0 active:scale-[0.98] disabled:hover:translate-y-0',
+            ].join(' '),
+      ].join(' ')}
+      aria-label="Send message"
+    >
+      <Send size={sendIconSize} aria-hidden="true" />
+    </button>
+  )
 
   return (
     <form
@@ -144,17 +171,13 @@ export function MessageInput({
             isSidebar ? 'min-h-10' : 'min-h-11 leading-6',
           ].join(' ')}
         />
-        <button
-          type="submit"
-          disabled={disabled}
-          className={[
-            'grid shrink-0 place-items-center rounded-xl border border-white/15 bg-[#18D6A3] text-[#03110E] shadow-[0_12px_30px_rgba(24,214,163,0.22)] transition duration-150 hover:-translate-y-0.5 hover:bg-[#35E0B4] hover:shadow-[0_14px_34px_rgba(245,158,11,0.12)] focus:outline-none focus:ring-2 focus:ring-[#18D6A3]/35 active:translate-y-0 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0',
-            isSidebar ? 'size-9' : 'size-10',
-          ].join(' ')}
-          aria-label="Send message"
-        >
-          <Send size={isSidebar ? 16 : 17} aria-hidden="true" />
-        </button>
+        {isCompetingSendButton ? (
+          <span className="inline-flex shrink-0 rounded-xl bg-linear-to-b from-[#5A5A5C]/80 via-white/15 to-[#28282A]/85 p-px shadow-[0_8px_24px_rgba(0,0,0,0.18)] transition duration-150 hover:via-white/20">
+            {sendButton}
+          </span>
+        ) : (
+          sendButton
+        )}
       </div>
       {disabled ? (
         <p className={['mt-2 px-1 text-xs text-slate-500', isSidebar ? '' : 'mx-auto max-w-5xl'].join(' ')}>

@@ -26,7 +26,6 @@ export function EditorOutputPanel({
   tabVariant = 'default',
   onStdinChange,
 }: EditorOutputPanelProps) {
-  const hasOutput = Boolean(result?.stdout || result?.stderr || result?.compileOutput || result?.output)
   const executionLabel = typeof result?.executionTimeMs === 'number'
     ? String(result.executionTimeMs) + 'ms'
     : null
@@ -119,11 +118,8 @@ export function EditorOutputPanel({
           {!isRunning && error ? (
             <pre className="whitespace-pre-wrap wrap-break-word text-red-200">{error}</pre>
           ) : null}
-          {!isRunning && !error && !hasOutput ? (
-            <p className="text-slate-600">Run code to see output here.</p>
-          ) : null}
           {!isRunning && result?.compileOutput ? (
-            <pre className="mb-3 whitespace-pre-wrap wrap-break-word text-amber-200">{result.compileOutput}</pre>
+            <pre className="mb-3 whitespace-pre-wrap wrap-break-word text-red-200">{result.compileOutput}</pre>
           ) : null}
           {!isRunning && result?.stderr ? (
             <pre className="mb-3 whitespace-pre-wrap wrap-break-word text-red-200">{result.stderr}</pre>
@@ -139,20 +135,25 @@ export function EditorOutputPanel({
 
         <TabsContent value="testcases" className="m-0 min-h-0 flex-1 overflow-auto p-4 data-[state=active]:block">
           {isRunning ? (
-            <div className="rounded-lg border border-[#57F1DB]/20 bg-[#57F1DB]/[0.06] p-4 text-sm text-[#BFFCF0]">
+            <div className="rounded-lg border border-white/8 bg-white/[0.025] p-4 text-sm text-slate-300">
               Running testcases...
             </div>
           ) : error ? (
-            <pre className="whitespace-pre-wrap wrap-break-word rounded-lg border border-red-300/20 bg-red-400/[0.06] p-4 text-sm text-red-100">{error}</pre>
+            <div className="overflow-hidden rounded-lg border border-white/10 bg-white/[0.025]">
+              <div className="border-b border-white/10 px-4 py-3">
+                <p className="text-sm font-semibold text-[#ef4743]">Execution Error</p>
+              </div>
+              <pre className="whitespace-pre-wrap wrap-break-word bg-black/35 p-4 font-mono text-xs leading-5 text-white">{error}</pre>
+            </div>
           ) : submitDiagnostic ? (
-            <div className="rounded-lg border border-red-300/20 bg-red-400/[0.06] p-4">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <p className="text-sm font-semibold text-red-100">{submitDiagnostic.title}</p>
-                <span className="rounded-md border border-red-300/20 bg-red-400/8 px-2 py-0.5 text-xs font-semibold text-red-100">
+            <div className="overflow-hidden rounded-lg border border-white/10 bg-white/[0.025]">
+              <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+                <p className="text-sm font-semibold text-[#ef4743]">{submitDiagnostic.title}</p>
+                <span className="rounded-md border border-white/10 bg-black/20 px-2 py-0.5 text-xs font-medium text-slate-400">
                   {submitResult?.passedCount ?? 0} / {submitResult?.totalCount ?? 0} passed
                 </span>
               </div>
-              <pre className="whitespace-pre-wrap wrap-break-word rounded-md border border-red-300/20 bg-black/25 p-3 font-mono text-xs text-red-100">
+              <pre className="whitespace-pre-wrap wrap-break-word bg-black/35 p-4 font-mono text-xs leading-5 text-white">
                 {submitDiagnostic.message}
               </pre>
             </div>
@@ -209,7 +210,7 @@ export function EditorOutputPanel({
                       </div>
 
                       {testcase.error ? (
-                        <pre className="mt-3 whitespace-pre-wrap wrap-break-word rounded-md border border-red-300/20 bg-black/25 p-2 text-xs text-red-100">{testcase.error}</pre>
+                        <pre className="mt-3 whitespace-pre-wrap wrap-break-word rounded-md border border-white/10 bg-black/35 p-3 font-mono text-xs leading-5 text-white">{testcase.error}</pre>
                       ) : null}
                     </>
                   )}
@@ -217,14 +218,14 @@ export function EditorOutputPanel({
               ))}
             </div>
           ) : runDiagnostic ? (
-            <div className="rounded-lg border border-red-300/20 bg-red-400/[0.06] p-4">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <p className="text-sm font-semibold text-red-100">{runDiagnostic.title}</p>
-                <span className="rounded-md border border-red-300/20 bg-red-400/8 px-2 py-0.5 text-xs font-semibold text-red-100">
+            <div className="overflow-hidden rounded-lg border border-white/10 bg-white/[0.025]">
+              <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+                <p className="text-sm font-semibold text-[#ef4743]">{runDiagnostic.title}</p>
+                <span className="rounded-md border border-white/10 bg-black/20 px-2 py-0.5 text-xs font-medium text-slate-400">
                   {testcaseResult?.passedCount ?? 0} / {testcaseResult?.totalCount ?? 0} passed
                 </span>
               </div>
-              <pre className="whitespace-pre-wrap wrap-break-word rounded-md border border-red-300/20 bg-black/25 p-3 font-mono text-xs text-red-100">
+              <pre className="whitespace-pre-wrap wrap-break-word bg-black/35 p-4 font-mono text-xs leading-5 text-white">
                 {runDiagnostic.message}
               </pre>
             </div>
@@ -234,7 +235,6 @@ export function EditorOutputPanel({
                 <p className="text-sm font-semibold text-slate-100">
                   {testcaseResult.passedCount} / {testcaseResult.totalCount} passed
                 </p>
-                <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Visible testcases only</p>
               </div>
 
               {testcaseResult.results.map((testcase) => (
@@ -270,7 +270,7 @@ export function EditorOutputPanel({
                   </div>
 
                   {testcase.error ? (
-                    <pre className="mt-3 whitespace-pre-wrap wrap-break-word rounded-md border border-red-300/20 bg-black/25 p-2 text-xs text-red-100">{testcase.error}</pre>
+                    <pre className="mt-3 whitespace-pre-wrap wrap-break-word rounded-md border border-white/10 bg-black/35 p-3 font-mono text-xs leading-5 text-white">{testcase.error}</pre>
                   ) : null}
                 </div>
               ))}

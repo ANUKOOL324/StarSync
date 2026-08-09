@@ -34,7 +34,7 @@ export function CompetingRoomView({ room, state }: CompetingRoomViewProps) {
 
   return (
     <TooltipProvider>
-      <section className="flex h-dvh max-h-dvh flex-col overflow-hidden bg-[#05070A] text-[#E5E1E4]">
+      <section className="competing-room-ui flex h-dvh max-h-dvh flex-col overflow-hidden bg-[#05070A] text-[#E5E1E4]">
         <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-[#060A10]/95 px-2 py-1.5 shadow-[0_18px_60px_rgba(0,0,0,0.26)] backdrop-blur-2xl sm:gap-3 sm:px-4">
           <div className="flex min-w-0 flex-1 items-center gap-2 pr-1 sm:gap-3 sm:pr-0">
             <button
@@ -76,18 +76,20 @@ export function CompetingRoomView({ room, state }: CompetingRoomViewProps) {
               remainingSeconds={remainingSeconds}
               sessionStatus={sessionStatus}
             />
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="hidden h-10 px-3.5 rounded-xl lg:inline-flex border-white/12 bg-white/[0.05] shadow-[0_10px_30px_rgba(0,0,0,0.18)]"
-              onClick={() => {
-                setCopyStatus('idle')
-                setIsInviteDialogOpen(true)
-              }}
-            >
-              Invite
-            </Button>
+            <span className="hidden shrink-0 rounded-md bg-linear-to-b from-[#5A5A5C]/80 via-white/15 to-[#28282A]/85 p-px shadow-[0_8px_24px_rgba(0,0,0,0.18)] transition duration-200 hover:via-white/20 lg:inline-flex">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 px-3.5 font-semibold !rounded-[5px] !border-0 !bg-[#18181B]/78 !text-[#18D6A3] backdrop-blur-2xl transition-all duration-200 hover:!bg-[#18D6A3]/08 hover:!text-[#18D6A3] sm:h-9"
+                onClick={() => {
+                  setCopyStatus('idle')
+                  setIsInviteDialogOpen(true)
+                }}
+              >
+                Invite
+              </Button>
+            </span>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -173,7 +175,10 @@ export function CompetingRoomView({ room, state }: CompetingRoomViewProps) {
                 />
               </div>
             </ResizablePanel>
-            <ResizableHandle withHandle className="z-20 w-1.5 border-x border-white/5 bg-white/[0.025] transition hover:bg-[#57F1DB]/12" />
+            <ResizableHandle
+              withHandle
+              className="z-20 w-1.5 border-x border-white/5 bg-[#1a1a1c] transition hover:bg-[#2a2a2e] active:bg-[#303033] focus-visible:ring-1 focus-visible:ring-white/15 focus-visible:ring-offset-0"
+            />
             <ResizablePanel
               id="competing-editor-panel"
               defaultSize="44%"
@@ -182,7 +187,10 @@ export function CompetingRoomView({ room, state }: CompetingRoomViewProps) {
             >
               <CompetingEditorPanel competingProblemId={selectedProblemRunId} connectionStatus={connectionStatus} room={room} />
             </ResizablePanel>
-            <ResizableHandle withHandle className="z-20 w-1.5 border-x border-white/5 bg-white/[0.025] transition hover:bg-[#57F1DB]/12" />
+            <ResizableHandle
+              withHandle
+              className="z-20 w-1.5 border-x border-white/5 bg-[#1a1a1c] transition hover:bg-[#2a2a2e] active:bg-[#303033] focus-visible:ring-1 focus-visible:ring-white/15 focus-visible:ring-offset-0"
+            />
             <ResizablePanel
               id="competing-session-panel"
               defaultSize="24%"

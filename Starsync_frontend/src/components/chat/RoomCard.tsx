@@ -55,8 +55,8 @@ export function RoomCard({ isActive, onSelect, room }: RoomCardProps) {
       <div className="flex min-h-12 items-center gap-2.5 pr-7">
         <Avatar name={room.name} seed={room.joinCode ?? room.slug} type="room" size="sm" />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-semibold leading-5 text-slate-100">{room.name}</span>
-          <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs leading-4 text-slate-400">
+          <span className="room-font-display block truncate text-sm font-semibold leading-5 text-slate-100">{room.name}</span>
+          <span className="room-font-body mt-0.5 flex min-w-0 items-center gap-1.5 text-xs leading-4 text-slate-400">
             <span className="truncate text-slate-300">{room.joinCode ?? 'No code'}</span>
             <span className="shrink-0 text-slate-500">/</span>
             <span className="shrink-0">{formatRelativeTime(room.createdAt)}</span>

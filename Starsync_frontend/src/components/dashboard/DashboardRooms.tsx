@@ -32,15 +32,15 @@ export function DashboardRooms({
   return (
     <div className="space-y-8">
       <section className="mx-auto max-w-3xl text-center">
-        <h2 className="text-3xl font-semibold tracking-tight text-[#F7F7F8] sm:text-4xl">Your Rooms</h2>
-        <p className="mt-3 text-sm leading-6 text-[#BACAC5] sm:text-base">Search, manage, and open your joined workspaces.</p>
+        <h2 className="dashboard-section-heading">Your Rooms</h2>
+        <p className="dashboard-body-copy mt-3">Search, manage, and open your joined workspaces.</p>
         <div className="mt-5 flex justify-center gap-3">
           {[
             ['Created', createdCount],
             ['Joined', joinedCount],
           ].map(([label, value]) => (
             <div key={label} className="min-w-24 rounded-xl border border-white/10 bg-white/[0.035] px-4 py-2 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-xl">
-              <span className="block text-[10px] font-semibold uppercase tracking-[0.18em] text-[#859490]">{label}</span>
+              <span className="dashboard-kicker block">{label}</span>
               <span className="mt-1 block font-mono text-lg font-bold leading-none text-[#D6FFF6]">{value}</span>
             </div>
           ))}

@@ -82,32 +82,34 @@ export function EditorToolbar({
           >
             <Play size={15} aria-hidden="true" />
           </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-8 px-3 sm:h-9 sm:px-4 !bg-[#05080a] hover:!bg-[#18D6A3]/08 !text-[#18D6A3] hover:!text-[#18D6A3] font-semibold !rounded-md gap-1.5 border !border-[#18D6A3]/40 shadow-[0_0_12px_rgba(24,214,163,0.2)] hover:!border-[#18D6A3]/60 hover:shadow-[0_0_14px_rgba(24,214,163,0.35)] shrink-0 transition-all duration-200"
-            onClick={onSubmit}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="15"
-              height="15"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="text-[#18D6A3] shrink-0"
-              aria-hidden="true"
+          <span className="inline-flex shrink-0 rounded-md bg-linear-to-b from-[#5A5A5C]/80 via-white/15 to-[#28282A]/85 p-px shadow-[0_8px_24px_rgba(0,0,0,0.18)] transition duration-150 hover:via-white/20">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 gap-1.5 px-3 font-semibold !rounded-[5px] !border-0 !bg-[#18181B]/78 !text-[#18D6A3] backdrop-blur-2xl transition-all duration-150 hover:!bg-[#18D6A3]/08 hover:!text-[#18D6A3] active:scale-[0.97] active:!bg-[#18D6A3]/16 active:!text-[#35E0B4] active:shadow-[inset_0_1px_3px_rgba(0,0,0,0.35)] sm:h-9 sm:px-4"
+              onClick={onSubmit}
             >
-              <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" />
-              <path d="M12 12v9" />
-              <path d="m9 15 3-3 3 3" />
-            </svg>
-            Submit
-          </Button>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="shrink-0 text-[#18D6A3]"
+                aria-hidden="true"
+              >
+                <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" />
+                <path d="M12 12v9" />
+                <path d="m9 15 3-3 3 3" />
+              </svg>
+              Submit
+            </Button>
+          </span>
         </div>
       </div>
     )

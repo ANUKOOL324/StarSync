@@ -1,10 +1,9 @@
-import { ChevronDown, ChevronRight, Code, LogOut, MessageSquare, Palette, Plus, Search, X } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { ChevronDown, ChevronRight, Code, LogOut, MessageSquare, Palette, Search, X } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-import { roomMemberService } from '../../services/roomMemberService'
 import type { AuthUser } from '../../types/auth'
-import type { ChatRoom, OnlineUser, RoomMember } from '../../types/chat'
+import type { ChatRoom, OnlineUser } from '../../types/chat'
 import { Avatar } from '../ui/Avatar'
 import { DirectMessagesSection } from './DirectMessagesSection'
 import { RoomCard } from './RoomCard'
@@ -17,7 +16,6 @@ type RoomSidebarProps = {
   isOpen: boolean
   onClose: () => void
   onlineUsers: OnlineUser[]
-  onCreateDm: (userId: string, sourceRoomId?: string) => Promise<ChatRoom>
   onLogout: () => void
   onSelectRoom: (roomId: string) => void
   onTabChange: (tab: WorkspaceTab) => void
@@ -28,38 +26,24 @@ type RoomSidebarProps = {
 type WorkspaceTab = 'chat' | 'editor' | 'whiteboard'
 
 type SectionHeaderProps = {
-  actionLabel?: string
   isOpen: boolean
-  onAction?: () => void
   onToggle: () => void
   title: string
 }
 
-function SectionHeader({ actionLabel, isOpen, onAction, onToggle, title }: SectionHeaderProps) {
+function SectionHeader({ isOpen, onToggle, title }: SectionHeaderProps) {
   const ChevronIcon = isOpen ? ChevronDown : ChevronRight
 
   return (
-    <div className="flex items-center gap-1">
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={isOpen}
-        className="group flex min-w-0 flex-1 items-center gap-1.5 rounded-lg px-1 py-1 text-left text-xs font-medium uppercase tracking-[0.16em] text-slate-400 transition hover:bg-white/[0.055] hover:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#18D6A3]/35"
-      >
-        <ChevronIcon size={14} aria-hidden="true" className="shrink-0 transition group-hover:text-[#18D6A3]" />
-        <span className="truncate">{title}</span>
-      </button>
-      {onAction ? (
-        <button
-          type="button"
-          onClick={onAction}
-          className="grid size-7 place-items-center rounded-lg text-slate-500 transition hover:bg-white/[0.055] hover:text-[#18D6A3] focus:outline-none focus:ring-2 focus:ring-[#18D6A3]/35"
-          aria-label={actionLabel}
-        >
-          <Plus size={14} aria-hidden="true" />
-        </button>
-      ) : null}
-    </div>
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={isOpen}
+      className="group flex w-full min-w-0 items-center gap-1.5 rounded-lg px-1 py-1 text-left transition hover:bg-white/[0.055] hover:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#18D6A3]/35"
+    >
+      <ChevronIcon size={14} aria-hidden="true" className="shrink-0 transition group-hover:text-[#18D6A3]" />
+      <span className="room-font-kicker truncate text-xs text-slate-400">{title}</span>
+    </button>
   )
 }
 
@@ -97,7 +81,6 @@ export function RoomSidebar({
   isOpen,
   onClose,
   onlineUsers,
-  onCreateDm,
   onLogout,
   onSelectRoom,
   onTabChange,
@@ -108,12 +91,10 @@ export function RoomSidebar({
   const [roomSearchQuery, setRoomSearchQuery] = useState('')
   const [isRoomsOpen, setIsRoomsOpen] = useState(true)
   const [isDirectMessagesOpen, setIsDirectMessagesOpen] = useState(true)
-  const [dmSearchError, setDmSearchError] = useState<string | null>(null)
-  const [isLoadingRoomMembers, setIsLoadingRoomMembers] = useState(false)
-  const [openingDmUserId, setOpeningDmUserId] = useState<string | null>(null)
-  const [roomMembers, setRoomMembers] = useState<RoomMember[]>([])
 
   const normalizedSearchQuery = roomSearchQuery.trim().toLowerCase()
+  const isDirectMessageRoom = activeRoom.type === 'DM'
+  const visibleTabs = isDirectMessageRoom ? workspaceTabs.filter((tab) => tab.id === 'chat') : workspaceTabs
 
   const filteredGroupRooms = useMemo(() => {
     if (!normalizedSearchQuery) {
@@ -128,19 +109,6 @@ export function RoomSidebar({
     })
   }, [normalizedSearchQuery, rooms])
 
-  const isDirectMessageRoom = activeRoom.type === 'DM'
-  const dmRoomByOtherUserId = useMemo(() => {
-    const roomByUserId = new Map<string, ChatRoom>()
-
-    dmRooms.forEach((room) => {
-      if (room.otherUser?.id) {
-        roomByUserId.set(room.otherUser.id, room)
-      }
-    })
-
-    return roomByUserId
-  }, [dmRooms])
-
   const filteredDmRooms = useMemo(() => {
     if (!normalizedSearchQuery) return dmRooms
     return dmRooms.filter((room) => {
@@ -150,79 +118,6 @@ export function RoomSidebar({
   }, [dmRooms, normalizedSearchQuery])
 
   const onlineUserIds = useMemo(() => new Set(onlineUsers.map((onlineUser) => onlineUser.id)), [onlineUsers])
-  const filteredRoomMembers = useMemo(() => {
-    return roomMembers
-      .filter((member) => member.id !== user?.id)
-      
-      .filter((member) => !dmRoomByOtherUserId.has(member.id))
-      .filter((member) => {
-        if (!normalizedSearchQuery) {
-          return true
-        }
-
-        const memberUsername = member.username.toLowerCase()
-        const memberEmail = member.email.toLowerCase()
-
-        return memberUsername.includes(normalizedSearchQuery) || memberEmail.includes(normalizedSearchQuery)
-      })
-      .map((member) => ({
-        ...member,
-        isOnline: onlineUserIds.has(member.id),
-      }))
-  }, [dmRoomByOtherUserId, normalizedSearchQuery, onlineUserIds, roomMembers, user?.id])
-
-  useEffect(() => {
-    let isCurrentRequest = true
-
-    setDmSearchError(null)
-    setRoomMembers([])
-
-    if (!isDirectMessagesOpen || isDirectMessageRoom) {
-      return
-    }
-
-    const loadRoomMembers = async () => {
-      try {
-        setIsLoadingRoomMembers(true)
-        const members = await roomMemberService.list(activeRoom.id)
-
-        if (isCurrentRequest) {
-          setRoomMembers(members)
-        }
-      } catch {
-        if (isCurrentRequest) {
-          setDmSearchError('Room members could not be loaded.')
-        }
-      } finally {
-        if (isCurrentRequest) {
-          setIsLoadingRoomMembers(false)
-        }
-      }
-    }
-
-    void loadRoomMembers()
-
-    return () => {
-      isCurrentRequest = false
-    }
-  }, [activeRoom.id, isDirectMessageRoom, isDirectMessagesOpen])
-
-  const handleCreateDm = async (targetUserId: string) => {
-    const sourceRoomId = isDirectMessageRoom ? undefined : activeRoom.id
-
-    try {
-      setOpeningDmUserId(targetUserId)
-      const room = await onCreateDm(targetUserId, sourceRoomId)
-
-      setRoomMembers([])
-      navigate(`/rooms/${room.id}`)
-      if (window.innerWidth < 1280) {
-        onClose()
-      }
-    } finally {
-      setOpeningDmUserId(null)
-    }
-  }
 
   return (
     <aside
@@ -254,7 +149,7 @@ export function RoomSidebar({
               />
             </button>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-slate-100">StarSync</p>
+              <p className="room-font-brand truncate bg-linear-to-b from-[#F8F8FA] via-[#DCDDDF] to-[#A7A8AE] bg-clip-text text-sm text-transparent">StarSync</p>
             </div>
           </div>
           <button
@@ -277,14 +172,14 @@ export function RoomSidebar({
               value={roomSearchQuery}
               onChange={(event) => setRoomSearchQuery(event.target.value)}
               placeholder="Search rooms"
-              className="min-w-0 flex-1 bg-transparent text-sm text-[#F7F7F8] outline-none placeholder:text-slate-500"
+              className="room-font-body min-w-0 flex-1 bg-transparent text-sm text-[#F7F7F8] outline-none placeholder:text-slate-500"
             />
           </label>
         </div>
 
         <div className="mt-3 rounded-2xl border border-white/12 bg-white/[0.05] p-1 shadow-sm shadow-black/20">
-          <div className="grid grid-cols-3 gap-1">
-            {workspaceTabs.map((tab) => {
+          <div className={isDirectMessageRoom ? 'grid grid-cols-1 gap-1' : 'grid grid-cols-3 gap-1'}>
+            {visibleTabs.map((tab) => {
               const TabIcon = tab.icon
               const isActiveTab = activeTab === tab.id
               const tabStyles = activeTabClasses[tab.id]
@@ -301,7 +196,7 @@ export function RoomSidebar({
                     }
                   }}
                   className={[
-                    'flex h-9 items-center justify-center gap-1.5 rounded-xl text-xs font-medium transition duration-150 focus:outline-none focus:ring-2',
+                    'room-font-display flex h-9 items-center justify-center gap-1.5 rounded-xl text-xs font-medium transition duration-150 focus:outline-none focus:ring-2',
                     isActiveTab
                       ? `${tabStyles.active} ${tabStyles.focus}`
                       : 'bg-white/[0.03] text-slate-300 hover:bg-white/[0.07] hover:text-slate-100 focus:ring-[#18D6A3]/35',
@@ -309,7 +204,7 @@ export function RoomSidebar({
                   aria-pressed={isActiveTab}
                 >
                   <TabIcon size={14} aria-hidden="true" />
-                  <span className="hidden min-[380px]:inline">{tab.label}</span>
+                  <span className={isDirectMessageRoom ? 'inline' : 'hidden min-[380px]:inline'}>{tab.label}</span>
                 </button>
               )
             })}
@@ -340,7 +235,7 @@ export function RoomSidebar({
                   />
                 ))}
                 {!filteredGroupRooms.length ? (
-                  <p className="rounded-xl border border-white/10 bg-white/[0.05] px-3 py-3 text-sm text-slate-400 backdrop-blur-xl">
+                  <p className="room-font-body rounded-xl border border-white/10 bg-white/[0.05] px-3 py-3 text-sm text-slate-400 backdrop-blur-xl">
                     {normalizedSearchQuery ? 'No matching rooms.' : 'No rooms yet.'}
                   </p>
                 ) : null}
@@ -352,18 +247,12 @@ export function RoomSidebar({
           <DirectMessagesSection
             activeRoomId={activeRoomId}
             dmRooms={filteredDmRooms}
-            error={dmSearchError}
-            isDirectMessageRoom={isDirectMessageRoom}
-            isLoadingMembers={isLoadingRoomMembers}
             isOpen={isDirectMessagesOpen}
             normalizedSearchQuery={normalizedSearchQuery}
             onCloseSidebar={onClose}
-            onCreateDm={(memberId) => void handleCreateDm(memberId)}
             onSelectRoom={onSelectRoom}
             onToggle={() => setIsDirectMessagesOpen((current) => !current)}
             onlineUserIds={onlineUserIds}
-            openingDmUserId={openingDmUserId}
-            roomMembers={filteredRoomMembers}
           />
         </div>
 
@@ -371,7 +260,7 @@ export function RoomSidebar({
           <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.045] p-2.5 shadow-lg shadow-black/20 backdrop-blur-xl transition hover:border-[#18D6A3]/25 hover:bg-white/[0.06]">
             <Avatar name={user?.username ?? 'User'} seed={user?.username ?? user?.email ?? 'user'} size="md" />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-slate-100">{user?.username}</p>
+              <p className="room-font-display truncate text-sm font-semibold text-slate-100">{user?.username}</p>
             </div>
             <button
               type="button"
@@ -387,5 +276,3 @@ export function RoomSidebar({
     </aside>
   )
 }
-
-

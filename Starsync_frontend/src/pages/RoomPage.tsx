@@ -6,7 +6,6 @@ import { CompetingRoomWorkspace } from '../components/competing/CompetingRoomWor
 import { WorkspaceSkeleton } from '../components/ui/WorkspaceSkeleton'
 import { ChatWorkspaceSkeleton } from '../components/chat/ChatWorkspaceSkeleton'
 import { roomService } from '../services/roomService'
-import { useRooms } from '../hooks/useRooms'
 import type { ChatRoom } from '../types/chat'
 
 type RoomPurpose = 'COLLABORATIVE' | 'COMPETING'
@@ -39,14 +38,12 @@ const writeStoredRoomPurpose = (roomId: string, purpose: RoomPurpose) => {
 export function RoomPage() {
   const { roomId } = useParams()
   const location = useLocation()
-  const { rooms } = useRooms()
   const [room, setRoom] = useState<ChatRoom | null>(null)
   const [isLoadingRoom, setIsLoadingRoom] = useState(true)
   const [roomError, setRoomError] = useState<string | null>(null)
 
   const statePurpose = location.state?.purpose as RoomPurpose | undefined
-  const cachedRoom = rooms.find((r) => r.id === roomId)
-  const roomPurpose = statePurpose ?? cachedRoom?.purpose ?? room?.purpose ?? readStoredRoomPurpose(roomId)
+  const roomPurpose = statePurpose ?? room?.purpose ?? readStoredRoomPurpose(roomId)
 
   useEffect(() => {
     if (statePurpose && roomId) {
@@ -55,11 +52,10 @@ export function RoomPage() {
   }, [statePurpose, roomId])
 
   useEffect(() => {
-    const purpose = room?.purpose ?? cachedRoom?.purpose
-    if (purpose && roomId) {
-      writeStoredRoomPurpose(roomId, purpose)
+    if (room?.purpose && roomId) {
+      writeStoredRoomPurpose(roomId, room.purpose)
     }
-  }, [cachedRoom?.purpose, room?.purpose, roomId])
+  }, [room?.purpose, roomId])
 
   useEffect(() => {
     if (!roomId) {

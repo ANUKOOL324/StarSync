@@ -36,14 +36,14 @@ export function WorkspaceActionCard({
         <CardHeader className="relative gap-2">
           <div className={iconBoxClassName}>{icon}</div>
           <div className="grid gap-2">
-            <CardTitle className="text-base text-[#F7F7F8]">{title}</CardTitle>
-            <CardDescription className="max-w-md text-sm leading-5 text-[#BACAC5]">
+            <CardTitle className="features-card-title text-[#F7F7F8]">{title}</CardTitle>
+            <CardDescription className="features-card-text max-w-md text-[#BACAC5]">
               {description}
             </CardDescription>
           </div>
         </CardHeader>
         <CardFooter className="relative mt-2">
-          <span className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.045] px-3 py-1 text-sm font-semibold text-[#D6FFF6] transition duration-200 group-hover:border-[#57F1DB]/40 group-hover:bg-[#57F1DB]/10">
+          <span className="dashboard-action-label inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.045] px-3 py-1 text-[#D6FFF6] transition duration-200 group-hover:border-[#57F1DB]/40 group-hover:bg-[#57F1DB]/10">
             {actionLabel}
             <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" aria-hidden="true" />
           </span>
@@ -69,8 +69,8 @@ export function StaticRoomCard({ onUseTemplate, room }: StaticRoomCardProps) {
         <div>
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h3 className="text-lg font-semibold tracking-tight text-[#F7F7F8]">{room.title}</h3>
-              <p className="mt-2 text-sm font-medium text-[#D6FFF6]">{room.roomType}</p>
+              <h3 className="features-card-title text-lg text-[#F7F7F8]">{room.title}</h3>
+              <p className="dashboard-meta-label mt-2">{room.roomType}</p>
             </div>
             <Badge className={[
               'shrink-0 border-white/8 px-3 py-1 text-xs font-bold',
@@ -81,9 +81,9 @@ export function StaticRoomCard({ onUseTemplate, room }: StaticRoomCardProps) {
               {room.badge}
             </Badge>
           </div>
-          <p className="mt-5 max-w-md text-sm leading-6 text-[#E5E7EB]">{room.description}</p>
+          <p className="features-card-text mt-5 max-w-md text-[#E5E7EB]">{room.description}</p>
         </div>
-        <span className="mt-5 inline-flex items-center gap-1.5 self-start rounded-full border border-[#57F1DB]/30 bg-[#57F1DB]/10 px-3.5 py-1.5 text-xs font-semibold text-[#D6FFF6] transition duration-300 group-hover:border-[#57F1DB]/50 group-hover:bg-[#57F1DB]/20">
+        <span className="dashboard-action-label-sm mt-5 inline-flex items-center gap-1.5 self-start rounded-full border border-[#57F1DB]/30 bg-[#57F1DB]/10 px-3.5 py-1.5 text-[#D6FFF6] transition duration-300 group-hover:border-[#57F1DB]/50 group-hover:bg-[#57F1DB]/20">
           Join room
           <ArrowRight size={14} aria-hidden="true" />
         </span>
@@ -110,12 +110,12 @@ export function RealRoomCard({ membersCount, onClick, purpose, roomCode, roomNam
       <Card className="flex h-full min-h-[9rem] flex-col justify-between rounded-[14px] bg-[#111316]/86 p-5 transition duration-300 group-hover:bg-[#181B1E]/92">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h3 className="truncate text-base font-semibold text-[#F7F7F8]">{roomName}</h3>
+            <h3 className="features-card-title truncate text-[#F7F7F8]">{roomName}</h3>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <Badge className="border-[#57F1DB]/20 bg-[#57F1DB]/8 text-[10px] text-[#D6FFF6]">
                 {purpose === 'COMPETING' ? 'Competing' : 'Collaborative'}
               </Badge>
-              <span className="text-sm text-[#A7B8B3]">{membersCount} members</span>
+              <span className="features-card-text text-[#A7B8B3]">{membersCount} members</span>
             </div>
           </div>
           {roomCode ? (
@@ -124,7 +124,7 @@ export function RealRoomCard({ membersCount, onClick, purpose, roomCode, roomNam
             </Badge>
           ) : null}
         </div>
-        <span className="mt-5 inline-flex items-center gap-1.5 self-start rounded-xl border border-white/8 bg-black/18 px-3 py-1.5 text-xs font-semibold text-[#D6FFF6] transition group-hover:border-[#57F1DB]/35">
+        <span className="dashboard-action-label-sm mt-5 inline-flex items-center gap-1.5 self-start rounded-xl border border-white/8 bg-black/18 px-3 py-1.5 text-[#D6FFF6] transition group-hover:border-[#57F1DB]/35">
           Open room
           <ArrowRight size={13} aria-hidden="true" />
         </span>

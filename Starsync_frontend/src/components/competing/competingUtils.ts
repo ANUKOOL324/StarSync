@@ -83,16 +83,19 @@ export const difficultyClassName: Record<string, string> = {
   HARD: 'border-red-300/25 bg-red-400/10 text-red-200',
 }
 
+const leetcodeFailureClassName = 'border-[#ef4743]/25 bg-[#ef4743]/10 text-[#ef4743]'
+
 export const submissionStatusClassName: Record<string, string> = {
   ACCEPTED: 'border-emerald-300/25 bg-emerald-400/10 text-emerald-200',
-  WRONG_ANSWER: 'border-red-300/25 bg-red-400/10 text-red-200',
-  COMPILATION_ERROR: 'border-amber-300/25 bg-amber-400/10 text-amber-200',
-  RUNTIME_ERROR: 'border-red-300/25 bg-red-400/10 text-red-200',
+  WRONG_ANSWER: leetcodeFailureClassName,
+  COMPILATION_ERROR: leetcodeFailureClassName,
+  RUNTIME_ERROR: leetcodeFailureClassName,
   TIME_LIMIT_EXCEEDED: 'border-amber-300/25 bg-amber-400/10 text-amber-200',
   INTERNAL_ERROR: 'border-slate-300/25 bg-slate-400/10 text-slate-200',
   Accepted: 'border-emerald-300/25 bg-emerald-400/10 text-emerald-200',
-  'Wrong Answer': 'border-red-300/25 bg-red-400/10 text-red-200',
-  'Compilation Error': 'border-amber-300/25 bg-amber-400/10 text-amber-200',
+  'Wrong Answer': leetcodeFailureClassName,
+  'Compilation Error': leetcodeFailureClassName,
+  'Runtime Error': leetcodeFailureClassName,
 }
 
 export const formatSubmissionStatus = (status: string) => {
@@ -104,7 +107,21 @@ export const formatSubmissionStatus = (status: string) => {
 }
 
 export const getSubmissionStatusClassName = (status: string) => {
-  return submissionStatusClassName[status] ?? 'border-slate-300/25 bg-slate-400/10 text-slate-200'
+  if (submissionStatusClassName[status]) {
+    return submissionStatusClassName[status]
+  }
+
+  const normalizedStatus = status.toUpperCase().replace(/\s+/g, '_')
+
+  if (submissionStatusClassName[normalizedStatus]) {
+    return submissionStatusClassName[normalizedStatus]
+  }
+
+  if (['WRONG_ANSWER', 'COMPILATION_ERROR', 'RUNTIME_ERROR'].includes(normalizedStatus)) {
+    return leetcodeFailureClassName
+  }
+
+  return 'border-slate-300/25 bg-slate-400/10 text-slate-200'
 }
 
 export const formatDifficulty = (difficulty?: ChatRoom['difficulty']) => {

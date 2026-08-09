@@ -28,10 +28,10 @@ export function EmptyState({ description, title, variant = 'chat' }: EmptyStateP
       >
         <Icon size={isSidebar ? 16 : 18} aria-hidden="true" />
       </div>
-      <p className={isSidebar ? 'text-xs font-semibold text-white' : 'text-sm font-semibold text-white'}>{title}</p>
+      <p className={isSidebar ? 'room-font-display text-xs font-semibold text-white' : 'room-font-display text-sm font-semibold text-white'}>{title}</p>
       <p
         className={[
-          'mx-auto text-zinc-500',
+          'room-font-body mx-auto text-zinc-500',
           isSidebar ? 'mt-1 max-w-full text-xs leading-4' : 'mt-1.5 max-w-52 text-sm leading-5',
         ].join(' ')}
       >

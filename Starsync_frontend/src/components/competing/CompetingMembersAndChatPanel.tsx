@@ -71,6 +71,7 @@ export function CompetingMembersAndChatPanel({
 
   const onlineMemberIds = getOnlineMemberIds(onlineUsers)
   const onlineCount = members.filter((member) => onlineMemberIds.has(member.id)).length
+  const totalCount = members.length || 1
 
   const panelTabs = (
     <Tabs
@@ -83,18 +84,18 @@ export function CompetingMembersAndChatPanel({
           <TabsList variant="competing" className="flex h-9 min-w-0 overflow-hidden">
             <TabsTrigger
               value="chat"
-              className="px-3 data-[state=active]:!bg-emerald-500/12 data-[state=active]:!text-white"
+              className="room-font-display px-3 data-[state=active]:!bg-emerald-500/12 data-[state=active]:!text-white"
             >
               Chat
             </TabsTrigger>
             <TabsTrigger
               value="players"
-              className="px-3 data-[state=active]:!bg-emerald-500/12 data-[state=active]:!text-white"
+              className="room-font-display px-3 data-[state=active]:!bg-emerald-500/12 data-[state=active]:!text-white"
             >
               Players
             </TabsTrigger>
           </TabsList>
-          <Badge className="shrink-0 border !border-blue-500/30 bg-blue-500/10 !text-white shadow-[0_0_8px_rgba(59,130,246,0.2)]">
+          <Badge className="room-font-body shrink-0 border border-white/10 bg-white/[0.04] !text-slate-300 shadow-none">
             <Users size={13} aria-hidden="true" />
             {onlineCount} online
           </Badge>
@@ -125,6 +126,7 @@ export function CompetingMembersAndChatPanel({
             onStopTyping={sendStopTyping}
             onTyping={sendTyping}
             roomName={room.name}
+            sendButtonVariant="competing"
             variant="sidebar"
           />
         </div>
@@ -136,9 +138,9 @@ export function CompetingMembersAndChatPanel({
       >
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <div className="shrink-0 overflow-hidden border-b border-white/10 px-4 py-4">
-            <p className="truncate text-sm font-semibold text-white">Session players</p>
-            <p className="mt-1 truncate text-xs text-slate-500">
-              {onlineCount} online · {members.length || 1} total
+            <p className="room-font-display truncate text-sm font-semibold text-white">Session players</p>
+            <p className="room-font-body mt-1 truncate text-xs text-slate-500">
+              Total joined · {totalCount}
             </p>
           </div>
 
@@ -157,35 +159,29 @@ export function CompetingMembersAndChatPanel({
                         <div className="flex min-w-0 items-center gap-3 overflow-hidden">
                           <Avatar name={member.username} seed={member.email} size="sm" />
                           <div className="min-w-0 overflow-hidden">
-                            <p className="truncate text-sm font-semibold text-white">
+                            <p className="room-font-display truncate text-sm font-semibold text-white">
                               {member.username}
                             </p>
                             <div className="mt-1 flex min-w-0 items-center gap-2 overflow-hidden">
-                              <Badge className="shrink-0 border-white/10 bg-white/4 text-[10px] uppercase tracking-[0.16em] text-slate-400">
+                              <Badge className="room-font-kicker shrink-0 border-white/10 bg-white/4 text-[10px] uppercase tracking-[0.16em] text-slate-400">
                                 {member.role.toLowerCase()}
                               </Badge>
-                              <span className="truncate text-xs text-slate-500">
+                              <span className="room-font-body truncate text-xs text-slate-500">
                                 {member.email}
                               </span>
                             </div>
                           </div>
                         </div>
-                        <span
-                          className={[
-                            'size-2.5 shrink-0 rounded-full',
-                            isOnline
-                              ? 'bg-emerald-400 shadow-[0_0_16px_rgba(52,211,153,0.55)]'
-                              : 'bg-slate-600',
-                          ].join(' ')}
-                          aria-label={isOnline ? 'Online' : 'Offline'}
-                        />
+                        <span className="room-font-body shrink-0 text-xs text-slate-400">
+                          {isOnline ? 'Online' : 'Offline'}
+                        </span>
                       </CardContent>
                     </Card>
                   )
                 })
               ) : (
                 <Card className="border-white/10 bg-white/[0.035] py-0 shadow-none">
-                  <CardContent className="p-4 text-sm text-slate-400">
+                  <CardContent className="room-font-body p-4 text-sm text-slate-400">
                     Player list is loading.
                   </CardContent>
                 </Card>

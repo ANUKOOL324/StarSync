@@ -1,10 +1,16 @@
-import { BookOpen, ChevronLeft, ChevronRight, FileText, ScrollText, Trophy } from 'lucide-react'
+import { BookOpen, ChevronLeft, ChevronRight, FileText, ScrollText, Tag, Trophy } from 'lucide-react'
 import { useState } from 'react'
 import type { SubmissionHistoryItem } from '../../types/editor'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/Button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../ui/dropdown-menu'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs'
 import { ProblemPanelRail } from './CompetingPanelRails'
 import { CompetingSubmissionsPanel } from './CompetingSubmissionsPanel'
@@ -104,8 +110,8 @@ export function CompetingProblemPanel({
           value="problem"
           className="m-0 min-w-0 max-w-full overflow-hidden p-3 @[20rem]:p-4"
         >
-          <div className="min-w-0 max-w-full space-y-4 overflow-hidden @[20rem]:space-y-5">
-            <section className="min-w-0 overflow-hidden border-b border-white/10 pb-3">
+          <div className="min-w-0 max-w-full space-y-3 overflow-hidden">
+            <section className="min-w-0 overflow-hidden border-b border-white/10 pb-2">
               <div
                 className="flex max-w-full items-center gap-1 overflow-x-auto overscroll-x-contain pb-0.5 [scrollbar-width:thin] @[20rem]:justify-center"
                 aria-label={`Problem ${currentProblemNumber} of ${problems.length}`}
@@ -216,101 +222,128 @@ export function CompetingProblemPanel({
                 </CardContent>
               </Card>
             ) : (
-              <>
-              <section className="min-w-0 space-y-4 overflow-hidden">
-                <div className="flex flex-wrap items-center gap-1.5 overflow-hidden @[20rem]:gap-2">
-                  <Badge className={difficultyClassName[selectedProblem.difficulty]}>
-                    {formatDifficulty(selectedProblem.difficulty)}
-                  </Badge>
-                  {selectedProblem.topics.map((topic) => (
-                    <Badge
-                      key={topic}
-                      className="max-w-full truncate border-zinc-500/20 bg-zinc-500/10 text-zinc-300"
-                    >
-                      {topic}
-                    </Badge>
-                  ))}
-                </div>
+              <div className="competing-problem-content space-y-3">
+              <section className="min-w-0 space-y-2 overflow-hidden">
+                <Badge className={difficultyClassName[selectedProblem.difficulty]}>
+                  {formatDifficulty(selectedProblem.difficulty)}
+                </Badge>
                 <div className="min-w-0 overflow-hidden">
-                  <h2 className="wrap-break-word text-lg font-semibold tracking-tight text-white @[20rem]:text-xl">
+                  <h2 className="wrap-break-word text-base font-semibold tracking-tight text-white @[20rem]:text-lg">
                     {selectedProblem.title}
                   </h2>
-                  <p className="mt-3 wrap-break-word text-sm leading-6 text-slate-400">
+                  <p className="mt-1.5 wrap-break-word text-sm leading-5 text-slate-400">
                     {selectedProblem.description}
                   </p>
                 </div>
               </section>
 
-              <section className="grid gap-3 overflow-hidden">
-                <div className="overflow-hidden rounded-xl border border-white/8 bg-white/[0.025] p-4">
-                  <h3 className="text-sm font-semibold text-white">Input</h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-400">
-                    {selectedProblem.inputExplanation}
-                  </p>
-                </div>
-                <div className="overflow-hidden rounded-xl border border-white/8 bg-white/[0.025] p-4">
-                  <h3 className="text-sm font-semibold text-white">Output</h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-400">
-                    {selectedProblem.outputExplanation}
-                  </p>
-                </div>
+              <section className="space-y-1.5 overflow-hidden text-sm leading-5 text-slate-400">
+                <p>
+                  <span className="font-semibold text-white">Input: </span>
+                  {selectedProblem.inputExplanation}
+                </p>
+                <p>
+                  <span className="font-semibold text-white">Output: </span>
+                  {selectedProblem.outputExplanation}
+                </p>
               </section>
 
-              <section className="space-y-3 overflow-hidden">
+              <section className="space-y-1.5 overflow-hidden">
                 <h3 className="text-sm font-semibold text-white">Constraints</h3>
-                <div className="grid gap-2 overflow-hidden">
+                <ul className="list-disc space-y-0.5 pl-5 text-sm leading-5 text-slate-400">
                   {selectedProblem.constraints.map((constraint) => (
-                    <code
-                      key={constraint}
-                      className="block overflow-hidden rounded-lg border border-white/8 bg-black/25 px-3 py-2 font-mono text-xs leading-5 wrap-break-word text-slate-300"
-                    >
-                      {constraint}
-                    </code>
+                    <li key={constraint}>
+                      <code className="font-mono text-xs text-slate-300">{constraint}</code>
+                    </li>
                   ))}
-                </div>
+                </ul>
               </section>
 
-              <section className="space-y-3 overflow-hidden">
+              <section className="space-y-1.5 overflow-hidden">
                 <h3 className="text-sm font-semibold text-white">Example</h3>
-                <div className="grid grid-cols-1 gap-3 overflow-hidden lg:grid-cols-2">
-                  <div className="overflow-hidden rounded-xl border border-white/8 bg-black/25 p-3">
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                      Input
-                    </p>
-                    <pre className="mt-3 whitespace-pre-wrap font-mono text-sm text-slate-200">
-                      {selectedProblem.sampleInput}
-                    </pre>
-                  </div>
-                  <div className="overflow-hidden rounded-xl border border-white/8 bg-black/25 p-3">
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                      Output
-                    </p>
-                    <pre className="mt-3 whitespace-pre-wrap font-mono text-sm text-slate-200">
-                      {selectedProblem.sampleOutput}
-                    </pre>
-                  </div>
+                <div className="overflow-hidden rounded-lg border border-white/8 bg-black/25 px-3 py-2.5">
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Input</p>
+                  <pre className="mt-1 whitespace-pre-wrap font-mono text-sm leading-5 text-slate-200">
+                    {selectedProblem.sampleInput}
+                  </pre>
+                  <p className="mt-2 text-[11px] font-medium uppercase tracking-wide text-slate-500">Output</p>
+                  <pre className="mt-1 whitespace-pre-wrap font-mono text-sm leading-5 text-slate-200">
+                    {selectedProblem.sampleOutput}
+                  </pre>
                 </div>
               </section>
 
               <Accordion
-                type="single"
-                collapsible
-                className="rounded-xl border border-white/8 bg-white/[0.035] px-4"
+                type="multiple"
+                className="overflow-hidden rounded-lg border border-white/8 bg-white/[0.035]"
               >
-                <AccordionItem value="hint" className="border-white/8">
-                  <AccordionTrigger className="text-white hover:no-underline">
+                <AccordionItem value="hints" className="border-white/8 px-3">
+                  <AccordionTrigger className="py-2.5 text-sm text-white hover:no-underline">
                     Hints
                   </AccordionTrigger>
-                  <AccordionContent>
-                    <ul className="space-y-2 text-sm leading-6 text-slate-400">
+                  <AccordionContent className="pb-2.5">
+                    <ul className="space-y-1 text-sm leading-5 text-slate-400">
                       {selectedProblem.hints.map((hint) => (
                         <li key={hint}>{hint}</li>
                       ))}
                     </ul>
                   </AccordionContent>
                 </AccordionItem>
+
+                {selectedProblem.topics.length ? (
+                  <AccordionItem value="topics" className="border-white/8 px-3">
+                    <AccordionTrigger className="py-2.5 text-sm text-white hover:no-underline">
+                      <span className="flex items-center gap-2">
+                        <Tag size={14} aria-hidden="true" className="text-slate-300" />
+                        Topics
+                      </span>
+                    </AccordionTrigger>
+                    <AccordionContent className="pb-2.5">
+                      <div className="flex flex-wrap gap-1.5">
+                        {selectedProblem.topics.map((topic) => {
+                          const relatedProblems = problems.filter((problem) => problem.topics.includes(topic))
+
+                          return (
+                            <DropdownMenu key={topic}>
+                              <DropdownMenuTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="max-w-full truncate rounded-md bg-white/8 px-2.5 py-1 text-xs font-normal text-slate-300 transition hover:bg-white/12 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/15 cursor-pointer"
+                                  aria-label={`View contest problems tagged ${topic}`}
+                                >
+                                  {topic}
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent
+                                align="start"
+                                className="min-w-44 border-white/10 bg-[#111113] text-slate-200"
+                              >
+                                {relatedProblems.length ? (
+                                  relatedProblems.map((problem) => (
+                                    <DropdownMenuItem
+                                      key={problem.id}
+                                      onSelect={() => onSelectedProblemIdChange(problem.id)}
+                                      className="cursor-pointer text-sm focus:bg-white/8 focus:text-white"
+                                    >
+                                      <span className="font-medium text-slate-300">{problem.shortLabel}</span>
+                                      <span className="ml-2 truncate text-slate-400">{problem.title}</span>
+                                    </DropdownMenuItem>
+                                  ))
+                                ) : (
+                                  <DropdownMenuItem disabled className="text-sm text-slate-500">
+                                    No problems in this contest
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )
+                        })}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                ) : null}
               </Accordion>
-              </>
+              </div>
             )}
             </div>
           </TabsContent>
