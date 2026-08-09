@@ -1,18 +1,24 @@
 # StarSync
 
-StarSync is a realtime collaboration workspace for chat, direct messages, shared coding rooms, whiteboard sessions, and contest-style problem solving. It uses a React/Vite frontend, an Express/TypeScript backend, Socket.IO, Prisma, PostgreSQL, Redis-backed sessions, Monaco, tldraw, Liveblocks, and a local Piston runner for code execution.
+StarSync is a realtime collaboration workspace for teams that want chat, shared coding, whiteboarding, and contest-style problem solving in one focused room. It combines a React/Vite frontend with an Express/TypeScript API, Socket.IO application realtime, Redis-backed HttpOnly sessions, PostgreSQL/Prisma persistence, Liveblocks-powered whiteboard collaboration, and a local Piston runner for code execution.
+
+## What StarSync Does
+
+- Creates collaborative rooms with chat, direct messages, presence, typing indicators, shared editor state, and whiteboard access.
+- Creates competing rooms with assigned problem-bank questions, contest timers, run-code checks, submission history, and submission notifications.
+- Keeps authentication session-based: HTTP requests and Socket.IO handshakes both use the browser's HttpOnly `sid` cookie backed by Redis.
+- Separates realtime responsibilities clearly: Socket.IO handles StarSync app events, while Liveblocks/Yjs remain responsible for collaborative canvas/editor features where they are already used.
 
 ## Highlights
 
-- HttpOnly cookie authentication with Redis sessions
-- Realtime group rooms and direct messages over Socket.IO
-- Persistent chat history, unread states, typing indicators, and online presence
-- Collaborative code editor with autosave and active collaborator presence
-- Whiteboard collaboration through tldraw and Liveblocks
-- Competing rooms with assigned problem-bank questions
-- Run Code execution against visible/sample testcases only
-- Piston-backed code runner for JavaScript, TypeScript, Python, C, and C++
-- Responsive dark workspace UI for dashboard, chat, editor, and contest rooms
+- Redis-backed HttpOnly cookie authentication
+- Socket.IO group chat, direct messages, presence, typing, timers, editor room events, and submission events
+- Persistent chat history, unread states, optimistic message reconciliation, and online user state
+- Collaborative editor workspace with autosave and active collaborator presence contracts
+- Whiteboard workspace built with tldraw and Liveblocks
+- Competing rooms with assigned PostgreSQL problem-bank questions
+- Piston-backed code execution for JavaScript, TypeScript, Python, C, and C++
+- Responsive dark UI for dashboard, chat rooms, editor views, whiteboard, and contest rooms
 
 ## Tech Stack
 
@@ -20,10 +26,48 @@ StarSync is a realtime collaboration workspace for chat, direct messages, shared
 | --- | --- |
 | Frontend | React, TypeScript, Vite, Tailwind CSS, Monaco, tldraw |
 | Backend | Node.js, Express, TypeScript, Socket.IO |
+| Realtime app events | Socket.IO at `/socket.io/` |
+| Authentication | HttpOnly `sid` cookie + Redis sessions |
 | Database | PostgreSQL with Prisma |
-| Sessions | Redis + HttpOnly `sid` cookie |
 | Code runner | Piston Docker API |
-| Whiteboard auth | Liveblocks server token endpoint |
+| Collaborative canvas/editor tooling | Liveblocks / Yjs where used |
+
+## Architecture
+
+```mermaid
+flowchart LR
+  Browser[Browser]
+  Frontend[React Frontend]
+  API[Express API]
+  Realtime[Socket.IO Server]
+  Sessions[Redis Sessions]
+  DB[(PostgreSQL + Prisma)]
+  Piston[Piston Runner]
+  Liveblocks[Liveblocks / Yjs]
+
+  Browser --> Frontend
+  Frontend -->|REST / HTTP + sid cookie| API
+  Frontend -->|Socket.IO + sid cookie| Realtime
+  Frontend -->|whiteboard collaboration| Liveblocks
+  API --> Sessions
+  Realtime --> Sessions
+  API --> DB
+  Realtime --> DB
+  API --> Piston
+  API -->|room-scoped auth token| Liveblocks
+```
+
+## Realtime Model
+
+StarSync uses Socket.IO for application realtime events. The browser sends the existing HttpOnly session cookie during the Socket.IO handshake, and the backend resolves the Redis-backed session before accepting the realtime connection.
+
+Important Socket.IO behavior:
+
+- The client connects to the server origin from `VITE_SOCKET_IO_URL`; the Socket.IO path is configured separately as `/socket.io/`.
+- After reconnect, the client emits `join`, the backend re-validates room membership, and presence restores the online state.
+- Presence represents unique users rather than raw connections, so multiple tabs for the same user do not appear as multiple people online.
+- Chat uses named events: the client emits `chat`, the server persists the message, and the server emits `message`; optimistic messages are reconciled with `clientMessageId`.
+- Competing-room timer and submission updates are broadcast through `ROOM_TIMER_UPDATED` and `ROOM_SUBMISSION_CREATED`.
 
 ## Project Structure
 
@@ -67,21 +111,6 @@ StarSync is a realtime collaboration workspace for chat, direct messages, shared
 `- docker-compose.piston.yml
 ```
 
-## System Flow
-
-```mermaid
-flowchart LR
-  User[Browser] --> Frontend[React Frontend]
-  Frontend -->|HTTP + sid cookie| API[Express API]
-  Frontend -->|Socket.IO + sid cookie| Realtime[Socket.IO Server]
-  API --> Session[Redis Sessions]
-  Realtime --> Session
-  API --> DB[(PostgreSQL)]
-  Realtime --> DB
-  API --> Piston[Piston Runner]
-  API --> Liveblocks[Liveblocks Auth]
-```
-
 ## Core App Flow
 
 ```mermaid
@@ -90,24 +119,25 @@ flowchart TD
   B --> C[Join room]
   B --> D[Create collaborative room]
   B --> E[Create competing room]
-  C --> F[Chat workspace]
+  C --> F[Room workspace]
   D --> F
-  F --> G[Chat]
-  F --> H[Editor]
+  F --> G[Chat and direct messages]
+  F --> H[Shared editor]
   F --> I[Whiteboard]
   E --> J[Competing workspace]
-  J --> K[Assigned DB problems]
+  J --> K[Assigned problems]
   K --> L[Run visible testcases]
-  J --> M[Submission history]
+  J --> M[Submit solution]
+  M --> N[Submission history and notifications]
 ```
 
 ## Requirements
 
 - Node.js and npm
 - PostgreSQL database, Neon works well
-- Redis for session storage, local or hosted
+- Redis for session storage
 - Docker Desktop for the optional local Piston code runner
-- Liveblocks secret key for the whiteboard tab
+- Liveblocks secret key for whiteboard collaboration
 
 ## Backend Setup
 
@@ -153,6 +183,21 @@ Backend URL:
 http://localhost:3001
 ```
 
+Health check:
+
+```txt
+GET http://localhost:3001/api/health
+```
+
+Expected shape:
+
+```json
+{
+  "status": "ok",
+  "service": "starsync-api"
+}
+```
+
 ## Frontend Setup
 
 ```powershell
@@ -167,6 +212,8 @@ Update `Starsync_frontend/.env` if needed:
 VITE_API_URL=http://localhost:3001/api/v1
 VITE_SOCKET_IO_URL=http://localhost:3001
 ```
+
+`VITE_SOCKET_IO_URL` is the Socket.IO server origin. The Socket.IO path remains `/socket.io/` in the client and server configuration.
 
 Run the frontend:
 
@@ -204,7 +251,7 @@ More details are in `Starsync_backend/CODE_RUNNER.md`.
 
 ## Whiteboard
 
-Chat, direct messages, room presence, typing, timers, editor sync, and contest events use the app Socket.IO server at `/socket.io/`. The whiteboard uses Liveblocks because canvas synchronization is a separate high-frequency collaboration problem.
+Socket.IO handles StarSync application realtime events such as chat, presence, typing, timers, and submission notifications. Whiteboard collaboration uses Liveblocks because canvas synchronization is a separate high-frequency collaboration problem.
 
 Whiteboard access still follows StarSync room membership rules:
 
@@ -218,12 +265,12 @@ Whiteboard access still follows StarSync room membership rules:
 Competing rooms use the problem bank stored in PostgreSQL:
 
 - Room creation stores difficulty/topic preferences.
-- The backend assigns four available problems to the room.
-- The frontend loads P1/P2/P3/P4 from `GET /api/v1/rooms/:roomId/problems`.
+- The backend assigns available problems to the room.
+- The frontend loads problems from `GET /api/v1/rooms/:roomId/problems`.
 - Run Code calls `POST /api/v1/rooms/:roomId/problems/run`.
-- Only visible/sample testcases are executed and returned.
-- Hidden testcases stay private and are not returned to the frontend.
-- Submit and leaderboard behavior are intentionally separate from Run Code.
+- Submit calls `POST /api/v1/rooms/:roomId/problems/submit`.
+- Visible/sample testcases can be returned to the frontend; hidden testcases stay private.
+- Successful submissions are saved and announced through `ROOM_SUBMISSION_CREATED`.
 
 ## Run Locally
 
@@ -283,20 +330,24 @@ Recommended setup for DigitalOcean:
 
 - One Ubuntu Droplet with Nginx, PM2, Redis, and Docker Piston
 - Neon PostgreSQL for the database
-- Same-origin domain for frontend, `/api`, and `/socket.io/`
+- Same-origin domain for frontend, `/api/`, and `/socket.io/`
+- Nginx forwards Socket.IO upgrade headers for realtime traffic
 
-Use `deploy/env/backend.production.env.example` and `deploy/env/frontend.production.env.example` when building for production.
-Use `deploy/pm2.ecosystem.config.cjs` to keep the backend running after SSH logout.
+Use `deploy/env/backend.production.env.example` and `deploy/env/frontend.production.env.example` when building for production. Use `deploy/pm2.ecosystem.config.cjs` to keep the backend running after SSH logout.
 
 ## Troubleshooting
 
 ### Login does not persist after refresh
 
-Check that Redis is running and `REDIS_URL` is correct. The app uses a Redis-backed HttpOnly `sid` cookie for both HTTP and Socket.IO auth.
+Check that Redis is running and `REDIS_URL` is correct. The app uses a Redis-backed HttpOnly `sid` cookie for both HTTP requests and Socket.IO handshakes.
 
 ### API requests fail in development
 
 Confirm `CLIENT_ORIGIN` and `FRONTEND_URL` match the frontend URL, usually `http://localhost:5173`.
+
+### Realtime room status stays offline
+
+Confirm the backend is running, `VITE_SOCKET_IO_URL` points to the backend origin, and the browser can reach `/socket.io/` on that origin.
 
 ### Code runner is unavailable
 
