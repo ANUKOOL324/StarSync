@@ -7,6 +7,7 @@ import { Avatar, AvatarGroup, AvatarGroupCount } from '../ui/Avatar'
 type RoomHeaderProps = {
   activeCollaborators?: { id: string; username: string; email: string }[]
   connectionStatus: 'connecting' | 'online' | 'offline'
+  dmPeerIsOnline?: boolean
   isInfoOpen: boolean
   room: ChatRoom
   onOpenSettings: () => void
@@ -18,6 +19,7 @@ type RoomHeaderProps = {
 export function RoomHeader({
   activeCollaborators,
   connectionStatus,
+  dmPeerIsOnline = false,
   isInfoOpen,
   onOpenSettings,
   onOpenSidebar,
@@ -53,9 +55,18 @@ export function RoomHeader({
 
           <div className="min-w-0 flex-1 sm:flex-initial">
             <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
-              <p className="room-font-display truncate text-base font-semibold text-slate-100 sm:text-lg">
-                {roomDisplay.displayName}
-              </p>
+              <div className="min-w-0">
+                <p className="room-font-display truncate text-base font-semibold text-slate-100 sm:text-lg">
+                  {roomDisplay.displayName}
+                </p>
+
+                {isDirectMessage && dmPeerIsOnline ? (
+                  <span className="mt-0.5 inline-flex h-5 items-center justify-center gap-1.5 rounded-full border border-[#22C55E]/25 bg-[#22C55E]/10 px-2 text-[11px] font-medium leading-none text-[#86EFAC]">
+                    <span className="size-1.5 shrink-0 rounded-full bg-[#22C55E] shadow-[0_0_10px_rgba(34,197,94,0.55)]" aria-hidden="true" />
+                    active
+                  </span>
+                ) : null}
+              </div>
 
               {activeCollaborators !== undefined && activeCollaborators.length > 0 && (
                 <div

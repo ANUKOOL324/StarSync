@@ -43,16 +43,19 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
   const workspaceRef = useRef<HTMLElement | null>(null)
   const navigate = useNavigate()
   const { logout, user } = useAuth()
+  const [activeTab, setActiveTab] = useState<'chat' | 'editor' | 'whiteboard'>('chat')
   const {
+    clearLocalUnread,
     createDm,
     deleteRoom,
     dmRooms,
     getRoom,
+    handleActiveRoomMessage,
     isLoadingRooms,
-    markRoomRead,
+    resolveActiveRoomId,
     rooms,
     updateRoom,
-  } = useRooms()
+  } = useRooms(roomId, { isChatTabVisible: activeTab === 'chat' })
 
   const [isDesktopLayout, setIsDesktopLayout] = useState(() => {
     if (typeof window === 'undefined') {
@@ -77,7 +80,6 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
 
     return window.matchMedia(`(min-width: ${DESKTOP_PANEL_BREAKPOINT}px)`).matches
   })
-  const [activeTab, setActiveTab] = useState<'chat' | 'editor' | 'whiteboard'>('chat')
   const [whiteboardCollaborators, setWhiteboardCollaborators] = useState<
     { id: string; username: string; email: string }[]
   >([])
@@ -161,6 +163,7 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
   const activeRoom = getRoom(roomId)
   const isDirectMessage = activeRoom?.type === 'DM'
   const isGroupRoom = activeRoom?.type === 'GROUP'
+  const isChatVisible = isDirectMessage || activeTab === 'chat'
   const isAdmin = Boolean(user?.id && activeRoom?.adminId === user.id && !isDirectMessage)
   const activeRoomDisplay = activeRoom ? getRoomDisplayInfo(activeRoom) : null
 
@@ -179,7 +182,30 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
     sendStopTyping,
     sendTyping,
     typingUsers,
-  } = useChatSocket(activeRoom?.id ?? '', user?.id)
+  } = useChatSocket(activeRoom?.id ?? '', user?.id, {
+    chatVisible: isChatVisible,
+    onActiveRoomMessage: (message) => {
+      if (isGroupRoom && activeTab !== 'chat') {
+        return
+      }
+
+      handleActiveRoomMessage(message)
+    },
+    onRoomAccessRemoved: (payload) => {
+      const removedRoomId = payload.roomId
+      const currentRoomId = resolveActiveRoomId()
+
+      if (removedRoomId === currentRoomId) {
+        navigate('/dashboard', { replace: true })
+      }
+    },
+  })
+
+  const dmPeerIsOnline = Boolean(
+    isDirectMessage &&
+      activeRoom?.otherUser &&
+      onlineUsers.some((onlineUser) => onlineUser.id === activeRoom.otherUser?.id),
+  )
 
   useEffect(() => {
     let isCurrentRequest = true
@@ -218,8 +244,12 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
   }, [activeRoom?.id])
 
   useEffect(() => {
-    markRoomRead(activeRoom?.id)
-  }, [activeRoom?.id, messages.length, markRoomRead])
+    if (!activeRoom?.id || !isChatVisible) {
+      return
+    }
+
+    clearLocalUnread(activeRoom.id)
+  }, [activeRoom?.id, clearLocalUnread, isChatVisible])
 
   useEffect(() => {
     if (!activeRoom?.id || !isDirectMessage) {
@@ -314,7 +344,6 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
     dmRooms,
     isOpen: isSidebarOpen,
     onClose: () => setIsSidebarOpen(false),
-    onlineUsers,
     onLogout: logout,
     onSelectRoom: (nextRoomId: string) => navigate(`/rooms/${nextRoomId}`),
     onTabChange: setActiveTab,
@@ -400,6 +429,7 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
           <div className="neon-field relative z-0 flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#09090B]">
             <RoomHeader
               connectionStatus={connectionStatus}
+              dmPeerIsOnline={dmPeerIsOnline}
               isInfoOpen={isInfoOpen}
               room={activeRoom}
               activeCollaborators={
@@ -449,6 +479,7 @@ export function ChatWorkspace({ roomId }: ChatWorkspaceProps) {
                   onStopTyping={sendStopTyping}
                   onTyping={sendTyping}
                   onSend={sendMessage}
+                  sendButtonVariant="competing"
                 />
               </>
             )}

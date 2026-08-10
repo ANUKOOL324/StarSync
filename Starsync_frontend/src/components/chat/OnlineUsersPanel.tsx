@@ -173,9 +173,11 @@ export function OnlineUsersPanel({
               <p className="room-font-display text-sm font-semibold text-[#F7F7F8]">
                 {isDirectMessage ? 'Participants' : 'Room members'}
               </p>
-              <p className="room-font-display rounded-full border border-[#22C55E]/25 bg-linear-to-b from-[#22C55E]/15 to-[#22C55E]/5 px-2.5 py-1 text-xs font-medium text-[#86EFAC] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
-                {onlineCount} Online
-              </p>
+              {!isDirectMessage ? (
+                <p className="room-font-display rounded-full border border-[#22C55E]/25 bg-linear-to-b from-[#22C55E]/15 to-[#22C55E]/5 px-2.5 py-1 text-xs font-medium text-[#86EFAC] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+                  {onlineCount} Online
+                </p>
+              ) : null}
             </div>
 
             <div className="relative mt-4 grid gap-3">
@@ -211,13 +213,17 @@ export function OnlineUsersPanel({
                   onOpenDirectMessage,
                 )
                 const isOpeningDm = openingDmUserId === member.id
+                const isMemberPresent = onlineUsers.some((onlineUser) => onlineUser.id === member.id)
+                const isCurrentUser = member.id === currentUserId
 
                 return (
                   <div key={member.id} className="flex items-center gap-3 rounded-xl border border-transparent p-1.5 transition hover:border-white/8 hover:bg-white/[0.035]">
                     <Avatar name={member.username} seed={member.username || member.email} size="sm" />
                     <div className="min-w-0 flex-1">
                       <div className="flex min-w-0 items-center gap-2">
-                        <p className="room-font-display truncate text-sm font-medium text-[#F7F7F8]">{member.username}</p>
+                        <p className="room-font-display truncate text-sm font-medium text-[#F7F7F8]">
+                          {isDirectMessage && isCurrentUser ? 'You' : member.username}
+                        </p>
                         {!isDirectMessage ? (
                           <span className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold ${getRoleBadgeClassName(member.role)}`}>
                             {member.role}
@@ -225,6 +231,9 @@ export function OnlineUsersPanel({
                         ) : null}
                       </div>
                       <p className="room-font-body truncate text-xs text-[#BACAC5]">{member.email}</p>
+                      {isDirectMessage && isMemberPresent && !isCurrentUser ? (
+                        <p className="room-font-body mt-0.5 text-xs text-[#86EFAC]">Here now</p>
+                      ) : null}
                     </div>
                     {canRemoveMember ? (
                       <button

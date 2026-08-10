@@ -5,7 +5,13 @@ import { Server } from "socket.io";
 import { env } from "../config/env";
 import { verifyEditorRoomAccess } from "../services/editorService";
 import { createMessage } from "../services/messageService";
+import {
+  dispatchMessageNotifications,
+  getUserNotificationRoomId,
+  markRoomReadForUser,
+} from "../services/roomReadService";
 import { addGroupRoomMember } from "../services/roomService";
+import { prisma } from "../prisma/client";
 import type { SocketUser } from "../types/socket";
 import { authenticateSocketCookie } from "../utils/socketAuth";
 import { resolveSocketRoomId } from "../utils/socketRoom";
@@ -108,9 +114,31 @@ type RoomSubmissionCreatedPayload = {
   submittedAt: Date;
 };
 
+type InboxMessagePayload = {
+  roomId: string;
+  roomType: "GROUP" | "DM";
+  messageId: string;
+  senderId: string;
+  sender: SocketUser;
+  content: string;
+  createdAt: Date;
+  unreadCount: number;
+  totalMessageCount: number;
+};
+
+type RoomAccessRemovedPayload = {
+  roomId: string;
+};
+
+type ChatVisibilityPayload = {
+  roomId: string;
+  visible: boolean;
+};
+
 interface ClientToServerEvents {
   join: (payload: JoinPayload) => void;
   chat: (payload: ChatPayload) => void;
+  "chat:visibility": (payload: ChatVisibilityPayload) => void;
   "typing:start": (payload: TypingStartPayload) => void;
   "typing:stop": (payload: TypingStopPayload) => void;
   "editor:change": (payload: EditorChangePayload) => void;
@@ -121,12 +149,14 @@ interface ServerToClientEvents {
   error: (payload: ErrorPayload) => void;
   presence: (payload: PresencePayload) => void;
   message: (payload: MessagePayload) => void;
+  "inbox:message": (payload: InboxMessagePayload) => void;
   "message-error": (payload: MessageErrorPayload) => void;
   "typing:update": (payload: TypingUpdatePayload) => void;
   "editor:sync": (payload: EditorSyncPayload) => void;
   "editor:presence:update": (payload: EditorPresenceUpdatePayload) => void;
   ROOM_TIMER_UPDATED: (payload: RoomTimerUpdatedPayload) => void;
   ROOM_SUBMISSION_CREATED: (payload: RoomSubmissionCreatedPayload) => void;
+  "room:access-removed": (payload: RoomAccessRemovedPayload) => void;
 }
 
 interface InterServerEvents {}
@@ -135,6 +165,7 @@ interface SocketData {
   user: SocketUser;
   currentRoomId?: string;
   activeEditorRoom?: string;
+  chatVisible?: boolean;
 }
 
 type SocketIoServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
@@ -171,6 +202,34 @@ export const broadcastSocketIoRoomSubmissionCreated = (
   }
 
   activeSocketIoServer.to(roomId).emit("ROOM_SUBMISSION_CREATED", payload);
+};
+
+export const evictUserFromSocketRoom = async (roomId: string, userId: string) => {
+  if (!activeSocketIoServer) {
+    return;
+  }
+
+  const io = activeSocketIoServer;
+  const roomSockets = await io.in(roomId).fetchSockets();
+  const targetSockets = roomSockets.filter((roomSocket) => roomSocket.data.user.id === userId);
+
+  for (const remoteSocket of targetSockets) {
+    clearTypingTimer(remoteSocket.id);
+    await broadcastTypingUpdate(io, roomId, remoteSocket.data.user, false);
+    removeEditorPresenceForRoom(io, remoteSocket.id, roomId, remoteSocket.data);
+
+    if (remoteSocket.data.currentRoomId === roomId) {
+      delete remoteSocket.data.currentRoomId;
+      delete remoteSocket.data.chatVisible;
+    }
+
+    await remoteSocket.leave(roomId);
+    remoteSocket.emit("room:access-removed", { roomId });
+  }
+
+  if (targetSockets.length > 0) {
+    await broadcastPresence(io, roomId);
+  }
 };
 
 const getAllowedOrigins = (): string[] => {
@@ -244,8 +303,9 @@ const broadcastEditorPresence = (io: SocketIoServer, roomId: string) => {
 
 const removeEditorPresenceForRoom = (
   io: SocketIoServer,
-  socket: SocketIoConnection,
+  socketId: string,
   roomId: string,
+  socketData?: SocketData,
 ) => {
   const activeClients = editorPresenceByRoom.get(roomId);
 
@@ -253,14 +313,14 @@ const removeEditorPresenceForRoom = (
     return;
   }
 
-  activeClients.delete(socket.id);
+  activeClients.delete(socketId);
 
   if (activeClients.size === 0) {
     editorPresenceByRoom.delete(roomId);
   }
 
-  if (socket.data.activeEditorRoom === roomId) {
-    delete socket.data.activeEditorRoom;
+  if (socketData?.activeEditorRoom === roomId) {
+    delete socketData.activeEditorRoom;
   }
 
   broadcastEditorPresence(io, roomId);
@@ -273,7 +333,7 @@ const clearEditorPresenceForSocket = (io: SocketIoServer, socket: SocketIoConnec
     return;
   }
 
-  removeEditorPresenceForRoom(io, socket, activeRoomId);
+  removeEditorPresenceForRoom(io, socket.id, activeRoomId, socket.data);
 };
 
 const getOnlineUsersInRoom = async (io: SocketIoServer, roomId: string): Promise<SocketUser[]> => {
@@ -285,6 +345,23 @@ const getOnlineUsersInRoom = async (io: SocketIoServer, roomId: string): Promise
   });
 
   return Array.from(usersById.values());
+};
+
+const collectChatViewingUserIds = async (
+  io: SocketIoServer,
+  roomId: string,
+  roomType: "GROUP" | "DM",
+) => {
+  const roomSockets = await io.in(roomId).fetchSockets();
+  const viewingUserIds = new Set<string>();
+
+  roomSockets.forEach((roomSocket) => {
+    if (roomType === "DM" || roomSocket.data.chatVisible === true) {
+      viewingUserIds.add(roomSocket.data.user.id);
+    }
+  });
+
+  return viewingUserIds;
 };
 
 const broadcastPresence = async (io: SocketIoServer, roomId: string) => {
@@ -332,7 +409,61 @@ const handleJoin = async (io: SocketIoServer, socket: SocketIoConnection, payloa
 
   await socket.join(nextRoomId);
   socket.data.currentRoomId = nextRoomId;
+
+  const room = await prisma.room.findUnique({
+    where: { id: nextRoomId },
+    select: { type: true },
+  });
+
+  if (room?.type === "DM") {
+    socket.data.chatVisible = true;
+    await markRoomReadForUser(nextRoomId, user.id);
+  } else {
+    socket.data.chatVisible = false;
+  }
+
   await broadcastPresence(io, nextRoomId);
+};
+
+const handleChatVisibility = async (
+  io: SocketIoServer,
+  socket: SocketIoConnection,
+  payload: ChatVisibilityPayload,
+) => {
+  if (typeof payload?.roomId !== "string" || typeof payload?.visible !== "boolean") {
+    return;
+  }
+
+  const roomId = socket.data.currentRoomId;
+
+  if (!roomId || roomId !== payload.roomId) {
+    return;
+  }
+
+  const room = await prisma.room.findUnique({
+    where: { id: roomId },
+    select: { type: true },
+  });
+
+  if (!room) {
+    return;
+  }
+
+  if (room.type === "DM") {
+    socket.data.chatVisible = true;
+
+    if (payload.visible) {
+      await markRoomReadForUser(roomId, socket.data.user.id);
+    }
+
+    return;
+  }
+
+  socket.data.chatVisible = payload.visible;
+
+  if (payload.visible) {
+    await markRoomReadForUser(roomId, socket.data.user.id);
+  }
 };
 
 const handleChat = async (io: SocketIoServer, socket: SocketIoConnection, payload: ChatPayload) => {
@@ -357,6 +488,24 @@ const handleChat = async (io: SocketIoServer, socket: SocketIoConnection, payloa
       roomId,
       senderId: socket.data.user.id,
     });
+
+    const room = await prisma.room.findUnique({
+      where: { id: roomId },
+      select: { type: true },
+    });
+
+    if (room) {
+      const viewingUserIds = await collectChatViewingUserIds(io, roomId, room.type);
+
+      await dispatchMessageNotifications({
+        io,
+        roomId,
+        roomType: room.type,
+        savedMessage,
+        senderId: socket.data.user.id,
+        viewingUserIds,
+      });
+    }
 
     io.to(roomId).emit("message", {
       id: savedMessage.id,
@@ -503,12 +652,12 @@ const handleEditorPresence = async (
     await verifyEditorRoomAccess(verifiedRoomId, socket.data.user.id);
 
     if (nextStatus === "inactive") {
-      removeEditorPresenceForRoom(io, socket, verifiedRoomId);
+      removeEditorPresenceForRoom(io, socket.id, verifiedRoomId, socket.data);
       return;
     }
 
     if (socket.data.activeEditorRoom && socket.data.activeEditorRoom !== verifiedRoomId) {
-      removeEditorPresenceForRoom(io, socket, socket.data.activeEditorRoom);
+      removeEditorPresenceForRoom(io, socket.id, socket.data.activeEditorRoom, socket.data);
     }
 
     const activeClients = editorPresenceByRoom.get(verifiedRoomId) ?? new Map<string, SocketUser>();
@@ -552,9 +701,11 @@ export const attachSocketIoServer = (httpServer: HttpServer) => {
     next();
   });
 
-  io.on("connection", (socket) => {
+  io.on("connection", async (socket) => {
     const user = socket.data.user;
     console.log(`Socket.IO connected: ${user.username}`);
+
+    await socket.join(getUserNotificationRoomId(user.id));
 
     socket.on("join", (payload) => {
       void handleJoin(io, socket, payload).catch((error) => {
@@ -570,6 +721,12 @@ export const attachSocketIoServer = (httpServer: HttpServer) => {
           ...(payload?.clientMessageId ? { clientMessageId: payload.clientMessageId } : {}),
           message: "Message could not be saved",
         });
+      });
+    });
+
+    socket.on("chat:visibility", (payload) => {
+      void handleChatVisibility(io, socket, payload).catch((error) => {
+        console.error("Socket.IO chat visibility update failed", error);
       });
     });
 

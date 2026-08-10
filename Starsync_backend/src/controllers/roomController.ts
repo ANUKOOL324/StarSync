@@ -17,6 +17,7 @@ import {
 import {
   broadcastSocketIoRoomSubmissionCreated,
   broadcastSocketIoRoomTimerUpdated,
+  evictUserFromSocketRoom,
 } from "../socketio/socketIoManager";
 import { resolveSocketRoomId } from "../utils/socketRoom";
 import { HttpError } from "../utils/HttpError";
@@ -151,6 +152,7 @@ export const removeRoomMemberController = async (request: Request, response: Res
 
   const { roomId, userId } = roomMemberParamsSchema.parse(request.params);
   const removedMember = await removeRoomMember(roomId, userId, request.user.userId);
+  await evictUserFromSocketRoom(removedMember.roomId, removedMember.userId);
 
   response.status(200).json({ removedMember });
 };

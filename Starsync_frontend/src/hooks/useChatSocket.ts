@@ -10,7 +10,16 @@ import type { EditorLanguage, EditorPresenceUser, EditorSyncEvent } from '../typ
 
 const createClientMessageId = () => crypto.randomUUID()
 
-export function useChatSocket(roomId: string, userId: string | undefined) {
+export function useChatSocket(
+  roomId: string,
+  userId: string | undefined,
+  options?: {
+    chatVisible?: boolean
+    onRoomAccessRemoved?: (payload: { roomId: string }) => void
+    onActiveRoomMessage?: (message: ChatMessage) => void
+  },
+) {
+  const chatVisible = options?.chatVisible ?? false
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [isLoadingHistory, setIsLoadingHistory] = useState(false)
   const [isLoadingOlder, setIsLoadingOlder] = useState(false)
@@ -29,6 +38,13 @@ export function useChatSocket(roomId: string, userId: string | undefined) {
   const typingTimersRef = useRef<Map<string, number>>(new Map())
   const lastTypingSentRef = useRef(0)
   const nextCursorRef = useRef<string | null>(null)
+  const onRoomAccessRemovedRef = useRef(options?.onRoomAccessRemoved)
+  const onActiveRoomMessageRef = useRef(options?.onActiveRoomMessage)
+  const chatVisibleRef = useRef(chatVisible)
+
+  onRoomAccessRemovedRef.current = options?.onRoomAccessRemoved
+  onActiveRoomMessageRef.current = options?.onActiveRoomMessage
+  chatVisibleRef.current = chatVisible
 
   const clearTypingUser = useCallback((typingUserId: string) => {
     const timer = typingTimersRef.current.get(typingUserId)
@@ -108,6 +124,7 @@ export function useChatSocket(roomId: string, userId: string | undefined) {
 
       setConnectionStatus('online')
       setOnlineUsers(payload.users)
+      socket.emit('chat:visibility', { roomId, visible: chatVisibleRef.current })
     })
 
     socket.on('typing:update', ({ roomId: eventRoomId, userId: typingUserId, username, isTyping }) => {
@@ -192,6 +209,22 @@ export function useChatSocket(roomId: string, userId: string | undefined) {
 
         return currentMessages.map((item, index) => (index === existingIndex ? nextMessage : item))
       })
+
+      if (!message.id) {
+        return
+      }
+
+      onActiveRoomMessageRef.current?.({
+        ...message,
+        mess: message.mess ?? message.content ?? '',
+        roomId: message.roomId ?? roomId,
+        status: 'sent',
+        isOwn: message.senderId === userId,
+      })
+    })
+
+    socket.on('room:access-removed', (payload) => {
+      onRoomAccessRemovedRef.current?.(payload)
     })
 
     socket.on('connect_error', () => {
@@ -344,6 +377,23 @@ export function useChatSocket(roomId: string, userId: string | undefined) {
     [roomId],
   )
 
+  const sendChatVisibility = useCallback(
+    (visible: boolean) => {
+      if (!socketRef.current?.connected || !roomId) return
+
+      socketRef.current.emit('chat:visibility', { roomId, visible })
+    },
+    [roomId],
+  )
+
+  useEffect(() => {
+    if (connectionStatus !== 'online' || !roomId) {
+      return
+    }
+
+    sendChatVisibility(chatVisible)
+  }, [chatVisible, connectionStatus, roomId, sendChatVisibility])
+
   return {
     connectionStatus,
     editorPresenceUsers,
@@ -357,6 +407,7 @@ export function useChatSocket(roomId: string, userId: string | undefined) {
     onlineUsers,
     retryMessage,
     roomTimerEvent,
+    sendChatVisibility,
     sendEditorChange,
     sendEditorPresence,
     sendMessage,

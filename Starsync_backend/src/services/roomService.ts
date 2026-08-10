@@ -9,7 +9,7 @@ import {
   findRoomForAccess,
   getActiveRoomMember,
 } from "./roomAccessService";
-
+import { computeUnreadCount } from "./roomReadService";
 const JOIN_CODE_PREFIX = "RM";
 const JOIN_CODE_CHARACTERS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const DEFAULT_COMPETING_PROBLEM_COUNT = 4;
@@ -81,6 +81,17 @@ const roomSelect = {
         where: { status: "ACTIVE" },
       },
       messages: true,
+    },
+  },
+} as const;
+
+const roomListSelect = {
+  ...roomSelect,
+  messages: {
+    orderBy: { createdAt: "desc" as const },
+    take: 1,
+    select: {
+      createdAt: true,
     },
   },
 } as const;
@@ -329,21 +340,39 @@ export const createRoom = async (input: CreateRoomInput, adminId: string) => {
 };
 
 export const getRooms = async (userId: string) => {
-  const rooms = await prisma.room.findMany({
+  const memberships = await prisma.roomMember.findMany({
     where: {
-      type: "GROUP",
-      members: {
-        some: {
-          userId,
-          status: "ACTIVE",
-        },
+      userId,
+      status: "ACTIVE",
+      room: {
+        type: "GROUP",
       },
     },
-    orderBy: { createdAt: "desc" },
-    select: roomSelect,
+    orderBy: {
+      joinedAt: "desc",
+    },
+    select: {
+      joinedAt: true,
+      readMessageCount: true,
+      room: {
+        select: roomListSelect,
+      },
+    },
   });
 
-  return rooms;
+  return memberships.map(({ joinedAt, readMessageCount, room }) => {
+    const { messages, ...roomData } = room;
+    const latestMessageAt = messages[0]?.createdAt ?? null;
+    const lastActivityAt = latestMessageAt ?? joinedAt ?? roomData.createdAt;
+    const totalMessageCount = roomData._count.messages;
+
+    return {
+      ...roomData,
+      joinedAt,
+      lastActivityAt,
+      unreadCount: computeUnreadCount(totalMessageCount, readMessageCount),
+    };
+  });
 };
 
 export const joinRoomByCode = async (input: JoinRoomInput, userId: string) => {
@@ -381,6 +410,7 @@ export const joinRoomByCode = async (input: JoinRoomInput, userId: string) => {
       userId,
       role: "MEMBER",
       status: "ACTIVE",
+      readMessageCount: room._count.messages,
     },
   });
 

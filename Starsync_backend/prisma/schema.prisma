@@ -186,6 +186,7 @@ model RoomMember {
   role     RoomRole         @default(MEMBER)
   status   RoomMemberStatus @default(ACTIVE)
   joinedAt DateTime         @default(now())
+  readMessageCount Int      @default(0)
   room     Room             @relation(fields: [roomId], references: [id], onDelete: Cascade)
   user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 

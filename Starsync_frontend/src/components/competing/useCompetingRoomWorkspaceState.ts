@@ -114,6 +114,8 @@ export function useCompetingRoomWorkspaceState(room: ChatRoom) {
     setIsSessionPanelCollapsed(false)
   }
 
+  const isChatVisible = sessionPanelTab === 'chat' && !isSessionPanelCollapsed
+
   const {
     connectionStatus,
     hasMoreMessages,
@@ -129,7 +131,14 @@ export function useCompetingRoomWorkspaceState(room: ChatRoom) {
     sendStopTyping,
     sendTyping,
     typingUsers,
-  } = useChatSocket(room.id, user?.id)
+  } = useChatSocket(room.id, user?.id, {
+    chatVisible: isChatVisible,
+    onRoomAccessRemoved: (payload) => {
+      if (payload.roomId === room.id) {
+        navigate('/dashboard', { replace: true })
+      }
+    },
+  })
 
   const currentMember = members.find((member) => member.id === user?.id)
   const isAdmin = Boolean(user?.id && (room.adminId === user.id || currentMember?.role === 'ADMIN'))

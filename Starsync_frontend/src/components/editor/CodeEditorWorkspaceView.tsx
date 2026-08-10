@@ -122,7 +122,7 @@ export function CodeEditorWorkspaceView({
       </div>
       <EditorStatusBar
         connectionStatus={connectionStatus}
-        hideConnectionStatus={toolbarMode === 'competing'}
+        hideConnectionStatus
         language={language}
         remoteUserName={null}
         saveStatus={saveStatus}

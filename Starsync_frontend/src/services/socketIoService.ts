@@ -2,6 +2,7 @@ import { io, type Socket } from 'socket.io-client'
 
 import type {
   ChatMessage,
+  InboxMessageEvent,
   OnlineUser,
   RoomSubmissionCreatedEvent,
   RoomTimerUpdateEvent,
@@ -38,6 +39,7 @@ export interface ClientToServerEvents {
     roomId: string
     status: 'active' | 'inactive'
   }) => void
+  'chat:visibility': (payload: { roomId: string; visible: boolean }) => void
 }
 
 export interface ServerToClientEvents {
@@ -62,6 +64,8 @@ export interface ServerToClientEvents {
   error: (payload: { message: string }) => void
   ROOM_TIMER_UPDATED: (payload: RoomTimerUpdateEvent['payload']) => void
   ROOM_SUBMISSION_CREATED: (payload: RoomSubmissionCreatedEvent['payload']) => void
+  'inbox:message': (payload: InboxMessageEvent) => void
+  'room:access-removed': (payload: { roomId: string }) => void
 }
 
 export type ChatSocket = Socket<ServerToClientEvents, ClientToServerEvents>

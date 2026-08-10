@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 
 import { prisma } from "../prisma/client";
 import { HttpError } from "../utils/HttpError";
+import { computeUnreadCount } from "./roomReadService";
 
 const userSelect = {
   id: true,
@@ -26,6 +27,7 @@ const dmRoomSelect = {
   members: {
     where: { status: "ACTIVE" },
     select: {
+      readMessageCount: true,
       user: {
         select: userSelect,
       },
@@ -109,8 +111,12 @@ const verifyUsersBelongToSourceRoom = async ({
 
 const formatDmRoom = (room: any, currentUserId: string) => {
   const otherMember = room.members.find((member: any) => member.user.id !== currentUserId);
+  const currentMember = room.members.find((member: any) => member.user.id === currentUserId);
   const otherUser = otherMember?.user ?? null;
   const lastMessage = room.messages[0] ?? null;
+  const totalMessageCount = room._count.messages;
+  const readMessageCount = currentMember?.readMessageCount ?? totalMessageCount;
+  const lastActivityAt = lastMessage?.createdAt ?? room.createdAt;
 
   return {
     id: room.id,
@@ -120,10 +126,12 @@ const formatDmRoom = (room: any, currentUserId: string) => {
     maxMembers: room.maxMembers,
     type: room.type,
     createdAt: room.createdAt,
+    lastActivityAt,
     adminId: room.adminId,
     admin: room.admin,
     otherUser,
     lastMessage,
+    unreadCount: computeUnreadCount(totalMessageCount, readMessageCount),
     _count: room._count,
   };
 };

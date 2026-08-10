@@ -146,17 +146,19 @@ export function EditorToolbar({
         >
           <RotateCcw size={15} aria-hidden="true" />
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="md"
-          onClick={onRunCode}
-          disabled={disabled || isRunning || !canRun}
-          className="!bg-[#05080a] hover:!bg-[#18D6A3]/08 !text-[#18D6A3] hover:!text-[#18D6A3] font-semibold border !border-[#18D6A3]/40 shadow-[0_0_12px_rgba(24,214,163,0.2)] hover:!border-[#18D6A3]/60 hover:shadow-[0_0_14px_rgba(24,214,163,0.35)] transition-all duration-200"
-        >
-          <Play size={15} aria-hidden="true" />
-          {isRunning ? 'Running' : 'Run Code'}
-        </Button>
+        <span className="inline-flex shrink-0 rounded-md bg-linear-to-b from-[#5A5A5C]/80 via-white/15 to-[#28282A]/85 p-px shadow-[0_8px_24px_rgba(0,0,0,0.18)] transition duration-150 hover:via-white/20">
+          <Button
+            type="button"
+            variant="ghost"
+            size="md"
+            onClick={onRunCode}
+            disabled={disabled || isRunning || !canRun}
+            className="h-9 min-w-[7.5rem] gap-1.5 px-4 font-semibold !rounded-[5px] !border-0 !bg-[#18181B]/78 !text-[#18D6A3] backdrop-blur-2xl transition-all duration-150 hover:!bg-[#18D6A3]/08 hover:!text-[#18D6A3] active:scale-[0.97] active:!bg-[#18D6A3]/16 active:!text-[#35E0B4] active:shadow-[inset_0_1px_3px_rgba(0,0,0,0.35)] disabled:pointer-events-none disabled:opacity-60 disabled:hover:!bg-[#18181B]/78 disabled:active:scale-100"
+          >
+            {!isRunning ? <Play size={15} aria-hidden="true" /> : null}
+            {isRunning ? 'Running' : 'Run Code'}
+          </Button>
+        </span>
       </div>
     </div>
   )

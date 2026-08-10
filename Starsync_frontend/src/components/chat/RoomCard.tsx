@@ -6,6 +6,7 @@ import { Avatar } from '../ui/Avatar'
 type RoomCardProps = {
   room: ChatRoom
   isActive: boolean
+  allowUnreadWhileActive?: boolean
   onSelect: (roomId: string) => void
 }
 
@@ -26,8 +27,9 @@ const formatRelativeTime = (value?: string) => {
   return `${diffInDays}d ago`
 }
 
-export function RoomCard({ isActive, onSelect, room }: RoomCardProps) {
-  const unreadCount = !isActive ? room.unreadCount ?? 0 : 0
+export function RoomCard({ allowUnreadWhileActive = false, isActive, onSelect, room }: RoomCardProps) {
+  const unreadCount = !isActive || allowUnreadWhileActive ? room.unreadCount ?? 0 : 0
+  const activityTimestamp = room.lastActivityAt ?? room.joinedAt ?? room.createdAt
 
   return (
     <motion.button
@@ -59,7 +61,7 @@ export function RoomCard({ isActive, onSelect, room }: RoomCardProps) {
           <span className="room-font-body mt-0.5 flex min-w-0 items-center gap-1.5 text-xs leading-4 text-slate-400">
             <span className="truncate text-slate-300">{room.joinCode ?? 'No code'}</span>
             <span className="shrink-0 text-slate-500">/</span>
-            <span className="shrink-0">{formatRelativeTime(room.createdAt)}</span>
+            <span className="shrink-0">{formatRelativeTime(activityTimestamp)}</span>
           </span>
         </span>
       </div>

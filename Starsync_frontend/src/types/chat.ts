@@ -32,6 +32,8 @@ export type ChatRoom = {
   sessionStatus?: 'WAITING' | 'RUNNING' | 'ENDED'
   sessionStartedAt?: string | null
   createdAt?: string
+  joinedAt?: string
+  lastActivityAt?: string
   adminId?: string
   admin?: ChatUser
   otherUser?: ChatUser | null
@@ -120,4 +122,16 @@ export type RoomSubmissionCreatedEvent = {
     runtimeMs?: number
     submittedAt: string
   }
+}
+
+export type InboxMessageEvent = {
+  roomId: string
+  roomType: 'GROUP' | 'DM'
+  messageId: string
+  senderId: string
+  sender: ChatUser
+  content: string
+  createdAt: string
+  unreadCount: number
+  totalMessageCount: number
 }

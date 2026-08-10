@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import type { AuthUser } from '../../types/auth'
-import type { ChatRoom, OnlineUser } from '../../types/chat'
+import type { ChatRoom } from '../../types/chat'
 import { Avatar } from '../ui/Avatar'
 import { DirectMessagesSection } from './DirectMessagesSection'
 import { RoomCard } from './RoomCard'
@@ -15,7 +15,6 @@ type RoomSidebarProps = {
   dmRooms: ChatRoom[]
   isOpen: boolean
   onClose: () => void
-  onlineUsers: OnlineUser[]
   onLogout: () => void
   onSelectRoom: (roomId: string) => void
   onTabChange: (tab: WorkspaceTab) => void
@@ -39,7 +38,7 @@ function SectionHeader({ isOpen, onToggle, title }: SectionHeaderProps) {
       type="button"
       onClick={onToggle}
       aria-expanded={isOpen}
-      className="group flex w-full min-w-0 items-center gap-1.5 rounded-lg px-1 py-1 text-left transition hover:bg-white/[0.055] hover:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#18D6A3]/35"
+      className="group flex w-full min-w-0 items-center gap-1.5 rounded-lg px-1 py-1 text-left transition hover:bg-white/[0.055] hover:text-slate-200 focus:outline-none"
     >
       <ChevronIcon size={14} aria-hidden="true" className="shrink-0 transition group-hover:text-[#18D6A3]" />
       <span className="room-font-kicker truncate text-xs text-slate-400">{title}</span>
@@ -73,6 +72,65 @@ const activeTabClasses: Record<WorkspaceTab, { active: string; focus: string }> 
 }
 
 
+const SIDEBAR_ROOM_LIMIT = 6
+
+const parseActivityTime = (value?: string) => {
+  if (!value) {
+    return 0
+  }
+
+  const time = new Date(value).getTime()
+  return Number.isNaN(time) ? 0 : time
+}
+
+const getRoomActivityTime = (room: ChatRoom) => {
+  return parseActivityTime(room.lastActivityAt) || parseActivityTime(room.joinedAt) || parseActivityTime(room.createdAt)
+}
+
+const roomMatchesSearch = (room: ChatRoom, query: string) => {
+  const roomName = room.name.toLowerCase()
+  const roomCode = (room.joinCode ?? room.slug).toLowerCase()
+
+  return roomName.includes(query) || roomCode.includes(query)
+}
+
+const buildCompactSidebarRooms = (rooms: ChatRoom[], activeRoomId: string, limit: number) => {
+  const visible: ChatRoom[] = []
+  const seenRoomIds = new Set<string>()
+
+  const addRoom = (room: ChatRoom | undefined) => {
+    if (!room || seenRoomIds.has(room.id)) {
+      return
+    }
+
+    seenRoomIds.add(room.id)
+    visible.push(room)
+  }
+
+  const currentRoom = rooms.find((room) => room.id === activeRoomId)
+  addRoom(currentRoom)
+
+  const unreadRooms = [...rooms]
+    .filter((room) => room.id !== activeRoomId && (room.unreadCount ?? 0) > 0)
+    .sort((left, right) => getRoomActivityTime(right) - getRoomActivityTime(left))
+
+  unreadRooms.forEach(addRoom)
+
+  const recentRooms = [...rooms]
+    .filter((room) => !seenRoomIds.has(room.id))
+    .sort((left, right) => getRoomActivityTime(right) - getRoomActivityTime(left))
+
+  for (const room of recentRooms) {
+    if (visible.length >= limit) {
+      break
+    }
+
+    addRoom(room)
+  }
+
+  return visible
+}
+
 export function RoomSidebar({
   activeRoom,
   activeRoomId,
@@ -80,7 +138,6 @@ export function RoomSidebar({
   dmRooms,
   isOpen,
   onClose,
-  onlineUsers,
   onLogout,
   onSelectRoom,
   onTabChange,
@@ -97,27 +154,24 @@ export function RoomSidebar({
   const visibleTabs = isDirectMessageRoom ? workspaceTabs.filter((tab) => tab.id === 'chat') : workspaceTabs
 
   const filteredGroupRooms = useMemo(() => {
-    if (!normalizedSearchQuery) {
-      return rooms
+    if (normalizedSearchQuery) {
+      return rooms.filter((room) => roomMatchesSearch(room, normalizedSearchQuery))
     }
 
-    return rooms.filter((room) => {
-      const roomName = room.name.toLowerCase()
-      const roomCode = (room.joinCode ?? room.slug).toLowerCase()
-
-      return roomName.includes(normalizedSearchQuery) || roomCode.includes(normalizedSearchQuery)
-    })
-  }, [normalizedSearchQuery, rooms])
+    return buildCompactSidebarRooms(rooms, activeRoomId, SIDEBAR_ROOM_LIMIT)
+  }, [activeRoomId, normalizedSearchQuery, rooms])
 
   const filteredDmRooms = useMemo(() => {
+    // Search filters the full loaded DM list before any future display subset.
     if (!normalizedSearchQuery) return dmRooms
+
     return dmRooms.filter((room) => {
-      const name = (room.otherUser?.username ?? room.name ?? '').toLowerCase()
-      return name.includes(normalizedSearchQuery)
+      const username = (room.otherUser?.username ?? room.name ?? '').toLowerCase()
+      const email = room.otherUser?.email?.toLowerCase() ?? ''
+
+      return username.includes(normalizedSearchQuery) || email.includes(normalizedSearchQuery)
     })
   }, [dmRooms, normalizedSearchQuery])
-
-  const onlineUserIds = useMemo(() => new Set(onlineUsers.map((onlineUser) => onlineUser.id)), [onlineUsers])
 
   return (
     <aside
@@ -171,7 +225,7 @@ export function RoomSidebar({
               aria-label="Search rooms and direct messages"
               value={roomSearchQuery}
               onChange={(event) => setRoomSearchQuery(event.target.value)}
-              placeholder="Search rooms"
+              placeholder="Search rooms and DMs"
               className="room-font-body min-w-0 flex-1 bg-transparent text-sm text-[#F7F7F8] outline-none placeholder:text-slate-500"
             />
           </label>
@@ -211,7 +265,7 @@ export function RoomSidebar({
           </div>
         </div>
 
-        <div className="mt-4 min-h-0 flex-1 overflow-y-auto pr-1">
+        <div className="subtle-scrollbar mt-4 min-h-0 flex-1 overflow-y-auto pr-1">
           
           <section>
             <SectionHeader
@@ -226,6 +280,11 @@ export function RoomSidebar({
                     key={room.id}
                     room={room}
                     isActive={room.id === activeRoomId}
+                    allowUnreadWhileActive={
+                      room.id === activeRoomId &&
+                      activeRoom.type === 'GROUP' &&
+                      activeTab !== 'chat'
+                    }
                     onSelect={(roomId) => {
                       onSelectRoom(roomId)
                       if (window.innerWidth < 1280) {
@@ -235,9 +294,13 @@ export function RoomSidebar({
                   />
                 ))}
                 {!filteredGroupRooms.length ? (
-                  <p className="room-font-body rounded-xl border border-white/10 bg-white/[0.05] px-3 py-3 text-sm text-slate-400 backdrop-blur-xl">
-                    {normalizedSearchQuery ? 'No matching rooms.' : 'No rooms yet.'}
-                  </p>
+                  normalizedSearchQuery ? (
+                    <p className="room-font-body px-1 py-1 text-xs text-slate-500">No matching rooms.</p>
+                  ) : (
+                    <p className="room-font-body rounded-xl border border-white/10 bg-white/[0.05] px-3 py-3 text-sm text-slate-400 backdrop-blur-xl">
+                      No rooms yet.
+                    </p>
+                  )
                 ) : null}
               </div>
             ) : null}
@@ -252,7 +315,6 @@ export function RoomSidebar({
             onCloseSidebar={onClose}
             onSelectRoom={onSelectRoom}
             onToggle={() => setIsDirectMessagesOpen((current) => !current)}
-            onlineUserIds={onlineUserIds}
           />
         </div>
 
