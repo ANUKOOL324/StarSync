@@ -112,7 +112,11 @@ function CodeEditorWorkspaceContent({
   const [monacoEditor, setMonacoEditor] = useState<MonacoEditorInstance | null>(null)
 
   const loadedDocumentContentRef = useRef('')
+  const loadedDocumentLanguageRef = useRef<EditorLanguage>('javascript')
+  const languageRef = useRef<EditorLanguage>(language)
   const yTextRef = useRef<SharedEditorText | null>(null)
+  const editorMetaRef = useRef<Y.Map<string> | null>(null)
+  const isApplyingSharedLanguageRef = useRef(false)
   
   const cursorDecorationsRef = useRef<string[]>([])
   const cursorStyleTagRef = useRef<HTMLStyleElement | null>(null)
@@ -164,6 +168,7 @@ function CodeEditorWorkspaceContent({
           const docLanguage = isSupportedEditorLanguage(parsed.language) ? parsed.language as EditorLanguage : 'javascript'
           const docContent = parsed.code || starterCodeByLanguage[docLanguage]
           loadedDocumentContentRef.current = docContent
+          loadedDocumentLanguageRef.current = docLanguage
           setLanguage(docLanguage)
           setCode(docContent)
           setLastSavedAt(new Date(parsed.updatedAt))
@@ -172,6 +177,7 @@ function CodeEditorWorkspaceContent({
           const docLanguage = 'javascript'
           const docContent = starterCodeByLanguage[docLanguage]
           loadedDocumentContentRef.current = docContent
+          loadedDocumentLanguageRef.current = docLanguage
           setLanguage(docLanguage)
           setCode(docContent)
           setSaveStatus('saved')
@@ -196,6 +202,7 @@ function CodeEditorWorkspaceContent({
       const documentContent = document.content || starterCodeByLanguage[documentLanguage]
 
       loadedDocumentContentRef.current = documentContent
+      loadedDocumentLanguageRef.current = documentLanguage
 
       setLanguage(documentLanguage)
       setCode(documentContent)
@@ -212,6 +219,10 @@ function CodeEditorWorkspaceContent({
       }
     }
   }, [room.id, toolbarMode, documentKey])
+
+  useEffect(() => {
+    languageRef.current = language
+  }, [language])
 
   useEffect(() => {
     let isCurrentRequest = true
@@ -238,7 +249,9 @@ function CodeEditorWorkspaceContent({
     const provider = getYjsProviderForRoom(liveblocksRoom, undefined, true)
     const yDocument = provider.getYDoc()
     const yText = yDocument.getText('monaco')
+    const editorMeta = yDocument.getMap<string>('editor-meta')
     yTextRef.current = yText
+    editorMetaRef.current = editorMeta
 
     const handleYTextChange = () => {
       if (shouldIgnoreChanges) return
@@ -247,6 +260,37 @@ function CodeEditorWorkspaceContent({
       setCode(nextCode)
       setSaveStatus('unsaved')
     }
+
+    const handleEditorMetaChange = () => {
+      if (isApplyingSharedLanguageRef.current) return
+
+      const rawLanguage = editorMeta.get('language')
+      if (!rawLanguage || !isSupportedEditorLanguage(rawLanguage)) return
+      if (rawLanguage === languageRef.current) return
+
+      isApplyingSharedLanguageRef.current = true
+      setLanguage(rawLanguage)
+      setSaveStatus('unsaved')
+      isApplyingSharedLanguageRef.current = false
+    }
+
+    const initializeSharedLanguage = () => {
+      const existingLanguage = editorMeta.get('language')
+
+      if (existingLanguage && isSupportedEditorLanguage(existingLanguage)) {
+        if (existingLanguage !== languageRef.current) {
+          setLanguage(existingLanguage)
+        }
+        return
+      }
+
+      const persistedLanguage = loadedDocumentLanguageRef.current
+      isApplyingSharedLanguageRef.current = true
+      editorMeta.set('language', persistedLanguage)
+      isApplyingSharedLanguageRef.current = false
+    }
+
+    editorMeta.observe(handleEditorMetaChange)
 
     const createBindingAfterFirstSync = () => {
       if (hasCreatedBinding) return
@@ -270,8 +314,8 @@ function CodeEditorWorkspaceContent({
       }
 
       setCode(sharedCode)
+      initializeSharedLanguage()
 
-      
       binding = new MonacoBinding(yText, model as NonNullable<MonacoEditorModel>, new Set([editor]))
       yText.observe(handleYTextChange)
     }
@@ -291,11 +335,16 @@ function CodeEditorWorkspaceContent({
     return () => {
       provider.off('sync', handleProviderSync)
       yText.unobserve(handleYTextChange)
+      editorMeta.unobserve(handleEditorMetaChange)
       binding?.destroy()
       provider.destroy()
 
       if (yTextRef.current === yText) {
         yTextRef.current = null
+      }
+
+      if (editorMetaRef.current === editorMeta) {
+        editorMetaRef.current = null
       }
     }
   }, [isLoading, liveblocksRoom, monacoEditor, room.id, toolbarMode])
@@ -438,20 +487,24 @@ function CodeEditorWorkspaceContent({
   }
 
   const handleLanguageChange = (nextLanguage: EditorLanguage) => {
-    const nextCode = code || starterCodeByLanguage[nextLanguage]
-
-    setLanguage(nextLanguage)
-    setCode(nextCode)
-    setSaveStatus('unsaved')
-
     if (toolbarMode === 'competing') {
+      const nextCode = code || starterCodeByLanguage[nextLanguage]
+
+      setLanguage(nextLanguage)
+      setCode(nextCode)
+      setSaveStatus('unsaved')
       return
     }
 
-    const sharedText = yTextRef.current
+    setLanguage(nextLanguage)
+    setSaveStatus('unsaved')
 
-    if (sharedText) {
-      replaceYTextContent(sharedText, nextCode)
+    const sharedMeta = editorMetaRef.current
+
+    if (sharedMeta) {
+      isApplyingSharedLanguageRef.current = true
+      sharedMeta.set('language', nextLanguage)
+      isApplyingSharedLanguageRef.current = false
     }
   }
 
