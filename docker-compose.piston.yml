@@ -10,7 +10,8 @@ services:
       PISTON_COMPILE_TIMEOUT: 30000
       PISTON_COMPILE_CPU_TIME: 30000
     ports:
-      - "2000:2000"
+      - "127.0.0.1:2000:2000"
+    restart: unless-stopped
     volumes:
       - piston_packages:/piston/packages
     tmpfs:
