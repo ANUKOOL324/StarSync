@@ -87,10 +87,13 @@ Set real values in `.env`:
 
 - `CLIENT_ORIGIN=https://yourdomain.com`
 - `FRONTEND_URL=https://yourdomain.com`
-- `DATABASE_URL=` your Neon URL
+- `DATABASE_URL=` your Neon **pooled** URL (hostname usually contains `-pooler`)
+- `DIRECT_DATABASE_URL=` your Neon **direct** URL (same database, hostname must **not** contain `-pooler`)
 - `REDIS_URL=redis://127.0.0.1:6379`
 - `CODE_RUNNER_URL=http://127.0.0.1:2000/api/v2`
 - `LIVEBLOCKS_SECRET_KEY=` your Liveblocks secret
+
+The Node backend and Prisma Client use `DATABASE_URL` at runtime. Prisma CLI commands such as `npx prisma migrate deploy` read `prisma.config.ts` and use `DIRECT_DATABASE_URL` so migrations do not run through the Neon pooler. Never commit either database URL.
 
 Frontend build:
 

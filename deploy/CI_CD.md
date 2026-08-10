@@ -159,4 +159,17 @@ npm ci
 npm run build
 ```
 
-Backend build does not require a live `DATABASE_URL` for `prisma generate` + `tsc`. Production migrations run only on the VM during CD via `npx prisma migrate deploy` (uses server `.env`).
+Backend build does not require a live `DATABASE_URL` for `prisma generate` + `tsc`. Production migrations run only on the VM during CD via `npx prisma migrate deploy` (reads `DIRECT_DATABASE_URL` from the server `.env` through `prisma.config.ts`).
+
+---
+
+## Database URLs on Azure
+
+Production `/home/azureuser/StarSync/Starsync_backend/.env` must define **both**:
+
+| Variable | Used by | Connection |
+| --- | --- | --- |
+| `DATABASE_URL` | Node app / Prisma Client at runtime | Neon **pooled** URL (hostname usually contains `-pooler`) |
+| `DIRECT_DATABASE_URL` | Prisma CLI (`migrate deploy`, seed, etc.) | Neon **direct** URL (same database, hostname must **not** contain `-pooler`) |
+
+CI/CD continues to run `npx prisma migrate deploy` on the VM. No database URLs belong in GitHub Actions secrets. Never commit real URLs.
