@@ -6,6 +6,7 @@ import {
   updateEditorDocumentController,
 } from "../controllers/editorController";
 import { requireAuth } from "../middleware/authMiddleware";
+import { codeExecutionRateLimiter } from "../middleware/rateLimiters";
 import { asyncHandler } from "../utils/asyncHandler";
 
 export const editorRoutes = Router();
@@ -13,4 +14,4 @@ export const editorRoutes = Router();
 editorRoutes.use(requireAuth);
 editorRoutes.get("/:roomId/document", asyncHandler(getEditorDocumentController));
 editorRoutes.patch("/:roomId/document", asyncHandler(updateEditorDocumentController));
-editorRoutes.post("/run", asyncHandler(runCodeController));
+editorRoutes.post("/run", codeExecutionRateLimiter, asyncHandler(runCodeController));
