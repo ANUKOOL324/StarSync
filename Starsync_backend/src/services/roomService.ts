@@ -832,14 +832,15 @@ export const submitRoomProblemCode = async (
   const roomDetails = await prisma.room.findUnique({
     where: { id: room.id },
     select: {
-      createdAt: true,
+      sessionStartedAt: true,
       durationMinutes: true,
     },
   });
 
   let isLate = false;
-  if (roomDetails?.durationMinutes) {
-    const contestEndTime = roomDetails.createdAt.getTime() + roomDetails.durationMinutes * 60 * 1000;
+  if (roomDetails?.sessionStartedAt && roomDetails.durationMinutes) {
+    const contestEndTime =
+      roomDetails.sessionStartedAt.getTime() + roomDetails.durationMinutes * 60 * 1000;
     isLate = Date.now() > contestEndTime;
   }
 
