@@ -204,34 +204,6 @@ export const broadcastSocketIoRoomSubmissionCreated = (
   activeSocketIoServer.to(roomId).emit("ROOM_SUBMISSION_CREATED", payload);
 };
 
-export const evictUserFromSocketRoom = async (roomId: string, userId: string) => {
-  if (!activeSocketIoServer) {
-    return;
-  }
-
-  const io = activeSocketIoServer;
-  const roomSockets = await io.in(roomId).fetchSockets();
-  const targetSockets = roomSockets.filter((roomSocket) => roomSocket.data.user.id === userId);
-
-  for (const remoteSocket of targetSockets) {
-    clearTypingTimer(remoteSocket.id);
-    await broadcastTypingUpdate(io, roomId, remoteSocket.data.user, false);
-    removeEditorPresenceForRoom(io, remoteSocket.id, roomId, remoteSocket.data);
-
-    if (remoteSocket.data.currentRoomId === roomId) {
-      delete remoteSocket.data.currentRoomId;
-      delete remoteSocket.data.chatVisible;
-    }
-
-    await remoteSocket.leave(roomId);
-    remoteSocket.emit("room:access-removed", { roomId });
-  }
-
-  if (targetSockets.length > 0) {
-    await broadcastPresence(io, roomId);
-  }
-};
-
 const getAllowedOrigins = (): string[] => {
   return Array.from(
     new Set([
@@ -372,6 +344,61 @@ const broadcastPresence = async (io: SocketIoServer, roomId: string) => {
     onlineCount: users.length,
     users,
   });
+};
+
+type RoomRemoteSocket = Awaited<
+  ReturnType<ReturnType<SocketIoServer["in"]>["fetchSockets"]>
+>[number];
+
+const evictSocketFromRoom = async (
+  io: SocketIoServer,
+  roomId: string,
+  remoteSocket: RoomRemoteSocket,
+) => {
+  clearTypingTimer(remoteSocket.id);
+  await broadcastTypingUpdate(io, roomId, remoteSocket.data.user, false);
+  removeEditorPresenceForRoom(io, remoteSocket.id, roomId, remoteSocket.data);
+
+  if (remoteSocket.data.currentRoomId === roomId) {
+    delete remoteSocket.data.currentRoomId;
+    delete remoteSocket.data.chatVisible;
+  }
+
+  await remoteSocket.leave(roomId);
+  remoteSocket.emit("room:access-removed", { roomId });
+};
+
+export const evictUserFromSocketRoom = async (roomId: string, userId: string) => {
+  if (!activeSocketIoServer) {
+    return;
+  }
+
+  const io = activeSocketIoServer;
+  const roomSockets = await io.in(roomId).fetchSockets();
+  const targetSockets = roomSockets.filter((roomSocket) => roomSocket.data.user.id === userId);
+
+  for (const remoteSocket of targetSockets) {
+    await evictSocketFromRoom(io, roomId, remoteSocket);
+  }
+
+  if (targetSockets.length > 0) {
+    await broadcastPresence(io, roomId);
+  }
+};
+
+export const evictAllUsersFromSocketRoom = async (roomId: string) => {
+  if (!activeSocketIoServer) {
+    return;
+  }
+
+  const io = activeSocketIoServer;
+  const roomSockets = await io.in(roomId).fetchSockets();
+
+  for (const remoteSocket of roomSockets) {
+    await evictSocketFromRoom(io, roomId, remoteSocket);
+  }
+
+  editorPresenceByRoom.delete(roomId);
 };
 
 const handleJoin = async (io: SocketIoServer, socket: SocketIoConnection, payload: JoinPayload) => {
