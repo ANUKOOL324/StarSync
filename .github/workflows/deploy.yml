@@ -1,0 +1,121 @@
+name: CI/CD
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: CI
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js for backend
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: Starsync_backend/package-lock.json
+
+      - name: Install and build backend
+        working-directory: Starsync_backend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Setup Node.js for frontend
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: Starsync_frontend/package-lock.json
+
+      - name: Install and build frontend
+        working-directory: Starsync_frontend
+        run: |
+          npm ci
+          npm run build
+
+  deploy:
+    name: CD
+    needs: ci
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: starsync-production-deploy
+      cancel-in-progress: false
+    steps:
+      - name: Configure SSH
+        env:
+          AZURE_SSH_PRIVATE_KEY: ${{ secrets.AZURE_SSH_PRIVATE_KEY }}
+          AZURE_KNOWN_HOSTS: ${{ secrets.AZURE_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$AZURE_SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$AZURE_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Deploy to Azure
+        env:
+          AZURE_HOST: ${{ secrets.AZURE_HOST }}
+          AZURE_USER: ${{ secrets.AZURE_USER }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes "${AZURE_USER}@${AZURE_HOST}" 'bash -s' <<'EOF'
+          set -euo pipefail
+
+          cd /home/azureuser/StarSync
+          CURRENT_BRANCH="$(git branch --show-current)"
+
+          if [ "$CURRENT_BRANCH" != "master" ]; then
+            echo "Azure deployment repository is not on master."
+            exit 1
+          fi
+
+          git pull --ff-only origin master
+
+          cd /home/azureuser/StarSync/Starsync_backend
+          npm ci
+          npm run build
+          npx prisma migrate deploy
+          pm2 restart starsync-backend
+          pm2 save
+
+          cd /home/azureuser/StarSync/Starsync_frontend
+          npm ci
+          npm run build
+
+          FRONTEND_LIVE="/var/www/starsync/frontend/dist"
+          FRONTEND_NEXT="/home/azureuser/starsync-frontend-next"
+          rm -rf "$FRONTEND_NEXT"
+          cp -a dist "$FRONTEND_NEXT"
+          mkdir -p "$FRONTEND_LIVE"
+          rsync -a --delete "$FRONTEND_NEXT/" "$FRONTEND_LIVE/"
+          rm -rf "$FRONTEND_NEXT"
+          EOF
+
+      - name: Health check
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4 5 6; do
+            if curl -fsS https://starsynclive.me/api/health; then
+              echo "Health check passed on attempt ${attempt}"
+              exit 0
+            fi
+            echo "Health check attempt ${attempt} failed; retrying in 5 seconds..."
+            sleep 5
+          done
+          echo "Health check failed after 6 attempts"
+          exit 1
