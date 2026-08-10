@@ -29,6 +29,29 @@ const stringifySnapshot = (snapshot: unknown) => {
   return JSON.stringify(snapshot)
 }
 
+type StoredBoardSnapshot = {
+  document: TLEditorSnapshot['document']
+}
+
+const extractDocumentFromStored = (stored: JsonObject | null): TLEditorSnapshot['document'] | null => {
+  if (!stored || typeof stored !== 'object') {
+    return null
+  }
+
+  const record = stored as Record<string, unknown>
+
+  if (record.document && typeof record.document === 'object') {
+    return record.document as TLEditorSnapshot['document']
+  }
+
+  return null
+}
+
+const createStoredBoardSnapshot = (store: ReturnType<typeof createTLStore>): StoredBoardSnapshot => {
+  const { document } = getSnapshot(store)
+  return { document }
+}
+
 
 const CURSOR_COLORS = [
   '#18D6A3', '#F59E0B', '#8B5CF6', '#EF4444',
@@ -110,23 +133,26 @@ function WhiteboardCanvas({ room, currentUser, onCollaboratorsChange }: Whiteboa
       return
     }
 
-    const removeStoreListener = store.listen(() => {
-      if (isApplyingRemoteSnapshotRef.current) {
-        return
-      }
+    const removeStoreListener = store.listen(
+      () => {
+        if (isApplyingRemoteSnapshotRef.current) {
+          return
+        }
 
-      if (saveTimerRef.current) {
-        window.clearTimeout(saveTimerRef.current)
-      }
+        if (saveTimerRef.current) {
+          window.clearTimeout(saveTimerRef.current)
+        }
 
-      saveTimerRef.current = window.setTimeout(() => {
-        const nextSnapshot = getSnapshot(store)
-        const nextSnapshotText = stringifySnapshot(nextSnapshot)
+        saveTimerRef.current = window.setTimeout(() => {
+          const nextSnapshot = createStoredBoardSnapshot(store)
+          const nextSnapshotText = stringifySnapshot(nextSnapshot)
 
-        lastSavedSnapshotRef.current = nextSnapshotText
-        saveBoardSnapshot(nextSnapshot as unknown as JsonObject)
-      }, 500)
-    })
+          lastSavedSnapshotRef.current = nextSnapshotText
+          saveBoardSnapshot(nextSnapshot as unknown as JsonObject)
+        }, 500)
+      },
+      { source: 'user', scope: 'document' },
+    )
 
     return () => {
       removeStoreListener()
@@ -138,20 +164,20 @@ function WhiteboardCanvas({ room, currentUser, onCollaboratorsChange }: Whiteboa
   }, [saveBoardSnapshot, storageRoot, store])
 
   useEffect(() => {
-    if (!boardSnapshot) {
+    const documentSnapshot = extractDocumentFromStored(boardSnapshot)
+
+    if (!documentSnapshot) {
       return
     }
 
-    const remoteSnapshotText = stringifySnapshot(boardSnapshot)
+    const remoteSnapshotText = stringifySnapshot({ document: documentSnapshot })
 
     if (remoteSnapshotText === lastSavedSnapshotRef.current) {
       return
     }
 
     isApplyingRemoteSnapshotRef.current = true
-    loadSnapshot(store, boardSnapshot as unknown as TLEditorSnapshot, {
-      forceOverwriteSessionState: true,
-    })
+    loadSnapshot(store, { document: documentSnapshot })
     lastSavedSnapshotRef.current = remoteSnapshotText
 
     queueMicrotask(() => {
