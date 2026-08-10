@@ -305,6 +305,27 @@ input[type="reset"] {
   padding-top: calc(72px * var(--hero-scale));
 }
 
+@media (max-width: 1023px) {
+  .landing-product-section {
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+    padding-bottom: 0.75rem;
+  }
+
+  .landing-product-section .landing-hero-frame {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-top: clamp(1.25rem, 7vw, 2.5rem);
+  }
+
+  .landing-hero-cta {
+    margin-bottom: clamp(1.25rem, 5vw, 2rem);
+  }
+}
+
 .landing-hero-stage {
   padding-bottom: calc(48px * var(--hero-scale));
 }

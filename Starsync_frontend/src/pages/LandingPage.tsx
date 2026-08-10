@@ -139,7 +139,7 @@ export function LandingPage() {
               <span
                 className={`h-2 w-2 rotate-45 transition ${
                   activeSection === 'features'
-                    ? 'bg-linear-to-br from-white via-[#DCDDDF] to-[#9FA1A8] shadow-[0_0_12px_rgba(255,255,255,0.55)]'
+                    ? 'bg-[#D2D3D8]'
                     : 'bg-white/20'
                 }`}
               />
@@ -256,7 +256,7 @@ export function LandingPage() {
 
       <section
         id="product"
-        className="relative scroll-mt-16 overflow-hidden bg-black px-2 pb-6 pt-16 sm:scroll-mt-[72px] sm:px-4 sm:pb-8 sm:pt-[72px] md:px-5 lg:px-10 lg:pb-12"
+        className="landing-product-section relative scroll-mt-16 overflow-hidden bg-black px-2 pb-6 pt-16 sm:scroll-mt-[72px] sm:px-4 sm:pb-8 sm:pt-[72px] md:px-5 lg:px-10 lg:pb-12"
       >
         <div
           className="landing-hero-frame relative mx-auto w-full max-w-[1380px] overflow-hidden rounded-[18px] border border-white/10 bg-black px-3 pb-6 shadow-2xl shadow-black/60 sm:px-4 sm:pb-8 md:px-5 lg:pb-12"
