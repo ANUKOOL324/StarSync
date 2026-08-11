@@ -272,7 +272,7 @@ export function LandingPage() {
               className="landing-hero-stage mx-auto flex w-full min-w-0 max-w-4xl flex-col items-center text-center"
             >
               <div className="landing-hero-badge inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/8 px-3.5 py-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)] backdrop-blur-xl sm:px-4">
-                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#57F1DB]" />
+                <span className="landing-hero-badge-dot h-1.5 w-1.5 shrink-0 rounded-full bg-[#57F1DB]" />
                 Early access
               </div>
               <p className="landing-hero-welcome">Welcome to</p>

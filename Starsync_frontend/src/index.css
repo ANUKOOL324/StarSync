@@ -310,19 +310,12 @@ input[type="reset"] {
     display: flex;
     flex-direction: column;
     min-height: 100dvh;
-    padding-bottom: 0.75rem;
   }
 
   .landing-product-section .landing-hero-frame {
-    flex: 1 1 auto;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding-top: clamp(1.25rem, 7vw, 2.5rem);
-  }
+    --hero-scale: min(1, calc(100vw / 42rem));
 
-  .landing-hero-cta {
-    margin-bottom: clamp(1.25rem, 5vw, 2rem);
+    flex: 1 1 auto;
   }
 }
 
@@ -365,6 +358,27 @@ input[type="reset"] {
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: #d2d3d8;
+}
+
+.landing-hero-badge-dot {
+  animation: landing-hero-badge-dot-blink 2.4s ease-in-out infinite;
+}
+
+@keyframes landing-hero-badge-dot-blink {
+  0%,
+  100% {
+    opacity: 0.28;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-hero-badge-dot {
+    animation: none;
+  }
 }
 
 .landing-hero-cta {
