@@ -309,7 +309,7 @@ input[type="reset"] {
   .landing-product-section {
     display: flex;
     flex-direction: column;
-    min-height: 100dvh;
+    min-height: 100svh;
   }
 
   .landing-product-section .landing-hero-frame {
