@@ -105,7 +105,7 @@ export function RealRoomCard({ membersCount, onClick, purpose, roomCode, roomNam
     <button
       type="button"
       onClick={onClick}
-      className="group cursor-pointer rounded-2xl bg-linear-to-b from-[#5A5A5C]/70 via-white/12 to-[#28282A]/75 p-[2px] text-left shadow-[0_16px_48px_rgba(0,0,0,0.2)] transition duration-300 hover:-translate-y-0.5"
+      className="group w-full cursor-pointer rounded-2xl bg-linear-to-b from-[#5A5A5C]/70 via-white/12 to-[#28282A]/75 p-[2px] text-left shadow-[0_16px_48px_rgba(0,0,0,0.2)] transition duration-300 hover:-translate-y-0.5"
     >
       <Card className="flex min-h-0 flex-col justify-between gap-3 rounded-[14px] bg-[#111316]/86 p-3.5 transition duration-300 group-hover:bg-[#181B1E]/92 md:min-h-[9rem] md:gap-6 md:p-5">
         <div className="flex items-start justify-between gap-4">

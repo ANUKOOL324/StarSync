@@ -108,13 +108,13 @@ export function CompetingRoomView({ room, state }: CompetingRoomViewProps) {
                     setCopyStatus('idle')
                     setIsInviteDialogOpen(true)
                   }}
-                  className="flex items-center gap-2 cursor-pointer px-2 py-1 rounded hover:bg-white/5 hover:text-white active:scale-95 transition transform duration-100 focus:outline-none focus:ring-2 focus:ring-[#18D6A3]/30 lg:hidden"
+                  className="flex items-center gap-2 cursor-pointer px-2 py-1 rounded hover:bg-white/5 hover:text-white active:scale-95 transition transform duration-100 focus:outline-none focus:ring-2 focus:ring-[#18D6A3]/30 lg:hidden max-lg:mb-1.5 max-lg:border max-lg:border-[#18D6A3]/25"
                 >
                   Invite
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onSelect={handleLeaveRoom}
-                  className="flex items-center gap-2 cursor-pointer px-2 py-1 rounded hover:bg-white/5 hover:text-white active:scale-95 transition transform duration-100 focus:outline-none focus:ring-2 focus:ring-[#18D6A3]/30"
+                  className="flex items-center gap-2 cursor-pointer px-2 py-1 rounded hover:bg-white/5 hover:text-white active:scale-95 transition transform duration-100 focus:outline-none focus:ring-2 focus:ring-[#18D6A3]/30 max-lg:mb-1.5 max-lg:border max-lg:border-white/12"
                 >
                   <LogOut size={14} aria-hidden="true" />
                   Leave room
@@ -122,7 +122,7 @@ export function CompetingRoomView({ room, state }: CompetingRoomViewProps) {
                 {isAdmin ? (
                   <DropdownMenuItem
                     onSelect={handleDeleteRoom}
-                    className="flex items-center gap-2 cursor-pointer px-2 py-1 rounded text-red-400 hover:bg-red-900/30 hover:text-red-200 active:scale-95 transition transform duration-100 focus:outline-none focus:ring-2 focus:ring-red-500/20"
+                    className="flex items-center gap-2 cursor-pointer px-2 py-1 rounded text-red-400 hover:bg-red-900/30 hover:text-red-200 active:scale-95 transition transform duration-100 focus:outline-none focus:ring-2 focus:ring-red-500/20 max-lg:border max-lg:border-red-500/25"
                   >
                     <Trash2 size={14} aria-hidden="true" />
                     Delete room
@@ -339,7 +339,7 @@ export function CompetingRoomView({ room, state }: CompetingRoomViewProps) {
         >
           <DialogContent
             overlayClassName="bg-black/35 backdrop-blur-md data-[state=open]:backdrop-blur-md"
-            className="!border-none !bg-transparent !shadow-none !p-0 max-w-sm"
+            className="!border-none !bg-transparent !shadow-none !p-0 max-w-[min(24rem,calc(100%-2rem))]"
             showCloseButton={false}
           >
             <div className="w-full rounded-3xl border border-white/10 bg-zinc-950/90 p-5 shadow-2xl shadow-black/50">
